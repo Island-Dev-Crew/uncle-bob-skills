@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Essence Pointer"
+  short_description: "A working exemplar is the spec - build a customized local equivalent and prove parity against the exemplar's own tests"

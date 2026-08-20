@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Seat Relay"
+  short_description: "Serial five-seat specialist relay - one fresh-context agent per seat, typed baton handoffs, inside spec-pipeline's implement stage"

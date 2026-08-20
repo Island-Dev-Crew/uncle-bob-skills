@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Specifier Seat"
+  short_description: "Transform one settled intent doc into a Gherkin acceptance spec plus a human-viewpoint QA procedure for the coder and qa-script seats"

@@ -1,0 +1,5 @@
+[
+  {"from": "src/domain/order.ts", "to": "src/use-cases/place-order.ts"},
+  {"from": "src/use-cases/place-order.ts", "to": "src/web/server.ts"},
+  {"from": "src/controllers/order.ts", "to": "src/lib/logger.ts"}
+]

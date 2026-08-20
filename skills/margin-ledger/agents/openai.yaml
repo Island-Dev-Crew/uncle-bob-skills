@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Margin Ledger"
+  short_description: "Per-story margin accounting for a gate stack — defend 2-4x over the human baseline, cut any gate that pushes below 1x"

@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Trajectory Hygiene"
+  short_description: "The mid-session kill-vs-continue call - contamination never washes out"

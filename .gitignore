@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.DS_Store
+
+# The full transcript and caption file are the whole of someone else's recorded
+# conversation; this repo cites it, it does not redistribute it.
+# source/README.md regenerates both in one command.
+source/transcript.txt
+source/*.srt

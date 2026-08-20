@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "CRAP Gate"
+  short_description: "Per-function CRAP ceiling as a fix-until-green gate on agent-written code"

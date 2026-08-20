@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Structure Interrogation"
+  short_description: "Extract the agent's own model of the structure it built, correct it - the human designs the re-partition"

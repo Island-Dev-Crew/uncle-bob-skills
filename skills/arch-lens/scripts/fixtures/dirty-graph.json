@@ -1,0 +1,11 @@
+{
+  "modules": [
+    {"id": "core",        "parent": null,      "path": "core"},
+    {"id": "api",         "parent": "missing", "path": "api"},
+    {"id": "orphan",      "parent": null,      "path": ""}
+  ],
+  "edges": [
+    {"from": "api",  "to": "api"},
+    {"from": "core", "to": "nowhere"}
+  ]
+}

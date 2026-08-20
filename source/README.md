@@ -1,0 +1,48 @@
+# Source evidence
+
+The pack's grounding rule is that no island quotes the conversation from memory: every island cites a numbered concept in [`../01-CONCEPT-LEDGER.md`](../01-CONCEPT-LEDGER.md), and every concept carries a short attributed quote checked against the source recording.
+
+## What is here, and what is not
+
+**Here:** [`frames-notable/`](frames-notable/) — eleven stills sampled from the video, the ones that carry information the words alone do not (the bathrobe the running joke is about, the moment the costume changes, the book held up at the close). They are documentary excerpts, cited frame by frame in [`../00-EXTRACTION.md`](../00-EXTRACTION.md).
+
+**Not here:** the full transcript and the complete timestamped caption file. Both are the whole of someone else's recorded conversation, and this repository does not redistribute them. The ledger's short attributed quotes are ordinary citation; a full transcript is a copy.
+
+## Regenerate the transcript in one command
+
+The evidence stays reproducible — pull it yourself, and every verification in this repo can be re-run against it:
+
+```bash
+yt-dlp --skip-download --write-auto-sub --sub-lang en --sub-format srt \
+       -o "zcLPGC-tvgk.%(ext)s" "https://www.youtube.com/live/zcLPGC-tvgk"
+```
+
+That writes the caption file beside this README. To produce the flattened prose transcript the ledger was checked against, strip the cue numbers and timestamps:
+
+```bash
+python3 - <<'EOF' > transcript.txt
+import re, pathlib
+srt = next(pathlib.Path('.').glob('zcLPGC-tvgk*.srt')).read_text(encoding='utf-8')
+lines = [l for l in srt.splitlines()
+         if l.strip() and not l.strip().isdigit() and '-->' not in l]
+seen, out = set(), []
+for l in lines:                      # auto-captions repeat rolling lines
+    if l not in seen:
+        seen.add(l); out.append(l)
+print(' '.join(out))
+EOF
+```
+
+## Verify the quotes
+
+Every quote in the ledger should be findable in the regenerated transcript. Auto-captions stutter and garble, and the ledger preserves that faithfully — stutters are marked `[sic]` rather than smoothed, and known garbles are corrected once in the ledger header (the C.R.A.P. metric, Dex Horthy, John Ousterhout, CLAUDE.md).
+
+```bash
+grep -c "They are fast with code. I am slow with code" transcript.txt   # expect 1
+```
+
+## Provenance
+
+Robert C. Martin ("Uncle Bob") in conversation with Matt Pocock, ~57 minutes, retrieved 2026-08-19: https://www.youtube.com/live/zcLPGC-tvgk
+
+The conversation is Martin's and Pocock's work and is cited here, not reproduced. The skills in this repository are an independent interpretation built on it.

@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Spec Mulch"
+  short_description: "Specs mulch on merge - the end result plus its standing gates is the specification, never the plan doc"

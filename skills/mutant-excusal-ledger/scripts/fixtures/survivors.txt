@@ -1,0 +1,5 @@
+# Known survivor list — 3 mutants a hunt run left alive after kill-tasks.
+# Shared by both ledger fixtures; the ledger is the half that varies.
+M-src/pricing.ts-41-2
+M-src/pricing.ts-58-1
+M-src/cart.ts-12-3

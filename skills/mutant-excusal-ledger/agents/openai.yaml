@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Mutant Excusal Ledger"
+  short_description: "Every excused survivor carries a written equivalence argument; unexcused survivors block"

@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Mutant Hunt"
+  short_description: "The merciless hardener gate - zero surviving non-equivalent mutants on the story diff, covered lines only, under a runtime budget cap"

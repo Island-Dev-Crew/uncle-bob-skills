@@ -1,0 +1,3 @@
+interface:
+  display_name: "Good Island"
+  short_description: "Minimal conformant fixture for validator testing"

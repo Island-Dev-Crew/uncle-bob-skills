@@ -1,0 +1,4 @@
+# dirty fixture: coverage-joined rows containing one CRAP breach at the agent ceiling (6).
+# function<TAB>complexity<TAB>coverage_pct
+parse_row	5	80
+render_invoice	9	40

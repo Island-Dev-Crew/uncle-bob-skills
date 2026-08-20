@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Priority Zone"
+  short_description: "Hard head-of-context budget and placement lint for the standing prompt - size gate plus a keep-hard-directives-in-the-head check"

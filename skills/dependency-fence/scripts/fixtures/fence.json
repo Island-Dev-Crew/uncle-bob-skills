@@ -1,0 +1,9 @@
+{
+  "layers": ["frameworks", "adapters", "use-cases", "entities"],
+  "modules": {
+    "src/web": "frameworks",
+    "src/controllers": "adapters",
+    "src/use-cases": "use-cases",
+    "src/domain": "entities"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "modules": [
+    {"id": "core",         "parent": null,   "path": "core"},
+    {"id": "core.engine",  "parent": "core", "path": "core/engine.txt"},
+    {"id": "api",          "parent": null,   "path": "api"},
+    {"id": "api.handler",  "parent": "api",  "path": "api/handler.txt"}
+  ],
+  "edges": [
+    {"from": "api",         "to": "core"},
+    {"from": "api.handler", "to": "core.engine"}
+  ]
+}

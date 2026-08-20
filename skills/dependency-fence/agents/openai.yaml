@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Dependency Fence"
+  short_description: "A declared module-dependency direction spec plus a checker agents cannot violate - three sanctioned repairs when red"

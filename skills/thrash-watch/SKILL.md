@@ -1,0 +1,53 @@
+---
+name: thrash-watch
+description: Live recognition of agent thrash - the struggle Uncle Bob says novices fail to see - read from a running agent's behavior (break-one-fix-another chains, circling, the outright give-up), plus the ordered intervention ladder that clears it. Reach for it while supervising a working agent that seems stuck, or when the user says "the agent keeps breaking things", "it's going in circles", "is this agent thrashing", or "it just apologized and changed two lines again". Differentiator - it watches the agent's behavior only; debugging the code is diagnose's seat, and the respawn rung executes via trajectory-hygiene.
+---
+
+# Thrash Watch: see the struggle
+
+When Bob's agents failed in December, the data was their behavior, and he could read it: *"the important part was the next step where I watched them thrash. I could see the agent struggle and I recognized the struggle since I have been through that struggle… the novice would come in and not recognize the struggle"* ([C27](../../01-CONCEPT-LEDGER.md)). Recognition is the skill this island encodes. The root cause is almost always mess: *"they are as subject as humans are to messy code… The code can get messy enough that the agents cannot deal with it any longer and then they'll just start to spin"* (C2). The threshold differs from a human's, but it exists (C2) — so a codebase a human still tolerates can already be spinning its agents.
+
+## The lane
+
+This island watches **agent behavior only** — turns, diffs, test results, tone. When a signature fires, the question is *what is the agent doing*, never *what is wrong with the code*:
+
+- **Debugging the code is [`diagnose`](../../COMPANION.md#diagnose)'s seat.** When an intervention exposes a real defect, hand it there and borrow its first rule by reference — build the observation loop first: a red-capable feedback loop before any theory. This island never carries a bug past the handoff.
+- **Durable findings enter [`finding-register`](../../COMPANION.md#finding-register), never a second register here.** A module that reliably induces thrash, a mess hotspot confirmed across two sessions — register it as a `U-` entry with a recomputable command, so the next supervisor inherits the map instead of rediscovering the swamp.
+- **The respawn decision executes via [`trajectory-hygiene`](../trajectory-hygiene/SKILL.md).** This island decides *that* rung 4 is needed; trajectory-hygiene owns the kill mechanics, the survivor ledger, and the pointer to the human-run `handoff` ritual.
+
+## The signatures
+
+The watch list — what struggle looks like live. All five are **advisory**: judged from the transcript and diff stream by the supervising seat; no hook parses a running session today.
+
+1. **Break-one-fix-another chains.** Every fix breaks a neighbor; the agent oscillates between two failing states. This is C2's spin in its purest form.
+2. **Circling.** The same files opened, edited, reverted, re-edited across turns — motion without displacement. Grep the recent diffs: the same paths keep appearing, the net change keeps approaching zero.
+3. **Shrinking diffs, growing apologies.** Each attempt touches less code and spends more tokens explaining; effort is migrating from the change to the excuse. Confidence collapse reads as verbosity.
+4. **Inadvertent-breakage cascades.** Tests go red in areas the task never named, and the blast radius widens turn over turn instead of narrowing.
+5. **The give-up.** The agent says it outright — *"One agent one time said, 'I just can't deal with this anymore.'"* (C2). Terminal: skip classification and go straight to the ladder.
+
+One healthy look-alike to rule out before intervening: a genuinely hard task produces slow, *converging* progress — failing states differ each turn and the red set shrinks. Thrash repeats; work converges.
+
+## The intervention ladder
+
+Four rungs, **in order**. Take the lowest rung that clears the signature, re-observe, and escalate one rung on recurrence. Skipping straight to respawn wastes rungs 2–3, which fix the *cause*; respawning onto the same mess re-buys the same thrash with a fresh context (C2).
+
+1. **Stop the agent.** Halt output before more tokens land on the failing path — a context window has momentum, and *"everything that follows in that same session… will continue following that trajectory"* (C11). Every further turn deepens the groove.
+2. **Clean the mess.** Mess is the root cause (C2): revert the churn to the last green state, delete half-finished edits, get the gates green again. Often the clean alone un-sticks the agent — resume and re-observe before escalating.
+3. **Repartition the module.** When the *same* module induces thrash after a clean, the module sits past the agent's mess threshold (C2). Split it, discipline its interfaces, then re-issue the task against the new shape. If the repartition surfaces a defect rather than a tangle, that is `diagnose`'s handoff.
+4. **Respawn with fresh context.** The trajectory itself is poisoned and *"the only way to clear the trajectory is to clear the context window"* (C11). Execute via `trajectory-hygiene`: persist survivors, kill, respawn onto the cleaned, repartitioned code.
+
+## The watch loop
+
+1. **Observe** the live stream: turns, diffs, test results.
+2. **Classify** — name the signature by number, or name "converging" and keep watching.
+3. **Intervene** at the lowest sufficient rung; say which rung and why.
+4. **Re-verify** — after the rung, watch for progress resumed: diffs substantive again, corrections stick, the red set shrinking. Same signature refires → escalate one rung. New signature → classify again.
+
+**Done when:** the agent is converging again (or rung 4 executed and the fresh context is on task), the signature and rung are named on the record, and any durable finding is registered in `finding-register`. A supervisor who cannot name the signature has not finished watching — that unnamed struggle is exactly the novice's failure (C27). The recognition instinct itself is trainable: Bob's cure for the novice is the older canon — DeMarco, Yourdon, the Pragmatic Programmer — where these lessons were first learned (C27).
+
+## Evidence discipline
+
+- **Enforced** (mechanical check exists today): this island's own structure, gated by the pack validator — `unclebob/scripts/validate-island.py`, exit code.
+- **Advisory** (judged, stated, never auto-blocked): every signature and every rung above. This is a v0 island and says so honestly — no script measures churn-per-turn, revert counts, or apology density yet; a later wave can add a deterministic churn probe, and until it exists these rules stay labeled advisory rather than laundered into enforced.
+
+**No authority without evidence. The struggle is visible before the failure is — name the signature, take the lowest rung that clears it.**

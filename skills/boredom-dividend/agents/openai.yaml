@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Boredom Dividend"
+  short_description: "Revive practices shelved only for boring humans as agent-run gates"

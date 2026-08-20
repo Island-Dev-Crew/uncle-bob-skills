@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Steering Audit"
+  short_description: "Classify standing-prompt rules generative vs checkable; migrate checkables into deterministic gates"

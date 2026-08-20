@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Story Cadence"
+  short_description: "The comparative planning doctrine for the agent era - small batches with feedback beat heavy upfront specs, because change is near-free and big plans decay mid-run"

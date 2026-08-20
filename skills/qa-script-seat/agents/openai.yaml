@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "QA Script Seat"
+  short_description: "Turn the human-viewpoint QA doc into a deterministic, story-bound executable UI gate"

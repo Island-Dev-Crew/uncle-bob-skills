@@ -1,0 +1,9 @@
+MULCH-ON-MERGE: story-17
+
+# Story 17 — checkout applies destination tax
+
+Acceptance:
+- A cart shipping to a taxed region shows a tax line before payment.
+- A cart shipping to an exempt region shows no tax line.
+
+For the launching agent: round half-up at two decimals.

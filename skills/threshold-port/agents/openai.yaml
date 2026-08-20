@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Threshold Port"
+  short_description: "Port a human practice to agents - keep the value, drop the ritual, retune the numeric gate by controlled experiment, never by agent vote"

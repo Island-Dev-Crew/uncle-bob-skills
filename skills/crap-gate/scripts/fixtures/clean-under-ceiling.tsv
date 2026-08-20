@@ -1,0 +1,5 @@
+# clean fixture: same shape, every function at or under the agent ceiling (6).
+# is_expired is the boundary case - untested 2-path function scores exactly 6, which passes.
+# function<TAB>complexity<TAB>coverage_pct
+parse_row	5	80
+is_expired	2	0

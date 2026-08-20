@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Thrash Watch"
+  short_description: "Live recognition of agent struggle and the ordered intervention ladder that clears it"

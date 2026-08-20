@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Arch Lens"
+  short_description: "The agent builds the repo its own drill-down architecture viewer - diagram, dependency arrows, click to submodules, click to code"

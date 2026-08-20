@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Known-Dirty Fixture"
+  short_description: "A gate earns trust by failing red on a known-bad fixture, then passing green on a known-good one"
