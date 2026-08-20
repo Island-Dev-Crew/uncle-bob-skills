@@ -1,7 +1,7 @@
 # Concept Ledger — Uncle Bob × Matt Pocock (2026)
 
 **Source:** https://www.youtube.com/live/zcLPGC-tvgk — ~57 min conversation, Robert C. Martin ("Uncle Bob") interviewed by Matt Pocock.
-**Evidence:** [`source/transcript.txt`](source/transcript.txt) (10,121 words, YouTube auto-captions corrected against frames where flagged) + [`source/zcLPGC-tvgk.en.srt`](source/zcLPGC-tvgk.en.srt) (timestamped). Frames sampled at ~28s cadence, deduped to 105 informative frames (notable ones preserved in `source/frames-notable/`).
+**Evidence:** the video's own auto-captions (10,121 words, corrected against frames where flagged) and their timestamped form — regenerate both via [`source/README.md`](source/README.md) to re-check any quote below. Frames sampled at ~28s cadence, deduped to 105 informative frames; the eleven that carry information the words do not are kept in [`source/frames-notable/`](source/frames-notable/).
 **Discipline:** every concept below carries a verbatim quote greppable in the transcript. A concept without a quote does not enter this ledger. Auto-caption garbles are noted inline (`crap` = the C.R.A.P. metric; "claw.md" = CLAUDE.md; "Grock" = Grok; "girkin" = Gherkin; "John Aster/Asterhow/Ousterhout" = John Ousterhout; "cyclatic" = cyclomatic; "Dystra" = Dijkstra; "dog dew/dude/deus" = dog doo).
 
 Concepts are numbered `C1…C28` and are the ONLY citation targets the roster (02) may use. Speaker attribution: **RCM** = Robert C. Martin, **MP** = Matt Pocock.

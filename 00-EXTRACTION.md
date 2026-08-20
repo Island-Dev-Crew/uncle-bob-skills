@@ -1,7 +1,7 @@
 # Extraction — Uncle Bob × Matt Pocock, two channels
 
 **Video:** https://www.youtube.com/live/zcLPGC-tvgk · 3,399 s (~56.7 min) · analyzed 2026-08-19 under the `video-analysis` island.
-**Channel 1 (said):** [`source/transcript.txt`](source/transcript.txt) — 10,121 words, YouTube auto-captions; timestamped SRT alongside. Complete.
+**Channel 1 (said):** the full ~57-minute conversation as YouTube auto-captions, 10,121 words. The transcript is cited here, not redistributed — [`source/README.md`](source/README.md) regenerates it and its timestamped captions in one command, so every quote below can be re-checked against the source.
 **Channel 2 (shown):** 120-frame target at ~28 s cadence → **105 informative frames** after mpdecimate dedup; sweep run by three independent readers over f_001–f_035 / f_036–f_070 / f_071–f_105; the 11 notable frames preserved in [`source/frames-notable/`](source/frames-notable/). The frames are a sample, not the whole video — a one-frame flash between samples can be missed.
 
 ## Thesis (from the words)
