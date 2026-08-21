@@ -1,0 +1,10 @@
+# task_id	path	kind	tokens	reason
+# The leading-'..' dodge: the same body under three spellings, two of which
+# climb out of the repo root. A '..'-escaping path is no more repo-relative
+# than an absolute one and defeats 'one body has one key' the same way, so it
+# is refused at parse (exit 2) rather than keyed apart and waved through.
+T-52	src/orders/cart.pyi	interface	200	-
+T-52	tests/test_cart.py	test	400	-
+T-52	src/orders/cart.py	impl	100	editing
+T-52	../uncle-bob-skills/src/orders/cart.py	impl	100	editing
+T-52	../../uncle-bob-skills/skills/../src/orders/cart.py	impl	100	editing

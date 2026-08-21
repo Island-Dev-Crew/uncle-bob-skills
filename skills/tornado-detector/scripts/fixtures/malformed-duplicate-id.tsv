@@ -1,0 +1,18 @@
+# malformed — the same change listed twice under two spellings (a1b2c3d /
+# A1B2C3D). Under the NFC+casefold key they are one change; counting it
+# twice would dilute the window with history that happened once. Exit 2.
+c0000	2
+c0001	2
+c0002	2
+c0003	2
+c0004	2
+c0005	2
+c0006	2
+c0007	2
+c0008	2
+a1b2c3d	2
+d0000	9
+d0001	9
+d0002	9
+d0003	9
+A1B2C3D	9

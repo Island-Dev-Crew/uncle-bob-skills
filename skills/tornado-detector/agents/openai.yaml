@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Tornado Detector"
+  short_description: "Trend alarm on files-touched-per-change - change amplification caught while it is still blowing"

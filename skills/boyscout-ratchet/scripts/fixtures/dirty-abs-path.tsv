@@ -1,0 +1,6 @@
+# unjoinable-key path: the SAME regression again, but spelled absolutely - routine
+# istanbul/jest coverage-final.json output. normpath cannot reduce it to the baseline's
+# repo-relative key, so it can never join. The gate refuses to run (exit 2) instead of
+# routing the regression to the lenient new-file branch, where 5.99 under a ceiling of 6
+# would report green on a file that got worse on all three axes.
+/repo/api/router.py	5.99	6	10

@@ -1,0 +1,6 @@
+# touched files after a dirty agent pass - well-formed input, no new files, budget untouched.
+# api/router.py got worse on all three axes yet is still UNDER an absolute ceiling of 6:
+# the per-function gate would wave it through; the ratchet is what catches it.
+api/router.py	5.40	6	78
+core/parse.py	4.80	5	94
+web/view.py	2.80	3	81

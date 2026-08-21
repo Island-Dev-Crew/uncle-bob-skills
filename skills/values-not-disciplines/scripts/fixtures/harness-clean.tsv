@@ -1,0 +1,5 @@
+per-function CRAP ceiling at 6	python3 tools/crap-score.py --threshold 6
+no outward dependencies across the layer fence	tools/dep-check.sh
+tests pass under coverage	python3 -m covgate --cov=src
+prefer editorial layout over template grids	advisory: generative - no artifact check can substitute
+module boundaries read well to a human reviewer	advisory

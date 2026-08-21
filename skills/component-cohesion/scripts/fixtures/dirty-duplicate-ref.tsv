@@ -1,0 +1,21 @@
+# dirty - input integrity. This is dirty-scatter's history verbatim, written
+# one row per (commit, component) pair - the shape a naive `git log --name-only`
+# fold produces. Scored naively it would report fan=1 everywhere over a 10-commit
+# denominator: a 75% spread BREACH laundered into 0.0%. One commit is one row,
+# so the repeated ref is refused as input (exit 2), never rendered as a verdict.
+# the true history is 4 commits; the rows below flatten it to 10
+commits	total	4
+component	billing	300
+component	invoicing	280
+component	notify	150
+component	audit	200
+commit	b1	billing
+commit	b1	invoicing
+commit	b1	notify
+commit	b2	billing
+commit	b2	invoicing
+commit	b2	audit
+commit	b3	billing
+commit	b3	notify
+commit	b3	audit
+commit	b4	billing

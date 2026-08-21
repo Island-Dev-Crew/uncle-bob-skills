@@ -1,0 +1,3 @@
+# LITERAL, then a TAB, then the reason — every waiver names the external authority that owns the fact. A ledger comment holds no TAB, so it can never swallow a data row.
+"Content-Type"	HTTP header name fixed by RFC 9110; both SDK call sites take it as a raw string, so no local constant can absorb it
+"application/json"	Media type fixed by the published OpenAPI document; the spec owns it and each side must state it verbatim

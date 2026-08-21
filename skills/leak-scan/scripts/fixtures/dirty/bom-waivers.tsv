@@ -1,0 +1,3 @@
+﻿# A ledger saved by a Windows editor: byte 0 is a UTF-8 BOM.
+X-Idc-Signature	Header name fixed by the published webhook RFC; both halves take it as a raw string
+300	Clock skew ceiling fixed by the same published RFC, which owns the number

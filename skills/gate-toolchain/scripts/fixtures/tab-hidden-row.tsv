@@ -1,0 +1,5 @@
+# hidden-row fixture: a valid row followed by a row whose first field is empty and
+# whose second field begins with "#". Comment detection is anchored to column 1, so
+# this row is reported malformed (exit 2) instead of silently vanishing into a green run.
+java	crap	crap4java	--changed	crap4java --changed --threshold 6
+	#go	crap	--changed	crap4java --changed

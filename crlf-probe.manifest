@@ -1,0 +1,4 @@
+tier: critical
+spec: artifacts/checkout.feature
+qa: artifacts/checkout.qa.md
+code: artifacts/charge.py

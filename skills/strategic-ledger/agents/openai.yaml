@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Strategic Ledger"
+  short_description: "Tactical/strategic split accounting per cycle — hold the evidenced strategic share in band, every strategic claim carrying a before/after structural metric"

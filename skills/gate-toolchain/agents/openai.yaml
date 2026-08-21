@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Gate Toolchain"
+  short_description: "Per-language tool map for the CRAP and mutation gates - input artifact and incremental mode"

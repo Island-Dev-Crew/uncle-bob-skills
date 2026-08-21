@@ -1,0 +1,25 @@
+# dirty — the PR-id tornado: ids written the conventional way, '#1234'.
+# A '#'-prefixed line that HOLDS A TAB is data, never a comment, so these
+# five wide changes cannot vanish and slide the window onto quiet history.
+# Strip the '#' and the numbers are identical: the id format must not move
+# the verdict. Breaches both rules (10.00x climb, recent 20.00 > 8.00).
+a0000	2
+a0001	2
+a0002	2
+a0003	2
+a0004	2
+a0005	2
+a0006	2
+a0007	2
+a0008	2
+a0009	2
+a0010	2
+a0011	2
+a0012	2
+a0013	2
+a0014	2
+#300	20
+#301	20
+#302	20
+#303	20
+#304	20

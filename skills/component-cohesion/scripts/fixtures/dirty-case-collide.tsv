@@ -1,0 +1,11 @@
+# dirty - input integrity. One 4200-line component split across three
+# spellings of one name - case variant, './' prefix, doubled separator. Each
+# spelling is under the 1500-line context budget, so scored per-spelling the
+# monolith passes context-fit. All three share one documented key, so the
+# second declaration is refused as a collision (exit 2) rather than rerouted.
+commits	total	2
+component	monolith	1400
+component	Monolith	1400
+component	.//monolith//	1400
+commit	c1	monolith
+commit	c2	monolith

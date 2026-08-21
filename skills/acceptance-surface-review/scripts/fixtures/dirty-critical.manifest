@@ -1,0 +1,7 @@
+# Review surface - story CHK-14, capture payment at checkout.
+# The near-miss this gate exists to catch: the tier is honestly declared
+# critical, but the surface stops at the prose - nobody opened the money
+# path - and the QA doc has grown past what a human will actually read.
+tier: critical
+spec: artifacts/checkout.feature
+qa: artifacts/checkout-bloated.qa.md

@@ -40,15 +40,32 @@ The islands are plain `SKILL.md` files with an `agents/openai.yaml` sidecar, so 
 
 *(The education islands — `human-subagent`, which trains a junior by running them under the gates the agents run, and `strategy-shelf`, the old-books curriculum behind the strategic seat — are specified in the roster for a later wave and are not in this release.)*
 
+## The canon layer (v1.1)
+
+Fifteen more islands, where the conversation's claims meet the books behind them.
+
+**Structure measured, not argued** — [`stability-order`](skills/stability-order/SKILL.md) instability, abstractness and distance from the main sequence as checks · [`component-cohesion`](skills/component-cohesion/SKILL.md) the REP/CCP/CRP triangle, sized so a component is also a context-window unit · [`interface-budget`](skills/interface-budget/SKILL.md) deep modules priced in tokens: work from the interface before loading the body · [`leak-scan`](skills/leak-scan/SKILL.md) one design decision expressed twice is a fact paid for twice
+
+**Comments and errors as design** — [`comment-as-spec`](skills/comment-as-spec/SKILL.md) the interface comment is the spec a model acts from, and it must not leak the implementation · [`define-errors-out`](skills/define-errors-out/SKILL.md) redesign the API so the error case stops existing rather than handling it again
+
+**Drift caught early** — [`boyscout-ratchet`](skills/boyscout-ratchet/SKILL.md) every touched file leaves measurably no worse, so a legacy repo can adopt a gate it cannot pass today · [`tornado-detector`](skills/tornado-detector/SKILL.md) files-touched-per-feature climbing is a design decision smearing across the codebase · [`strategic-ledger`](skills/strategic-ledger/SKILL.md) holds the tactical/strategic split near its band, with structural evidence
+
+**The acceptance surface** — [`gherkin-gate`](skills/gherkin-gate/SKILL.md) scenarios red before, green after, living outside the prompt where nothing decays · [`tests-as-spec`](skills/tests-as-spec/SKILL.md) the suite written for the reader who never met the author · [`acceptance-surface-review`](skills/acceptance-surface-review/SKILL.md) what a human still reads, and how blast radius widens it
+
+**Patrolling the pack's own metrics** — [`coverage-gaming-audit`](skills/coverage-gaming-audit/SKILL.md) coverage measures execution, not assertion · [`gate-toolchain`](skills/gate-toolchain/SKILL.md) the tool per language, incremental mode required inside the loop · [`values-not-disciplines`](skills/values-not-disciplines/SKILL.md) every quality rule names its measuring tool or is marked advisory
+
 ## Verify it yourself
 
 Nothing here asks to be believed:
 
 ```bash
-python3 scripts/validate-island.py skills/*/
+python3 scripts/validate-island.py skills/*/     # 420 checks across 35 islands
+python3 scripts/verify-proofs.py                 # re-runs every command the islands document
 ```
 
-Twelve mechanical checks per island, 240 in total. The validator is proven the same way everything else is — it goes red on `scripts/fixtures/bad-island` and green on `good-island`. Every gate script ships its own dirty and clean fixture, and [04-WAVE1-GAUNTLET.md](04-WAVE1-GAUNTLET.md) records what a blind critic caught in each island before it shipped, including three gates that separated their own fixtures but could still be bypassed until they were fixed.
+Twelve mechanical checks per island. The validator is proven the same way everything else is — it goes red on `scripts/fixtures/bad-island` and green on `good-island`. Every gate script ships its own dirty and clean fixture, and the second tool re-runs each island's documented commands and compares the exit codes, because a proof block that no longer reproduces is a claim rather than evidence.
+
+[04-WAVE1-GAUNTLET.md](04-WAVE1-GAUNTLET.md) and [05-WAVE2-GAUNTLET.md](05-WAVE2-GAUNTLET.md) record what blind critics caught before each wave shipped — including gates that separated their own fixtures perfectly and were still walked past, which is why the critics were eventually told to forge inputs rather than re-run the author's.
 
 ## How it was built
 
@@ -70,7 +87,11 @@ Each island was authored by one agent, then judged by a **blind critic** that ne
 
 ## Honest state
 
-v1.0 ships Wave 1: twenty islands, mechanically clean, gauntleted, with twelve proven gates. Most in-island rules are `advisory` and say so — these are first-version islands, and the pack would rather admit that than dress advice up as enforcement. Islands 21–50 are specified in the roster and not yet built.
+v1.1 ships 35 islands across two waves, mechanically clean and gauntleted, with every gate script carrying a red/green fixture pair it has been watched failing.
+
+Most in-island rules are `advisory` and say so — the pack would rather admit that than dress advice up as enforcement. Several islands document a limit they chose not to close and ship a fixture capturing it as a run: `stability-order` cannot see a pure dependency cycle, `coverage-gaming-audit` cannot see a suite reached only through a `conftest.py` hook, `comment-as-spec` cannot resolve an imported base class. An evidenced boundary beats a silent one, and each is on the page with its command beside it.
+
+Islands 36–50 are specified in the roster and not yet built.
 
 ## Credit
 

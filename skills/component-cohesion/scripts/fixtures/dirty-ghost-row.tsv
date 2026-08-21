@@ -1,0 +1,9 @@
+# dirty - input integrity. Line 8 is a tab-only row: a record shape whose
+# fields are empty, not a blank line. Dropped silently it would delete a
+# commit from the denominator - a false green - so it is refused (exit 2).
+commits	total	2
+component	billing	300
+component	notify	150
+commit	c1	billing
+		
+commit	c2	billing,notify

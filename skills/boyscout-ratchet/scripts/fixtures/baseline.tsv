@@ -1,0 +1,22 @@
+# recorded baseline: path <TAB> worst_crap <TAB> max_complexity <TAB> coverage_pct
+# 20 files, 1 of them (legacy/report_writer.py) already over a ceiling of 6 = 5.0%
+api/router.py	3.20	4	95
+api/auth.py	2.10	3	100
+api/serialize.py	4.00	4	88
+core/parse.py	5.10	5	92
+core/tokenize.py	2.00	2	100
+core/normalize.py	1.00	1	100
+core/plan.py	4.60	5	90
+core/execute.py	3.30	4	94
+store/repo.py	2.40	3	97
+store/migrate.py	5.90	6	100
+store/index.py	3.10	4	93
+web/view.py	2.80	3	88
+web/form.py	4.20	4	86
+web/render.py	3.00	3	91
+jobs/queue.py	2.20	3	96
+jobs/retry.py	5.40	5	89
+util/clock.py	1.00	1	100
+util/text.py	2.00	2	100
+util/paths.py	1.00	1	100
+legacy/report_writer.py	41.00	12	45

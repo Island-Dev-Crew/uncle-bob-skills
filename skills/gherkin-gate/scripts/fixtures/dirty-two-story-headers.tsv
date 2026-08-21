@@ -1,0 +1,4 @@
+# acceptance ledger for dirty-two-story-headers.feature
+# phase	exit_code	story	feature_sha256	scenario
+red	1	STORY-63	16ab8042704233c92a5d53fb53a4335f9e9c3a10d8abe9e56586c3cb688f14ae	A saved address appears in the list
+green	0	STORY-63	16ab8042704233c92a5d53fb53a4335f9e9c3a10d8abe9e56586c3cb688f14ae	A saved address appears in the list

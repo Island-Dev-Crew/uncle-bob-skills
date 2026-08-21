@@ -1,0 +1,15 @@
+{
+  "components": {
+    "web":         { "abstract": 0, "total": 8 },
+    "adapters":    { "abstract": 2, "total": 8 },
+    "use-cases":   { "abstract": 4, "total": 8 },
+    "entities":    { "abstract": 6, "total": 8 },
+    "legacy-util": { "abstract": 4, "total": 8 }
+  },
+  "edges": [
+    ["web", "adapters"],
+    ["web", "legacy-util"],
+    ["adapters", "use-cases"],
+    ["use-cases", "entities"]
+  ]
+}

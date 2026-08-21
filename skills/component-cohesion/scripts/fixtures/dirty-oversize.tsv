@@ -1,0 +1,10 @@
+# dirty - context-fit only. Spread is 0%, CCP is perfectly happy,
+# but the component CCP grew is 4200 lines - no agent holds it whole.
+# declared commit count - one commit is one row
+commits	total	4
+component	monolith	4200
+component	notify	120
+commit	c1	monolith
+commit	c2	monolith
+commit	c3	notify
+commit	c4	monolith,notify

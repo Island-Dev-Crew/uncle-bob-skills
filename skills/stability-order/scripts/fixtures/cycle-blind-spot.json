@@ -1,0 +1,12 @@
+{
+  "components": {
+    "billing":  { "abstract": 4, "total": 8 },
+    "orders":   { "abstract": 4, "total": 8 },
+    "shipping": { "abstract": 4, "total": 8 }
+  },
+  "edges": [
+    ["billing", "orders"],
+    ["orders", "shipping"],
+    ["shipping", "billing"]
+  ]
+}

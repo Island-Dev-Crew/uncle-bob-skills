@@ -1,0 +1,9 @@
+# Review surface - story CHK-35, refund capture. A LIMIT FIXTURE: this one
+# is SHIPPED PASSING, to hold the edge of the substance test where it
+# actually is. The money path holds braille-blank (U+2800, category So) and
+# Hangul-filler (U+3164, Lo) characters: not whitespace, not format
+# characters, and invisible anyway. The gate calls that content and exits 0.
+tier: critical
+spec: artifacts/checkout.feature
+qa: artifacts/checkout.qa.md
+code: artifacts/blank-glyph-stub.py

@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Acceptance Surface Review"
+  short_description: "What a human actually reads once agents write the code - acceptance spec and QA procedure, widened by blast radius"

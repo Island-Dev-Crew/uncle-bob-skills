@@ -1,0 +1,4 @@
+# acceptance ledger for dirty-ctrl-head.feature - the \x1b head was never run
+# phase	exit_code	story	feature_sha256	scenario
+red	1	STORY-24	bf56a8bf0027033f1e67c504ade05aed75e93cf021f7310e3374e2b8fa8e51a9	A new address is saved
+green	0	STORY-24	bf56a8bf0027033f1e67c504ade05aed75e93cf021f7310e3374e2b8fa8e51a9	A new address is saved

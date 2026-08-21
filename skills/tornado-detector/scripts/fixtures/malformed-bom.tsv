@@ -1,0 +1,22 @@
+﻿# malformed - dirty-climbing-trend.tsv's exact 15 rows, which ALARM at exit 1,
+# preceded by a UTF-8 byte-order mark: what every Windows editor writes when it
+# saves a capture. U+FEFF is not whitespace and not an id character, so the mark
+# already failed closed - but as 'expected 2 fields, got 1', which invites the
+# user to delete a real row. The scanner names the mark instead, and does not
+# strip it: silently editing the capture it audits is the same move as silently
+# dropping a row. Delete the 3 BOM bytes and this history ALARMs at 1.
+a1b2c3d	2
+b2c3d4e	2
+c3d4e5f	3
+d4e5f60	2
+e5f6071	1
+f60718a	2
+0718a2b	3
+18a2b3c	2
+8a2b3c4	2
+a2b3c45	1
+b3c4567	6
+c456789	7
+4567891	5
+5678912	6
+6789123	6

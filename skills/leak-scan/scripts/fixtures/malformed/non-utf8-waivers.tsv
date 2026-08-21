@@ -1,0 +1,2 @@
+# a ledger byte that is not valid UTF-8 is an IO fault, never a verdict
+X-Idc-Signatureé	Header owned by the published webhook spec

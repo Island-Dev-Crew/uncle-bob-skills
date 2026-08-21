@@ -1,0 +1,8 @@
+# Review surface - story CHK-27, refund capture.
+# The fifth near-miss: what a human reads as one commented-out line ends with
+# an invisible U+2028, and a splitter that honours it finds a second line -
+# a 'code:' declaration nobody on the review saw. Ambiguous line, no verdict.
+tier: critical
+spec: artifacts/checkout.feature
+qa: artifacts/checkout.qa.md
+# code path dropped for this story code: artifacts/charge.py

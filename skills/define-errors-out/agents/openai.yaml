@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Define Errors Out"
+  short_description: "Delete error cases by redesigning the API instead of adding another handler for them"

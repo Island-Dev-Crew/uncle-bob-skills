@@ -19,6 +19,21 @@ The pressure is sharpest for **generated** gates. The pack's whole method is *"p
 
 Verify-fix-reverify loop: red check fails → fix the gate → re-run; green check fails → fix the gate (or a genuinely broken fixture) → re-run; repeat until the pair passes in one run.
 
+## The pair is necessary, not sufficient
+
+A red/green pair proves the gate *can* say no. It does not prove the gate cannot be *fooled*, because the fixture only ever tries the input its author already imagined. This pack learned that the expensive way: gates that separated their own fixtures cleanly were still walked past by inputs those fixtures never tried — a binding check satisfied by a string sitting inside an `echo`, a regression that vanished because its path was spelled with a capital letter, a crash that exited with the code reserved for a real verdict.
+
+So after the pair passes, spend a few minutes trying to break your own gate. These six classes account for every bypass found while building this pack, and they recur across languages and gate kinds:
+
+1. **An error path wearing a verdict's exit code.** A crash, unreadable file, decode error, closed stdin, or overflow exits `1` — the code that means "real violation" — so a caller records a verdict the gate never computed. Give every error path its own code (`2` for usage/IO/malformed) and prove it with a fixture.
+2. **Key normalization.** The same entity under a different spelling misses its join and falls to whichever branch is lenient: letter case, Unicode NFC vs NFD (routine on macOS), `./` and `../` and `//`, absolute vs relative. Normalize through one documented key function, or refuse the variant outright — never silently reroute it.
+3. **Silent row drops.** A comment rule (`startswith("#")`) applied to a field whose legitimate value can begin with that character deletes data without a word. A dropped row is a false green.
+4. **Unanchored matching.** A required marker satisfied by a superstring, by text inside a comment or a string literal, or by a one-token idiom swap. Anchor patterns end to end, match whole tokens, and escape anything interpolated into a regex.
+5. **Prose broader than the check.** The body says "every", "always", "refuses", while the code handles a narrower case. Widen the code or narrow the sentence; a claim the implementation cannot back is laundering under the first law.
+6. **Numeric edges.** A printed percentage rounded away from the integer basis the verdict used; an unbounded integer conversion that raises; `NaN` slipping past a `<= 0` guard and quietly disabling the rule.
+
+Each hole you close this way earns a fixture of its own, so the next reader inherits a captured run instead of a warning.
+
 ## One command
 
 [`scripts/prove-gate.sh`](scripts/prove-gate.sh) runs the whole ritual: gate on bad fixture must fail, gate on good fixture must pass, anything else exits non-zero.

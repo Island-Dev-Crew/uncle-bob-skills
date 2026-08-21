@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Gherkin Gate"
+  short_description: "Gate a story's Gherkin scenarios on red-before-green evidence bound to the feature file's hash"

@@ -1,0 +1,10 @@
+# task_id	path	kind	tokens	reason
+# T-51 is otherwise spotless - interface first, a vocabulary reason, 22% impl
+# share - and buys ONE body twice: NFC (what git and most editors hand back)
+# then NFD (what macOS hands out). Byte-different, same file. Only RE-READ
+# fires here, so the Unicode fold is proven on its own, at exactly the shape
+# where the gate used to exit 0.
+T-51	src/orders/panier-café.pyi	interface	300	-
+T-51	tests/test_panier.py	test	400	-
+T-51	src/orders/panier-café.py	impl	100	editing
+T-51	src/orders/panier-café.py	impl	100	editing

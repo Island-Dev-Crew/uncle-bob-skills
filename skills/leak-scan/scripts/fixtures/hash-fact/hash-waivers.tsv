@@ -1,0 +1,3 @@
+# ledger comments hold no TAB, so they can never swallow a data row
+"#0B5FFF"	Brand colour token owned by the published design system; both surfaces take it as a raw hex string
+"# nosec"	Suppression marker defined by the bandit tool; the tool owns the spelling and each site must state it verbatim

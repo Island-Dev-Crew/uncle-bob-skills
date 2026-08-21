@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Stability Order"
+  short_description: "Component stability computed as a check - instability, abstractness, and distance from the main sequence, with SDP and SAP violations failing loudly"

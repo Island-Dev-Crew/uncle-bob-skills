@@ -1,0 +1,7 @@
+# Review surface - story CHK-14, capture payment at checkout.
+# Money moves on this path, so the tier is critical and the human
+# opens the capture function as well as the prose.
+tier: critical
+spec: artifacts/checkout.feature
+qa: artifacts/checkout.qa.md
+code: artifacts/charge.py

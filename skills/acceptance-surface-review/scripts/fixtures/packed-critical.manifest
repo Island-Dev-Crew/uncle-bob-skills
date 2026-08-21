@@ -1,0 +1,10 @@
+# Review surface - story CHK-14, capture payment at checkout.
+# The third near-miss, and the one a newline count cannot see: the tier is
+# critical, the money path is declared, the Gherkin is real, and the QA doc
+# sits UNDER the line budget - because its steps are packed one per line with
+# no blank lines. It is still far more prose than a human will read, so the
+# byte ceiling is the leg that must fail here.
+tier: critical
+spec: artifacts/checkout.feature
+qa: artifacts/checkout-packed.qa.md
+code: artifacts/charge.py

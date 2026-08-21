@@ -31,7 +31,7 @@ scripts/diff-scope.sh <base-ref> [head-ref] [repo-dir]
 # exit 0 scope emitted · exit 1 empty scope (vacuous pass, record it) · exit 2 usage/git error
 ```
 
-Feed the ranges to the language-native mutation tool's file/line filter. Run the tool in incremental or diff mode; whole-repo runs stay outside the loop. Tool-per-language will be `gate-toolchain`'s concern — an unbuilt roster target with no island yet. Until it exists, pick from the tool list grounded in [`research/mutation-testing.md`](../../research/mutation-testing.md): pitest (JVM), Stryker (JS/TS/C#), mutmut (Python), cargo-mutants (Rust), gremlins (Go).
+Feed the ranges to the language-native mutation tool's file/line filter. Run the tool in incremental or diff mode; whole-repo runs stay outside the loop. Which tool that is per language — pitest (JVM), Stryker (JS/TS/C#), mutmut and cosmic-ray (Python), cargo-mutants (Rust), gremlins and go-mutesting (Go) — and whether it even has such a mode is [`gate-toolchain`](../gate-toolchain/SKILL.md)'s concern, grounded there in [`research/mutation-testing.md`](../../research/mutation-testing.md).
 
 ## Survivors become kill-tasks
 
@@ -85,6 +85,6 @@ scripts/diff-scope.sh HEAD~1 HEAD "$(scripts/fixtures/mkrepo.sh clean)"   # exit
 The same pair run through [`known-dirty-fixture`](../known-dirty-fixture/SKILL.md)'s `prove-gate.sh` printed `ACCEPTED` at exit 0. Bad-ref input exits 2. Re-run the pair on every change to the script.
 
 - `enforced` — island structure: `unclebob/scripts/validate-island.py` gates this file's frontmatter, sidecar, ledger citations, and line budget at exit 0.
-- `advisory` at v0 — the mutation run, the zero-survivor requirement, and the budget cap: no per-language runner ships here yet. Run the language-native tool from the list above (`gate-toolchain`, the roster island that will own tool selection, is not built yet) and treat *its* exit code as the gate; a verdict claimed without a tool report is `unverified`. A later wave may add a runner harness that promotes these to enforced; until it exists, this island says advisory and means it.
+- `advisory` at v0 — the mutation run, the zero-survivor requirement, and the budget cap: no per-language runner ships here yet. Run the language-native tool ([`gate-toolchain`](../gate-toolchain/SKILL.md) owns picking it and checking it is scoped to the diff) and treat *its* exit code as the gate; a verdict claimed without a tool report is `unverified`. A later wave may add a runner harness that promotes these to enforced; until it exists, this island says advisory and means it.
 
 **No authority without evidence. A green suite is a claim; a killed mutant is the proof — zero survivors on the diff, inside the margin.**

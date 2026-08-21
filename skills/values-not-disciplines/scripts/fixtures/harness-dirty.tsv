@@ -1,0 +1,15 @@
+per-function CRAP ceiling at 6	python3 tools/crap-score.py --threshold 6
+keep the code clean	be clean
+write good tests	manual review
+no hardcoded secrets	true
+keep it simple	python3 tools/simplicity-check.py
+architecture stays layered	sort out the layering
+complexity stays low	look at complexity in review
+long functions caught early	head off long functions early
+secrets scanned in CI	env true
+dependencies audited	nice true
+nothing reaches outside the harness	bash ../../../../../../../etc/hosts
+rules are inventoried	python3 scripts/rule-inventory.py
+simplicity checked by a module	python3 -m simplicity_check
+quality bar documented	./GUIDELINES.md
+secrets scanned, deeply wrapped	env env env env env env env env env true

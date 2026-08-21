@@ -1,0 +1,18 @@
+# dirty — the tornado signature: same cadence of changes, each one now smearing
+# across many more files. Recent mean 6.00 stays UNDER the default ceiling 8.0,
+# so this fixture can only fail on the climb rule (3.00x > 1.50x).
+a1b2c3d	2
+b2c3d4e	2
+c3d4e5f	3
+d4e5f60	2
+e5f6071	1
+f60718a	2
+0718a2b	3
+18a2b3c	2
+8a2b3c4	2
+a2b3c45	1
+b3c4567	6
+c456789	7
+4567891	5
+5678912	6
+6789123	6

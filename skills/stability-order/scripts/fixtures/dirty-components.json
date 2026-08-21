@@ -1,0 +1,17 @@
+{
+  "components": {
+    "web":       { "abstract": 0, "total": 8 },
+    "adapters":  { "abstract": 1, "total": 8 },
+    "use-cases": { "abstract": 4, "total": 8 },
+    "entities":  { "abstract": 0, "total": 10 },
+    "config":    { "abstract": 8, "total": 8 }
+  },
+  "edges": [
+    ["web", "adapters"],
+    ["web", "config"],
+    ["adapters", "use-cases"],
+    ["use-cases", "entities"],
+    ["entities", "adapters"],
+    ["entities", "config"]
+  ]
+}

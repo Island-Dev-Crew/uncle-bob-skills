@@ -1,0 +1,4 @@
+# a ledger stuffed with a fact that was already repaired
+"X-Idc-Signature"	Pre-waived before the extraction; the contract module now owns it, so this line is stale
+"Content-Type"	HTTP header name fixed by RFC 9110; both SDK call sites take it as a raw string
+"application/json"	Media type fixed by the published OpenAPI document; the spec owns it

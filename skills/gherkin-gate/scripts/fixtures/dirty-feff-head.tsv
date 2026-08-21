@@ -1,0 +1,4 @@
+# acceptance ledger for dirty-feff-head.feature - the U+FEFF head was never run
+# phase	exit_code	story	feature_sha256	scenario
+red	1	STORY-13	a85f7e8cfb7dbfe487556e1792cfb024c5a84c050223753286843f6570ed9366	A valid card is redeemed once
+green	0	STORY-13	a85f7e8cfb7dbfe487556e1792cfb024c5a84c050223753286843f6570ed9366	A valid card is redeemed once

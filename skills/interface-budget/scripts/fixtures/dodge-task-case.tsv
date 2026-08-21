@@ -1,0 +1,11 @@
+# task_id	path	kind	tokens	reason
+# T-61 is otherwise spotless - interface first, a vocabulary reason, 14% impl
+# share - and buys ONE body twice by re-spelling the TASK id: 'T-61' then
+# 't-61'. Split that way each half is individually clean, and before task ids
+# were folded this ledger exited 0. The second half's cover interface is a
+# different file, so only the impl re-read remains and RE-READ fires alone.
+T-61	src/orders/cart.pyi	interface	400	-
+T-61	tests/test_cart.py	test	400	-
+T-61	src/orders/cart.py	impl	100	editing
+t-61	src/orders/basket.pyi	interface	400	-
+t-61	src/orders/cart.py	impl	100	editing

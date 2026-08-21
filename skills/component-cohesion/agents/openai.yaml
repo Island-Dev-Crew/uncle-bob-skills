@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Component Cohesion"
+  short_description: "The REP/CCP/CRP tension triangle plus the constraint that a component must fit one agent's context"

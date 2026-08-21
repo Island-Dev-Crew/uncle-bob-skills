@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Boy Scout Ratchet"
+  short_description: "Baseline-and-ratchet on touched files - no file leaves worse than it arrived, with a project budget for legacy adoption"

@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Comment as Spec"
+  short_description: "Interface comments treated as the machine-readable spec an agent acts from"

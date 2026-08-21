@@ -1,0 +1,19 @@
+# dirty — the SAME tornado as dirty-climbing-trend.tsv, captured in git's
+# native newest-first order. With --order newest-first it re-alarms (3.00x);
+# with the order undeclared the scanner exits 2 rather than reading the
+# climb as a fall. It is the reversed-input false-GREEN, nailed down.
+6789123	6
+5678912	6
+4567891	5
+c456789	7
+b3c4567	6
+a2b3c45	1
+8a2b3c4	2
+18a2b3c	2
+0718a2b	3
+f60718a	2
+e5f6071	1
+d4e5f60	2
+c3d4e5f	3
+b2c3d4e	2
+a1b2c3d	2

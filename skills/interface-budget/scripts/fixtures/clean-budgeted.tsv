@@ -1,0 +1,13 @@
+# task_id	path	kind	tokens	reason
+# T-77 sits exactly on the 35% ceiling; T-78 never opens an implementation at all.
+# T-79 is the single-file-module case - one .py with no stub, the dominant shape
+# in TypeScript, Go, Java, C# and stub-less Python - read as interface, then as
+# impl under a stated reason. That upward tier move on one path is legal.
+T-77	src/pricing/quote.pyi	interface	150	-
+T-77	tests/test_quote.py	test	500	-
+T-77	src/pricing/quote.py	impl	350	editing
+T-78	src/ledger/entry.pyi	interface	180	-
+T-78	tests/test_entry.py	test	420	-
+T-79	src/tax/rate.py	interface	140	-
+T-79	tests/test_rate.py	test	460	-
+T-79	src/tax/rate.py	impl	300	interface-silent

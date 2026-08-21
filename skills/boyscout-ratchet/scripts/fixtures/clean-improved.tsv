@@ -1,0 +1,6 @@
+# touched files after a clean agent pass: two improved, one untouched (equal passes),
+# one new file that clears the absolute ceiling of 6 on its own.
+api/router.py	2.90	3	97
+core/parse.py	4.80	5	94
+web/view.py	2.80	3	88
+api/handlers.py	4.00	4	90

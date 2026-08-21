@@ -1,0 +1,5 @@
+# cycle 2026-W32 — boundary case: evidenced share lands exactly on the 10% floor
+checkout-flow	tactical	540
+payment-retry	tactical	360
+split-billing-module	strategic	60	crap_max=14->5
+extract-pricing-port	strategic	40	fan_in=11->3

@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Values Not Disciplines"
+  short_description: "Rule-inventory gate - every quality rule names the tool that measures it or is labeled advisory"

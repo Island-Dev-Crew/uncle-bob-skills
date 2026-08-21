@@ -1,0 +1,8 @@
+# Review surface - story CHK-19, refund path.
+# The second near-miss: every key is present and every path resolves, so the
+# manifest LOOKS complete. It is hollow - the Gherkin is three blank lines and
+# the declared money path is a zero-byte file someone touched into existence.
+tier: critical
+spec: artifacts/hollow.feature
+qa: artifacts/checkout.qa.md
+code: artifacts/refund-stub.py

@@ -1,0 +1,15 @@
+﻿# dirty - the same 75% CCP spread breach as dirty-scatter, saved by an editor
+# that writes a UTF-8 BOM. The BOM is an encoding artifact, not content: it must
+# neither be absorbed into a field nor turn a real red into an input refusal.
+# dirty - CCP spread only. Every component fits the context budget;
+# 3 of 4 commits fan across 3 components, so change crosses the boundaries.
+# declared commit count - one commit is one row
+commits	total	4
+component	billing	300
+component	invoicing	280
+component	notify	150
+component	audit	200
+commit	b1	billing,invoicing,notify
+commit	b2	billing,invoicing,audit
+commit	b3	billing,notify,audit
+commit	b4	billing

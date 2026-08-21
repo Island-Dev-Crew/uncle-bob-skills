@@ -1,0 +1,18 @@
+# dirty — amplification already at steady state: flat trend (1.00x, no climb)
+# but every change touches 9 files. Fails only on the absolute ceiling rule
+# (9.00 > 8.00), proving the two rules fire independently of each other.
+aaa1111	9
+bbb2222	9
+ccc3333	9
+ddd4444	9
+eee5555	9
+fff6666	9
+ggg7777	9
+hhh8888	9
+iii9999	9
+jjj0000	9
+kkk1111	9
+lll2222	9
+mmm3333	9
+nnn4444	9
+ooo5555	9

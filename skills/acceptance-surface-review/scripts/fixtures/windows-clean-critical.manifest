@@ -1,0 +1,8 @@
+﻿# Review surface - story CHK-14, capture payment at checkout.
+# The same clean surface, saved by a Windows editor: a leading BOM and
+# CRLF endings. Refusing a bare CR must not cost this manifest its pass,
+# so the lenient direction is watched here rather than assumed.
+tier: critical
+spec: artifacts/checkout.feature
+qa: artifacts/checkout.qa.md
+code: artifacts/charge.py

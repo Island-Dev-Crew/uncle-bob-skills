@@ -2,7 +2,7 @@
 
 This pack is **standalone**: nothing here requires another repo to run, and every gate, fixture, and validator in it works from a fresh clone with nothing but `python3` and `bash`.
 
-But the pack was built under the IDC Forge methodology, and its islands were deliberately scoped so they never re-implement a concern the Forge already owns. Where an island says "that boundary belongs to X", X is one of the 21 Forge islands below. Those references are **boundary statements, not dependencies** — they tell you what this pack deliberately does *not* do, so you can reach for the right tool instead of finding a half-built one here.
+But the pack was built under the IDC Forge methodology, and its islands were deliberately scoped so they never re-implement a concern the Forge already owns. Where an island says "that boundary belongs to X", X is one of the 22 Forge islands below. Those references are **boundary statements, not dependencies** — they tell you what this pack deliberately does *not* do, so you can reach for the right tool instead of finding a half-built one here.
 
 The Forge lives in its own repository (**IDC Skills Forge**, `IDC-skills`). If you have it, the islands below are at `skills/<name>/SKILL.md` in that repo. If you don't, this page is the whole answer: it tells you what the concern is and who owns it, and this pack keeps its hands off it either way.
 
@@ -19,6 +19,9 @@ The full-cycle, evidence-gated build protocol: typed contracts at every seam, ga
 
 ### computer-use-smoke
 Drives a real UI through a scripted smoke path and asserts observable outcomes. **Owns behavioral UI assertion.** [`qa-script-seat`](skills/qa-script-seat/SKILL.md) generates the executable from a QA procedure and binds it to a story; the runtime assertion primitive is that island's.
+
+### cross-family-review
+The verdict ceremony: an independent reviewer from a **different model family** reviews a diff at an exact head along a Standards axis and a Spec axis, and returns a named-seat verdict bound to that SHA — the seat that wrote the code never reviews it, and the verdict **voids** the moment the head moves, including a message-only amend. **Owns who may review, what a verdict binds, and when it voids.** [`acceptance-surface-review`](skills/acceptance-surface-review/SKILL.md) rules only on *what surface* lands in front of that reviewer and how blast radius widens it; it invokes the ceremony and never redefines the verdict format, the void-on-move rule, or the author-never-reviews law.
 
 ### deep-modules
 Vocabulary and enforcement for deep modules — much behaviour behind a small interface at a clean seam — with dependency-cruiser rules making entry points the only way in. **Owns the design vocabulary, entry-point rules, and the deletion test.** [`dependency-fence`](skills/dependency-fence/SKILL.md) is a named extension owning layering *direction* only; [`interface-budget`](02-ROSTER-50.md) (Wave 2) adds only the context-economy rationale.

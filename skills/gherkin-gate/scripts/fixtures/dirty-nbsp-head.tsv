@@ -1,0 +1,4 @@
+# acceptance ledger for dirty-nbsp-head.feature - the pasted head was never run
+# phase	exit_code	story	feature_sha256	scenario
+red	1	STORY-91	9965d76e59ea25251d3c32fa6f584cf8a1f3a22b969c90ad598c6f0753ef2935	A known address receives a reset link
+green	0	STORY-91	9965d76e59ea25251d3c32fa6f584cf8a1f3a22b969c90ad598c6f0753ef2935	A known address receives a reset link

@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Interface Budget"
+  short_description: "Prices a module in context tokens and gates every implementation load against a logged reason"

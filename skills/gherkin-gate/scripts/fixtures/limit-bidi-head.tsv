@@ -1,0 +1,4 @@
+# LIMIT fixture for limit-bidi-head.feature - the U+202A head is dropped, not refused
+# phase	exit_code	story	feature_sha256	scenario
+red	1	STORY-46	4446feb4edb8ef35145e34e008891807f62f39f3ff58e147423a50bc732ade49	An item is added to the wishlist
+green	0	STORY-46	4446feb4edb8ef35145e34e008891807f62f39f3ff58e147423a50bc732ade49	An item is added to the wishlist

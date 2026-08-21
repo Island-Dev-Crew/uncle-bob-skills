@@ -1,0 +1,2 @@
+# a record that is not valid UTF-8 (latin-1 bytes). An unreadable gate cannot pass.
+api/café.py	5.40	6	78

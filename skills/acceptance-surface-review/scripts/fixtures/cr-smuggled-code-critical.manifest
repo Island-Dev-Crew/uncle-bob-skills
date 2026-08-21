@@ -1,0 +1,9 @@
+# Review surface - story CHK-31, chargeback capture.
+# The sixth near-miss: the twin of the U+2028 smuggle, one byte cheaper.
+# What a human reads as one commented-out line ends with a bare CR, and a
+# text-mode read would rewrite it into a newline before any control check
+# could fire - finding a 'code:' declaration nobody on the review saw.
+tier: critical
+spec: artifacts/checkout.feature
+qa: artifacts/checkout.qa.md
+# code path dropped for this storycode: artifacts/charge.py

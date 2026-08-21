@@ -1,0 +1,5 @@
+# path-variant path: the SAME regression as dirty-regression.tsv, but the upstream tool
+# spelled the path './api/router.py' (ordinary coverage-artifact output). The key is
+# normalized, so it joins its baseline row and fails on the ratchet - it does not slip
+# into the lenient new-file branch and ride the ceiling.
+./api/router.py	5.40	6	78

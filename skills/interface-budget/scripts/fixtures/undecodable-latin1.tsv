@@ -1,0 +1,14 @@
+# task_id	path	kind	tokens	reason
+# The clean ledger with ONE byte broken: the 'q' of row 6's path is the raw
+# Latin-1 byte 0xE9, which is not valid UTF-8. Nothing in the file can be
+# gated, so the run is an input failure (exit 2) and never a verdict - a
+# fix-until-green loop must not be handed an unreadable file as if it were
+# repairable rows.
+T-77	src/pricing/éuote.pyi	interface	150	-
+T-77	tests/test_quote.py	test	500	-
+T-77	src/pricing/quote.py	impl	350	editing
+T-78	src/ledger/entry.pyi	interface	180	-
+T-78	tests/test_entry.py	test	420	-
+T-79	src/tax/rate.py	interface	140	-
+T-79	tests/test_rate.py	test	460	-
+T-79	src/tax/rate.py	impl	300	interface-silent

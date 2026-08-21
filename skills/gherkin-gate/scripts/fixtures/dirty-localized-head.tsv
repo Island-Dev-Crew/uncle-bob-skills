@@ -1,0 +1,4 @@
+# acceptance ledger for dirty-localized-head.feature - only the English head was run
+# phase	exit_code	story	feature_sha256	scenario
+red	1	STORY-58	c2018c1a98e6e61e83604ed1222c1efd2853a9919af27b660be14a3eab508731	The English head is the one that got recorded
+green	0	STORY-58	c2018c1a98e6e61e83604ed1222c1efd2853a9919af27b660be14a3eab508731	The English head is the one that got recorded

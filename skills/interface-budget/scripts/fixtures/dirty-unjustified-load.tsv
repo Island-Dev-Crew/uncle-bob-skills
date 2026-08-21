@@ -1,0 +1,19 @@
+# task_id	path	kind	tokens	reason
+# T-41 dives straight into the implementation, cannot say why, then buys the same
+# body a second time under a different spelling of its path; T-42 is clean.
+# T-43 is otherwise spotless - interface first, reasons from the vocabulary, 33%
+# impl share - and buys ONE body three times under three spellings: posix,
+# Windows separators, and re-cased. Only RE-READ fires there, so it exercises the
+# spelling fold on its own, exactly where the gate used to exit 0.
+T-41	src/billing/invoice.py	impl	900	curious
+T-41	src/billing/invoice.pyi	interface	120	-
+T-41	tests/test_invoice.py	test	200	-
+T-41	./src/billing/invoice.py	impl	900	editing
+T-42	src/pricing/quote.pyi	interface	100	-
+T-42	tests/test_quote.py	test	150	-
+T-42	src/pricing/quote.py	impl	100	editing
+T-43	src/orders/cart.pyi	interface	200	-
+T-43	tests/test_cart.py	test	400	-
+T-43	src/orders/cart.py	impl	100	editing
+T-43	src\orders\cart.py	impl	100	editing
+T-43	src/Orders/Cart.py	impl	100	editing

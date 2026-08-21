@@ -1,0 +1,9 @@
+# Review surface - story CHK-33, refund capture.
+# The seventh near-miss: hollow again, but hollow in a way bytes.strip()
+# cannot see. The declared money path holds a BOM, some non-breaking
+# spaces and some zero-width spaces - 101 bytes, nothing visible. Blank
+# lines typed with a different key must not satisfy the critical tier.
+tier: critical
+spec: artifacts/checkout.feature
+qa: artifacts/checkout.qa.md
+code: artifacts/invisible-stub.py

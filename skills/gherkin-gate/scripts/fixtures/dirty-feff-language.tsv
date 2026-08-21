@@ -1,0 +1,4 @@
+# acceptance ledger for dirty-feff-language.feature - the Szenario head was never run
+# phase	exit_code	story	feature_sha256	scenario
+red	1	STORY-35	2849d5b27d3cef41a7d1ee2d0bae10e1c71064645c9fd085055aac44b18e1322	An empty cart shows the empty state
+green	0	STORY-35	2849d5b27d3cef41a7d1ee2d0bae10e1c71064645c9fd085055aac44b18e1322	An empty cart shows the empty state

@@ -1,0 +1,10 @@
+﻿# BOM-bearing record: the dirty-abs-path regression in a fourth spelling. Written
+# with a UTF-8 BOM, which PowerShell Out-File / Set-Content -Encoding UTF8, .NET
+# StreamWriter and Excel CSV export all emit by default. Read as plain utf-8 the
+# BOM becomes the first character of the path key, so 'api/router.py' joins nothing
+# and 5.99/6/10 rides the lenient new-file branch under a ceiling of 6 - green on a
+# file worse on all three axes. Read as utf-8-sig the BOM is consumed and the row
+# joins its baseline; the second row carries a BOM the file-level strip cannot
+# reach, which the invisible-codepoint refusal catches. Exit 2.
+api/router.py	5.99	6	10
+﻿api/auth.py	2.10	3	100

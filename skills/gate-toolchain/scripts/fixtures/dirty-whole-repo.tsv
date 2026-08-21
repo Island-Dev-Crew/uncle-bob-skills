@@ -1,0 +1,20 @@
+# dirty fixture: 17 declarations, 16 of them breaching for 16 distinct reasons
+# (row 1 is valid, so the gate must discriminate rather than reject every file).
+# language<TAB>gate<TAB>tool<TAB>scope_arg<TAB>command
+java	crap	crap4java	--changed	crap4java --changed --threshold 6
+python	mutation	mutmut	--whole-repo	mutmut run --whole-repo
+python	mutation	mutmut	--all=true	mutmut run --all=true
+go	crap	crap4java	--changed	crap4java --changed
+typescript	mutation	stryker	--incremental	npx stryker run
+typescript	mutation	stryker	--incremental	npx stryker run # --incremental
+typescript	mutation	stryker	--incremental	npx stryker run --incremental=false
+java	crap	crap4java	--changed	echo --changed
+typescript	mutation	stryker	--incremental=false	npx stryker run --incremental=false
+python	mutation	mutmut	--incremental	mutmut run --whole-repo --incremental
+typescript	mutation	stryker	--incremental	npx stryker run --incremental --incremental=false
+typescript	mutation	stryker	--incremental	npx stryker run --incremental "--whole-repo"
+java	mutation	pit	--changed	echo --changed -Dcapital=1
+typescript	mutation	stryker	--incremental	npx stryker run --incremental=00
+typescript	mutation	stryker	--incremental=true	npx stryker run --incremental=true --incremental=false
+python	mutation	mutmut	--incremental	mutmut run --incremental --msg 'it'\''s # 1' --whole-repo
+java	mutation	pit	--changed	mvn org.pitest:pitest-maven:mutationCoverage -Dmessage=fix#123 --changed --whole-repo

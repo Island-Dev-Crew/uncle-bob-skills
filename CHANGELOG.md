@@ -1,5 +1,32 @@
 # Changelog
 
+## v1.1 — 2026-08-21
+
+Wave 2: fifteen canon-mechanics islands, where the conversation's claims meet the books behind them. Pack total 35 islands, 420 mechanical checks.
+
+### Islands
+
+Structure measured rather than argued (`stability-order`, `component-cohesion`, `interface-budget`, `leak-scan`); comments and errors as design (`comment-as-spec`, `define-errors-out`); drift caught early (`boyscout-ratchet`, `tornado-detector`, `strategic-ledger`); the acceptance surface (`gherkin-gate`, `tests-as-spec`, `acceptance-surface-review`); and three that patrol the pack's own metrics (`coverage-gaming-audit`, `gate-toolchain`, `values-not-disciplines`).
+
+### A harder gauntlet, and a stopping rule
+
+Critics were told to **forge inputs** rather than re-run the author's fixtures, after Wave 1 ended with three gates that separated their own fixtures perfectly and were still bypassable. All 15 islands failed round 1. Four adversarial rounds followed, each closing what it was handed and finding subtler holes — so round 3 replaced "find nothing" with a tiered standard: fix any false green reachable by realistic input, fix-or-disclose hostile-input holes as fixtures, and make every sentence exactly true. That last tier always terminates, and it is where the first law bites hardest: a claim the implementation cannot back is laundering whether or not anything exploits it.
+
+### Fixed
+
+- `comment-as-spec` walked only a class body, so moving methods into a base class hid the entire inherited surface — undocumented members and leaking comments alike. Now resolved transitively through same-module bases, with two fixtures pinning it.
+- `coverage-gaming-audit` matched test filenames with an ASCII-only pattern and refused to descend into symlinked directories, while pytest collects and runs both — so `test_café.py` and a symlinked suite were scanned as clean without being read. Fixed, with a real-path visited set so a symlink cycle terminates.
+- Five islands' exit-code tables denied a fourth code their scripts could emit: CPython replaces the exit status with **120** when its shutdown flush hits a dead pipe, leaking either through `except SystemExit: raise` re-raising past the seal or through no seal at all. Every island claiming a closed set now emits only the codes it names.
+- `known-dirty-fixture` gained *the pair is necessary, not sufficient* — its own thesis corrected by Wave 2, with the six bypass classes found empirically across both waves.
+
+### Added
+
+`scripts/verify-proofs.py` re-runs every command the islands document and compares exit codes. It exists because during this wave the verification method was the broken thing more often than the artifact — `$?` read after a pipe or a command substitution, a `grep -P` returning zero on a pattern that was present, `timeout` absent on macOS. Its own limits are stated in its docstring.
+
+### Disclosed limits
+
+`stability-order` cannot see a pure dependency cycle; `coverage-gaming-audit` cannot see a suite reached only through a `conftest.py` hook and has a fold size cap; `comment-as-spec` cannot resolve an imported or dotted base class. Each ships a fixture capturing the boundary as a run.
+
 ## v1.0 — 2026-08-19
 
 First release. Wave 1 of the roster: twenty islands mined from the Robert C. Martin × Matt Pocock conversation on directing AI coding agents.

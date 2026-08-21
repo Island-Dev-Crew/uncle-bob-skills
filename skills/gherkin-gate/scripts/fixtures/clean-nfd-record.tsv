@@ -1,0 +1,4 @@
+# acceptance ledger for recu.feature - the runner wrote the name decomposed (NFD)
+# phase	exit_code	story	feature_sha256	scenario
+red	1	STORY-70	983894844d5e7617bf10a50971a11d74a8fefd131a8ca3a55350de1289555332	Le reçu affiche le montant payé
+green	0	STORY-70	983894844d5e7617bf10a50971a11d74a8fefd131a8ca3a55350de1289555332	Le reçu affiche le montant payé

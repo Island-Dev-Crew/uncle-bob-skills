@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Coverage Gaming Audit"
+  short_description: "Detect tests that execute code without asserting on it, and route the findings to mutation"

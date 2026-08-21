@@ -1,0 +1,12 @@
+# clean - boundary cases on purpose
+# billing sits exactly at the 1500-line context budget (breach is strictly-greater)
+# and exactly 1 of 4 commits fans past fan=2, i.e. exactly the 25% spread budget
+# the history's own commit count, from `git rev-list --count` - one commit is one row
+commits	total	4
+component	billing	1500
+component	invoicing	420
+component	notify	260
+commit	a1	billing
+commit	a2	billing,invoicing
+commit	a3	notify
+commit	a4	billing,invoicing,notify

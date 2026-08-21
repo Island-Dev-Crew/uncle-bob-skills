@@ -1,0 +1,7 @@
+# cycle 2026-W31 — every item shipped this cycle, tagged at merge
+# claimed strategic = 120m of 840m (14.3%, looks in-band); one claim carries no delta
+checkout-flow	tactical	300
+payment-retry	tactical	240
+order-api	tactical	180
+split-billing-module	strategic	60	crap_max=14->5
+tidy-naming-pass	strategic	60	crap_max=6->6

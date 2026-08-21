@@ -1,0 +1,5 @@
+# a path field that legitimately begins with '#' (Emacs autosave '#file#'). The row
+# carries four tab-separated fields, so it is data: it must be judged, not skipped as
+# a comment. Unanchored, it vanished from the record and the run reported green.
+#api/autosave#.py	9.10	7	55
+api/auth.py	2.10	3	100

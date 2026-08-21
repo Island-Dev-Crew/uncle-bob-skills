@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Tests As Spec"
+  short_description: "The unit suite written as the teaching document for the next fresh-context agent - behaviour-stating names, one behaviour per test, the paths a newcomer guesses wrong"

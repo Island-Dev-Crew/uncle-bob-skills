@@ -1,0 +1,5 @@
+# case-variant key: the SAME regression again, spelled 'API/Router.py'. On macOS or
+# Windows that IS baseline 'api/router.py', but it cannot join it, so unrefused it fell
+# to the lenient new-file branch and 5.99 under a ceiling of 6 reported green on a file
+# worse on all three axes (3.20 -> 5.99, comp 4 -> 6, coverage 95% -> 10%).
+API/Router.py	5.99	6	10

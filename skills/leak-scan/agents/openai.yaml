@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Leak Scan"
+  short_description: "Detect information leakage - one design decision expressed in two or more modules - and report it as a duplicate-knowledge finding"

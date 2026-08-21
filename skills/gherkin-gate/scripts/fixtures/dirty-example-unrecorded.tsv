@@ -1,0 +1,4 @@
+# acceptance ledger for refund.feature - the Example: block was never run
+# phase	exit_code	story	feature_sha256	scenario
+red	1	STORY-77	32353bfaf8078394aedf69c070aaf238eb4f6ae046f3ff6b86f9d30d462ec152	A refund inside the window is approved
+green	0	STORY-77	32353bfaf8078394aedf69c070aaf238eb4f6ae046f3ff6b86f9d30d462ec152	A refund inside the window is approved

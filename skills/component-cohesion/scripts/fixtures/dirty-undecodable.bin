@@ -1,0 +1,5 @@
+# dirty - not UTF-8. A map that cannot be decoded is not a repo with bad
+# cohesion; it is an unreadable input, and it must exit 2 rather than report a
+# BREACH the gate never measured.
+component	billing	ÿþÿ100
+commit	b1	billing

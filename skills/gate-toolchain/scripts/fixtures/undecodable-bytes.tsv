@@ -1,0 +1,3 @@
+# undecodable fixture: a well-formed row whose command carries non-UTF-8 bytes
+# (a latin-1 em-dash pasted from an editor). An input error, never a verdict.
+java	crap	crap4java	--changed	crap4java --changed ÿþ
