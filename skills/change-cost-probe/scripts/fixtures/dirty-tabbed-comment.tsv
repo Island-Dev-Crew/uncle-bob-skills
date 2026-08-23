@@ -1,0 +1,24 @@
+# forged: an honest 3.00x climb (10 stories at 20, 5 at 60) with five
+# annotation lines that each carry a TAB. Under the old rule these parsed
+# as stories, dragged the baseline to 40 and the window to 20, and the
+# whole file exited 0 at 0.50x. A '#'-leading id must now be digits.
+S01	20
+S02	20
+S03	20
+S04	20
+S05	20
+S06	20
+S07	20
+S08	20
+S09	20
+S10	20
+S11	60
+S12	60
+S13	60
+S14	60
+S15	60
+#note1	20
+#note2	20
+#note3	20
+#note4	20
+#note5	20

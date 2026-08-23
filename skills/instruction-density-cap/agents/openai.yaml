@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Instruction Density Cap"
+  short_description: "A countable ceiling on simultaneous directives in one prompt - counts them, caps them per model class, and fails the prompt past it"

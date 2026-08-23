@@ -1,0 +1,3 @@
+src/Auth	the password hashing algorithm and its work factor
+src/wire	TODO
+src/store	SQLite

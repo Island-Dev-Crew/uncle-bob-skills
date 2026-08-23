@@ -1,0 +1,8 @@
+# Assumptions the "add refunds" plan rests on. One per line, TAB-separated.
+# Written when the planner read the tree; checked again before the fleet resumes.
+exists	src/payments.py
+exists	tests/test_payments.py
+absent	src/refunds.py
+contains	src/payments.py	def charge(
+lacks	src/payments.py	def refund(
+unchanged	src/payments.py	8d18affecd13bffa8ffc4198bdb26f6009c689c12b920db95cd3f14d4307b6f1

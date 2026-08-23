@@ -1,0 +1,5 @@
+slice=sign-in story, one thin end-to-end walk
+stage=coder
+stage=qa
+walked=coder|0|evidence/run.log
+walked=qa|0|evidence/./run.log

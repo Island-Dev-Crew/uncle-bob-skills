@@ -1,0 +1,8 @@
+{
+  "note": "RED FIXTURE for the failed-extraction tripwire. A package-to-module roll-up bug mapped every path onto one declared module, so every real cross-module import arrived as a self-edge. 'current' is NON-EMPTY, yet its cross-module set is empty and the baseline's three edges would read as pure credit. The gate refuses (exit 2) rather than printing '0 violation(s)': the empty gate is the cross set, not the raw array.",
+  "budget": 0,
+  "modules": ["web", "billing", "domain"],
+  "baseline": [["web", "domain"], ["web", "billing"], ["billing", "domain"]],
+  "current": [["web", "web"], ["web", "web"], ["web", "web"], ["web", "web"]],
+  "justifications": []
+}

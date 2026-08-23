@@ -1,0 +1,1 @@
+crap report, signin module: max function score 3 (ceiling 6) - PASS

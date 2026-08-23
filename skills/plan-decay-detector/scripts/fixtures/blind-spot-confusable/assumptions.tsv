@@ -1,0 +1,5 @@
+# LIMIT FIXTURE - a captured exit 0 that is not a pass.
+# src/асе.py is 'ace' with every letter respelled into Cyrillic
+# (U+0430 U+0441 U+0435). One word, one script, so the mixed-script refusal
+# has nothing to catch, and src/ace.py sits in this tree already.
+absent	src/асе.py

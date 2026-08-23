@@ -1,0 +1,4 @@
+slice=sign-in story
+stage=coder
+# this looks like a comment, but this grammar has none
+walked=coder|0|evidence/run.log

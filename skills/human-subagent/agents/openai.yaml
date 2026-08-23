@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Human Subagent"
+  short_description: "Curriculum design for the education inversion - run a junior as an agent, same briefs and same deterministic gates, until they can be trusted to direct agents of their own"

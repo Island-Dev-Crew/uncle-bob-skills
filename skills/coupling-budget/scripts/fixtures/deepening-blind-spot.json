@@ -1,0 +1,8 @@
+{
+  "note": "LIMIT FIXTURE. This change added forty new call sites from web into billing, all across the web -> billing edge that already existed. Edges are deduped module pairs, so a deepened coupling is not representable as a delta and the gate consents at budget 0.",
+  "budget": 0,
+  "modules": ["web", "billing", "domain"],
+  "baseline": [["web", "billing"], ["web", "domain"]],
+  "current": [["web", "billing"], ["web", "domain"]],
+  "justifications": []
+}

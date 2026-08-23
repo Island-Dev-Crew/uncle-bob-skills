@@ -1,6 +1,6 @@
 # CONTEXT — the Uncle Bob pack substrate
 
-The shared file the islands read and write to coordinate. This pack is a standalone archipelago: thirty-five islands mined from one conversation between Robert C. Martin and Matt Pocock about directing AI coding agents, each a self-contained skill, all obeying the two laws below.
+The shared file the islands read and write to coordinate. This pack is a standalone archipelago: fifty islands mined from one conversation between Robert C. Martin and Matt Pocock about directing AI coding agents, each a self-contained skill, all obeying the two laws below.
 
 ## The two laws
 
@@ -30,6 +30,11 @@ Auto-caption garbles are corrected once, in the ledger, and never re-introduced:
 - **structure measured** (wave 2) — `stability-order` computes instability, abstractness and distance from the main sequence; `component-cohesion` sizes the REP/CCP/CRP triangle to a context window; `interface-budget` prices deep modules in tokens; `leak-scan` finds one decision expressed twice.
 - **design pressure** (wave 2) — `comment-as-spec` makes the interface comment the spec a model acts from; `define-errors-out` removes error cases by redesign; `boyscout-ratchet` keeps every touched file no worse; `tornado-detector` alarms on change amplification; `strategic-ledger` holds the tactical/strategic split.
 - **the acceptance surface** (wave 2) — `gherkin-gate` runs the scenarios red-then-green outside the prompt; `tests-as-spec` writes the suite for the next fresh context; `acceptance-surface-review` decides what a human still reads.
+- **who decides** (wave 3) — `conceptual-integrity-owner` names the one human who owns the design; `no-silver-bullet-triage` routes accidental complexity to agents and keeps the essential half human; `manageability-review` accepts only code a human can still restate.
+- **fleet economics** (wave 3) — `mythical-agent-month` prices coordination surface; `do-it-twice` walks one slice before any fan-out; `change-cost-probe` measures what a change actually costs; `instruction-density-cap` caps how many directives stand in a prompt at once; `plan-decay-detector` halts when a plan's assumptions stop matching the tree.
+- **structure by secrets** (wave 3) — `parnas-partition` makes every module name the decision it hides; `coupling-budget` spends for every cross-module edge a change adds.
+- **keeping ourselves honest** (wave 3) — `measurement-humility` makes each enforced metric name what it might corrupt; `egoless-fleet` refuses a review that looked for nothing.
+- **the education layer** (wave 3) — `human-subagent` runs a junior under the gates the agents run; `strategy-shelf` is the old-books curriculum; `abstraction-ladder` is why fundamentals survive every rung.
 - **patrolling our own metrics** (wave 2) — `coverage-gaming-audit` distrusts coverage without assertions; `gate-toolchain` picks the tool per language; `values-not-disciplines` makes every rule name its measuring tool or admit it is advice.
 
 ## Boundaries
@@ -39,7 +44,7 @@ This pack was built under the IDC Forge methodology and deliberately refuses con
 ## Verification
 
 ```bash
-python3 scripts/validate-island.py skills/*/     # 420 checks across 35 islands
+python3 scripts/validate-island.py skills/*/     # 600 checks across 50 islands
 python3 scripts/verify-proofs.py                 # re-runs every command the islands document
 ```
 

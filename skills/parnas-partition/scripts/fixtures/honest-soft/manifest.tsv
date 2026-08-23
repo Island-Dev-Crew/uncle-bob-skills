@@ -1,0 +1,4 @@
+src/codec	Later-binding of the codec dispatch table
+src/nat	NAT traversal strategy used for peer connections
+src/buf	Pending-writes buffering policy for the upload spool
+src/img	placeholder rendering used while a photo is still loading

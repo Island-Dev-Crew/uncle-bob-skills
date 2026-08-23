@@ -1,0 +1,7 @@
+# LIMIT FIXTURE - a hub-and-spoke fleet (one lead, five workers who never
+# talk to each other) really has 5 paths, not 15. This model charges the mesh
+# count and refuses a plan that the real topology would still pay for.
+serial_minutes 480
+partitionable 0.9
+handoff_minutes 8
+fleet 6

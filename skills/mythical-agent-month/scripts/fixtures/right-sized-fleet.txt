@@ -1,0 +1,5 @@
+# Same story, same three estimates - two coders instead of five.
+serial_minutes 480
+partitionable 0.6
+handoff_minutes 25
+fleet 2

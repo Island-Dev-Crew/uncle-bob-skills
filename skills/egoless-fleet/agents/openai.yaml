@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Egoless Fleet"
+  short_description: "Review posture for agent-written work - a review assumes defects exist and hunts them, and its record must be a found-or-falsified list rather than a bare approval"

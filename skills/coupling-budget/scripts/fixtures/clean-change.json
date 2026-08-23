@@ -1,0 +1,18 @@
+{
+  "note": "Two added edges against a budget of two: at the boundary, both justified. Also exercises a credit, an intra-module edge, a duplicate edge entry, and a stale justification.",
+  "budget": 2,
+  "modules": ["web", "billing", "domain", "platform", "legacy"],
+  "baseline": [["web", "domain"], ["web", "legacy"]],
+  "current": [
+    ["web", "domain"],
+    ["web", "billing"],
+    ["web", "billing"],
+    ["billing", "domain"],
+    ["domain", "domain"]
+  ],
+  "justifications": [
+    {"edge": ["web", "billing"], "reason": "read only the status api"},
+    {"edge": ["billing", "domain"], "reason": "billing owns the invoice lifecycle and needs the domain entities directly"},
+    {"edge": ["platform", "domain"], "reason": "stale entry kept from the previous change, deliberately left here"}
+  ]
+}

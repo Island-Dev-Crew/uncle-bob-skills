@@ -1,0 +1,2 @@
+$ python3 -m pytest tests/test_signin.py
+4 passed in 0.31s

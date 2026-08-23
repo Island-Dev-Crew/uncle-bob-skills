@@ -1,10 +1,10 @@
 # Uncle Bob Skills
 
-**Twenty agent skills for directing AI coding agents, mined from one conversation and built so that every rule either names its measuring tool or admits it is advice.**
+**Fifty agent skills for directing AI coding agents, mined from one conversation and built so that every rule either names its measuring tool or admits it is advice.**
 
 In 2026 Robert C. Martin ("Uncle Bob") sat down with Matt Pocock and described how he now builds software: he has stopped reading the code his agents write, and instead built a cage of deterministic gates around them. The reasoning is specific, mechanical, and mostly checkable — which is what makes it forgeable into skills rather than quotes.
 
-This pack is that conversation turned into twenty working islands, each grounded in a numbered concept from the transcript, each with a stated boundary, and twelve of them shipping an executable gate that has been watched failing before it was trusted.
+This pack is that conversation turned into fifty working islands, each grounded in a numbered concept from the transcript, each with a stated boundary, and every one that ships an executable gate has been watched failing before it was trusted.
 
 ## The two laws
 
@@ -22,7 +22,7 @@ cp -R skills/crap-gate ~/.claude/skills/
 
 The islands are plain `SKILL.md` files with an `agents/openai.yaml` sidecar, so they load in Claude Code, Codex, Pi, and Hermes alike. There is no runtime, no package, and no install step — the gate scripts need only `python3` and `bash`.
 
-## The twenty islands
+## The founding layer (v1.0)
 
 **Doctrine** — [`boredom-dividend`](skills/boredom-dividend/SKILL.md) mines practices shelved only because they bored humans and revives them as agent gates · [`threshold-port`](skills/threshold-port/SKILL.md) ports a human practice to an agent without its ritual · [`margin-ledger`](skills/margin-ledger/SKILL.md) keeps gates from slowing agents below human speed
 
@@ -38,8 +38,6 @@ The islands are plain `SKILL.md` files with an `agents/openai.yaml` sidecar, so 
 
 **The human** — [`thrash-watch`](skills/thrash-watch/SKILL.md) recognises agent struggle the way an experienced engineer recognises their own, and ranks the interventions: stop, clean, repartition, respawn
 
-*(The education islands — `human-subagent`, which trains a junior by running them under the gates the agents run, and `strategy-shelf`, the old-books curriculum behind the strategic seat — are specified in the roster for a later wave and are not in this release.)*
-
 ## The canon layer (v1.1)
 
 Fifteen more islands, where the conversation's claims meet the books behind them.
@@ -54,18 +52,32 @@ Fifteen more islands, where the conversation's claims meet the books behind them
 
 **Patrolling the pack's own metrics** — [`coverage-gaming-audit`](skills/coverage-gaming-audit/SKILL.md) coverage measures execution, not assertion · [`gate-toolchain`](skills/gate-toolchain/SKILL.md) the tool per language, incremental mode required inside the loop · [`values-not-disciplines`](skills/values-not-disciplines/SKILL.md) every quality rule names its measuring tool or is marked advisory
 
+## The strategy layer (v1.2)
+
+The last fifteen, and the ones the conversation ends on: who holds a design when agents write the code, and how anyone learns to hold one.
+
+**Who decides** — [`conceptual-integrity-owner`](skills/conceptual-integrity-owner/SKILL.md) one named human owns the design; headcount never substitutes · [`no-silver-bullet-triage`](skills/no-silver-bullet-triage/SKILL.md) agents get the accidental complexity, humans keep the essential · [`manageability-review`](skills/manageability-review/SKILL.md) accept only code a human can still restate
+
+**Fleet economics** — [`mythical-agent-month`](skills/mythical-agent-month/SKILL.md) adding agents adds coordination surface, not progress · [`do-it-twice`](skills/do-it-twice/SKILL.md) walk one thin slice end to end before any fan-out · [`change-cost-probe`](skills/change-cost-probe/SKILL.md) measure what a change actually costs instead of asserting it
+
+**Structure by secrets** — [`parnas-partition`](skills/parnas-partition/SKILL.md) every module names the decision it hides or the split is refused · [`coupling-budget`](skills/coupling-budget/SKILL.md) every cross-module edge a change adds spends from a budget
+
+**Keeping ourselves honest** — [`measurement-humility`](skills/measurement-humility/SKILL.md) every enforced metric names what it might corrupt and when it is re-examined · [`egoless-fleet`](skills/egoless-fleet/SKILL.md) a review that found nothing and looked for nothing is not a review · [`instruction-density-cap`](skills/instruction-density-cap/SKILL.md) a prompt carrying more directives than the model tracks · [`plan-decay-detector`](skills/plan-decay-detector/SKILL.md) halt when the plan's assumptions stop matching the tree
+
+**The education layer** — [`human-subagent`](skills/human-subagent/SKILL.md) train a junior by running them as an agent, under the same gates · [`strategy-shelf`](skills/strategy-shelf/SKILL.md) the old-books curriculum behind the strategic seat · [`abstraction-ladder`](skills/abstraction-ladder/SKILL.md) why fundamentals survive every rung, and the test to apply before discarding one
+
 ## Verify it yourself
 
 Nothing here asks to be believed:
 
 ```bash
-python3 scripts/validate-island.py skills/*/     # 420 checks across 35 islands
+python3 scripts/validate-island.py skills/*/     # 600 checks across 50 islands
 python3 scripts/verify-proofs.py                 # re-runs every command the islands document
 ```
 
 Twelve mechanical checks per island. The validator is proven the same way everything else is — it goes red on `scripts/fixtures/bad-island` and green on `good-island`. Every gate script ships its own dirty and clean fixture, and the second tool re-runs each island's documented commands and compares the exit codes, because a proof block that no longer reproduces is a claim rather than evidence.
 
-[04-WAVE1-GAUNTLET.md](04-WAVE1-GAUNTLET.md) and [05-WAVE2-GAUNTLET.md](05-WAVE2-GAUNTLET.md) record what blind critics caught before each wave shipped — including gates that separated their own fixtures perfectly and were still walked past, which is why the critics were eventually told to forge inputs rather than re-run the author's.
+[04-WAVE1-GAUNTLET.md](04-WAVE1-GAUNTLET.md), [05-WAVE2-GAUNTLET.md](05-WAVE2-GAUNTLET.md) and [06-WAVE3-GAUNTLET.md](06-WAVE3-GAUNTLET.md) record what blind critics caught before each wave shipped — including gates that separated their own fixtures perfectly and were still walked past, which is why the critics were eventually told to forge inputs rather than re-run the author's.
 
 ## How it was built
 
@@ -87,11 +99,11 @@ Each island was authored by one agent, then judged by a **blind critic** that ne
 
 ## Honest state
 
-v1.1 ships 35 islands across two waves, mechanically clean and gauntleted, with every gate script carrying a red/green fixture pair it has been watched failing.
+v1.2 completes the roster: **50 islands**, mechanically clean and gauntleted, with every gate script carrying a red/green fixture pair it has been watched failing.
 
-Most in-island rules are `advisory` and say so — the pack would rather admit that than dress advice up as enforcement. Several islands document a limit they chose not to close and ship a fixture capturing it as a run: `stability-order` cannot see a pure dependency cycle, `coverage-gaming-audit` cannot see a suite reached only through a `conftest.py` hook, `comment-as-spec` cannot resolve an imported base class. An evidenced boundary beats a silent one, and each is on the page with its command beside it.
+Most in-island rules are `advisory` and say so — six of the final fifteen ship no script at all, because who holds a design and whether a human can restate a change are not arithmetic, and a gate around judgment would be theatre. Several islands document a limit they chose not to close and ship a fixture capturing it as a run: `stability-order` cannot see a pure dependency cycle, `coverage-gaming-audit` cannot see a `conftest.py`-hooked suite, `comment-as-spec` cannot resolve an imported base class, `instruction-density-cap` under-counts a rule wearing no marker it recognises. An evidenced boundary beats a silent one.
 
-Islands 36–50 are specified in the roster and not yet built.
+What remains is the hardening pass — cross-model verification, supply-chain and tamper-evidence work — reserved for 2.0 rather than folded in here.
 
 ## Credit
 

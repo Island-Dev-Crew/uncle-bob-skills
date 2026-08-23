@@ -1,0 +1,6 @@
+# Five coders on one story that is only 60 percent partitionable.
+# Every pair still has to reconcile - 10 paths at 25 minutes each.
+serial_minutes 480
+partitionable 0.6
+handoff_minutes 25
+fleet 5

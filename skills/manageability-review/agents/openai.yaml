@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Manageability Review"
+  short_description: "The human-judgment acceptance criterion for agent-written code - a reviewer who cannot restate the change's control flow in a fixed number of sentences from one reading bounces it, and the failure is a finding about the code"

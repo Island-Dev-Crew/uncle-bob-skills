@@ -1,0 +1,11 @@
+# CLOSED-HOLE FIXTURE - the '#' line below carries a U+2028 LINE SEPARATOR
+# (what macOS TextEdit/Notes emit for a soft break, and what survives a paste
+# from a PDF) directly before a live 'handoff_minutes 0'. str.splitlines()
+# treats U+2028 as a line break, so the old parser read that tail as real
+# configuration, zeroed the Brooks pair term and returned a PAYS verdict on a
+# plan that declares only three of the four required keys. Expected: exit 2,
+# missing required key(s): handoff_minutes.
+serial_minutes 480
+partitionable 0.6
+fleet 2
+# scratch, ignore:  handoff_minutes 0

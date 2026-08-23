@@ -1,0 +1,5 @@
+﻿# secrets manifest - module<TAB>the design decision it hides
+src/ingest/café	the on-disk layout of the staged upload spool
+src/store	whether a record lives in SQLite or in the object store
+src/wire	the JSON envelope version negotiated with the client
+#scratch/probe	the sampling interval used to poll the run queue

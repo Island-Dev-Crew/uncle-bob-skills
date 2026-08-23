@@ -1,0 +1,5 @@
+﻿slice=tolerated spellings normalise into the plain verdict
+stage=Specifier
+   stage=café-qa
+walked=specifier|0|evidence/a.log
+	walked=café-qa|0|evidence/b.log

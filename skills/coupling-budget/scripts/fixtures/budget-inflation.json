@@ -1,0 +1,23 @@
+{
+  "note": "LIMIT FIXTURE. The same agent that added six cross-module edges also wrote 'budget': 99 into this spec, and pasted one reason six times. Nothing in the file binds the budget to a human decision, so the gate consents at exit 0. The mechanical answer is the invocation, not the file: the identical spec judged with '--budget 2' pinned in CI exits 1, because the flag always wins over the spec.",
+  "budget": 99,
+  "modules": ["web", "billing", "domain", "platform", "legacy", "search", "notify"],
+  "baseline": [["web", "domain"]],
+  "current": [
+    ["web", "domain"],
+    ["web", "billing"],
+    ["web", "platform"],
+    ["web", "legacy"],
+    ["billing", "domain"],
+    ["platform", "domain"],
+    ["search", "notify"]
+  ],
+  "justifications": [
+    {"edge": ["web", "billing"], "reason": "the new checkout flow needs this dependency"},
+    {"edge": ["web", "platform"], "reason": "the new checkout flow needs this dependency"},
+    {"edge": ["web", "legacy"], "reason": "the new checkout flow needs this dependency"},
+    {"edge": ["billing", "domain"], "reason": "the new checkout flow needs this dependency"},
+    {"edge": ["platform", "domain"], "reason": "the new checkout flow needs this dependency"},
+    {"edge": ["search", "notify"], "reason": "the new checkout flow needs this dependency"}
+  ]
+}

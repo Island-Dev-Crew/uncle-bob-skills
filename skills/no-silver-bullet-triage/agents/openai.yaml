@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "No Silver Bullet Triage"
+  short_description: "Routes work by Brooks's essential/accidental split - agents take the difficulty our tools impose, a named human decides the items that set what the system means"

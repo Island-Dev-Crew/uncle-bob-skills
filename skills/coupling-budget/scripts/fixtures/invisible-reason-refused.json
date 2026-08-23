@@ -1,0 +1,17 @@
+{
+  "note": "Twenty zero-width joiners and twenty combining accents each survive whitespace collapse at length 20 and once bought a green. Counted as VISIBLE characters they are worth nothing, so both go red - while an ordinary accented reason typed in NFD still passes on its base letters.",
+  "budget": 3,
+  "modules": ["web", "billing", "domain", "platform"],
+  "baseline": [["web", "domain"]],
+  "current": [
+    ["web", "domain"],
+    ["web", "billing"],
+    ["web", "platform"],
+    ["billing", "domain"]
+  ],
+  "justifications": [
+    {"edge": ["web", "billing"], "reason": "\u200d\u200d\u200d\u200d\u200d\u200d\u200d\u200d\u200d\u200d\u200d\u200d\u200d\u200d\u200d\u200d\u200d\u200d\u200d\u200d"},
+    {"edge": ["web", "platform"], "reason": "\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301"},
+    {"edge": ["billing", "domain"], "reason": "de\u0301pendance re\u0301elle sur le service de facturation"}
+  ]
+}

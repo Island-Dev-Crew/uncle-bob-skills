@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Coupling Budget"
+  short_description: "Every cross-module edge a change adds is spend against a declared budget - each added edge names its reason or the gate goes red"

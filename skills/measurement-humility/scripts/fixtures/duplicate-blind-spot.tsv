@@ -1,0 +1,12 @@
+# The duplicate join key's blind spot, captured as a run rather than a sentence.
+# Every row below is a well-formed, REVIEWED row and the file exits 0 - yet each
+# pair names ONE metric twice. Case, Unicode form, spacing, dashes, connectors
+# and trailing sentence punctuation are folded away before the join; interior
+# punctuation, abbreviations, plurals and synonyms are not. Semantic dedup is
+# judgment work this gate does not do.
+LOC per file	800 lines	splitting one long file in two so each half clears the ceiling	2027-01-01
+lines of code per file	800 lines	splitting one long file in two so each half clears the ceiling	2027-01-01
+CRAP ceiling (v2)	CRAP 6 or lower	assertion-free tests inflating the coverage term	2027-01-01
+CRAP ceiling v2	CRAP 6 or lower	assertion-free tests inflating the coverage term	2027-01-01
+branch coverage floor	80 percent of branches	tests that touch a branch without asserting on it	2027-01-01
+branch coverage floors	80 percent of branches	tests that touch a branch without asserting on it	2027-01-01

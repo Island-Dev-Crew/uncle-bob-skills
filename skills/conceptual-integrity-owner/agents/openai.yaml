@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Conceptual Integrity Owner"
+  short_description: "One named human owns the system's design - no merged design change without their recorded sign-off, and agent count never substitutes"

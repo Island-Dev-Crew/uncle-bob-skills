@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Parnas Partition"
+  short_description: "Judges a module boundary by the design decision it hides and rejects any split that cannot name one"

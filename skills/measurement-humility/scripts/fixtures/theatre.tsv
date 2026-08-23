@@ -1,0 +1,15 @@
+# A register that is theatre: comment lines and blanks are skipped,
+# every data row below is ruled on.
+
+per-function CRAP ceiling (naïve pass)	CRAP 6 or lower	assertion-free tests inflating the coverage term	2026-11-20
+branch coverage floor	80 percent of branches	none	2027-01-01
+lines of code per file	800 lines	TBD	2027-01-01
+cyclomatic complexity cap	CC 10	​​	2027-01-01
+test count per story	at least 5 tests	test count per story	2027-01-01
+doc coverage	every public symbol documented	x	2027-01-01
+build time budget	under 90 seconds	splitting the suite so each shard looks fast	2019-04-01
+bundle size ceiling	250 kB gzipped	lazy-loading dead weight so it lands off the measured path	2026-08-21
+#-of-functions-over-30	at most 5 percent of functions	none	2027-01-01
+stale threshold gate	TBD	teams shipping on a provisional number nobody ever goes back and fixes	2027-01-01
+mutation score floor	100 percent of mutants killed	(none)	2027-01-01
+Per-Function  CRAP Ceiling (Naïve Pass)	CRAP 6 or lower	a different behaviour entirely	2027-01-01

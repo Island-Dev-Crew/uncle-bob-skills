@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Change Cost Probe"
+  short_description: "Measure minutes or tokens per story and gate the trend — a rising cost of change is mess accumulating, and the measured price sets planning depth"

@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Do It Twice"
+  short_description: "Royce's actual 1970 advice - walk one thin end-to-end slice through the whole pipeline and evidence it before any parallel agent fan-out"

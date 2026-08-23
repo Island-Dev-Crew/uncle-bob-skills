@@ -1,0 +1,18 @@
+# LIMIT FIXTURE, not a repo: sub-0.005 costs. The verdict is correct (RISING),
+# but the printed means both round to 0.00 and cannot reproduce the printed
+# ratio. Nothing enforced bounds cost magnitude - --unit is a label only.
+T-01	0.001
+T-02	0.001
+T-03	0.001
+T-04	0.001
+T-05	0.001
+T-06	0.001
+T-07	0.001
+T-08	0.001
+T-09	0.001
+T-10	0.001
+T-11	0.004
+T-12	0.004
+T-13	0.004
+T-14	0.004
+T-15	0.004

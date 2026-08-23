@@ -48,8 +48,8 @@ Every rule in this island is **advisory**: this is doctrine, and no mechanical c
 
 - **Ticket and tracer machinery** — turning stories into specs, tickets, and implementation passes is [`spec-pipeline`](../../COMPANION.md#spec-pipeline)'s seat; this island only argues how *short* each pass should be.
 - **Multi-session decision maps** — charting a foggy effort too big for one session is [`wayfinder`](../../COMPANION.md#wayfinder)'s seat; this island governs the batch size inside a lane, not the map of lanes.
-- **Mid-run divergence detection** — mechanically catching a plan decaying against observed repo state is `plan-decay-detector`'s seat (Wave 3, forthcoming); until it lands, decay-spotting is human judgment.
-- **Measuring the actual change-cost** — testing the $1 premise against your repo's real numbers is `change-cost-probe`'s seat (Wave 3, forthcoming); until it lands, the collapse is an argument, not a measurement.
+- **Mid-run divergence detection** — mechanically catching a plan decaying against observed repo state is [`plan-decay-detector`](../plan-decay-detector/SKILL.md)'s seat; it has landed, so decay-spotting is no longer human judgment where the plan states its assumptions in that island's checkable form.
+- **Measuring the actual change-cost** — testing the $1 premise against your repo's real numbers is [`change-cost-probe`](../change-cost-probe/SKILL.md)'s seat: it trends measured minutes or tokens per story, so the collapse can be checked here instead of assumed. Run it before leaning on the economics above; this island argues the case, that one settles it for your repo.
 - **Ephemeral spec lifecycle** — the spec-dies-on-merge rule is [`spec-mulch`](../spec-mulch/SKILL.md)'s concern (C22); this island stops at cadence.
 
 **No authority without evidence. Plan a story or two, look, sort out, go again — the gorgeous plan is the temptation, the cadence is the discipline.**

@@ -1,0 +1,7 @@
+slice=sign-in story, one thin end-to-end walk
+stage=specifier
+stage=coder
+stage=qa
+walked=specifier|0|evidence/specifier.feature
+walked=coder|0|evidence/coder-tests.log
+walked=qa|0|evidence/qa-script.log

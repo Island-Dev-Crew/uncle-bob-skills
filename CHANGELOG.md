@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.2 — 2026-08-23
+
+Wave 3: fifteen islands on strategy, economics and education. **The 50-island roster is complete.** 600 mechanical checks.
+
+### Islands
+
+Who decides (`conceptual-integrity-owner`, `no-silver-bullet-triage`, `manageability-review`); fleet economics (`mythical-agent-month`, `do-it-twice`, `change-cost-probe`); structure by secrets (`parnas-partition`, `coupling-budget`); keeping ourselves honest (`measurement-humility`, `egoless-fleet`, `instruction-density-cap`, `plan-decay-detector`); and the education layer (`human-subagent`, `strategy-shelf`, `abstraction-ladder`).
+
+### The honest-script result
+
+Builders were given the tier A/B/C standard, the six bypass classes and the exit-code seal **upfront** this time, and told per island whether a gate was expected. Nine shipped one with fixtures; **six shipped none and said so** — who holds a design, whether complexity is essential, whether a human can restate a change, how to drill a junior. None of that is arithmetic, and a gate around it would be theatre. Front-loading the standard raised the floor without making the critics redundant: two islands passed round one, the rest still failed a critic that forged inputs.
+
+### Fixed — four false greens, each reachable by ordinary input
+
+- `instruction-density-cap` counted **zero** directives in a plainly numbered rules file. Its marker test was a fixed 16-character list, so a bolded `**1.**`, an emoji bullet and `■` were invisible — while `■`'s level-1 and level-2 siblings were on the list, so a three-level list pasted from Google Docs counted its top two and silently dropped the third. Now a Unicode property test, with leading emphasis stripped. All twenty existing documented counts unchanged.
+- `measurement-humility` was defeated by **one punctuation mark**: `none?` and `-none-` read as substance and passed REVIEWED, 192 leaking spellings in all. Peeling is now by Unicode category, with the unpeeled spelling kept as a candidate so a bare `?` still registers as the evasion it is, plus a letter-or-digit floor on thresholds.
+- `plan-decay-detector` aimed a whole plan at the wrong tree in silence: `--root` defaulted to `.`, so an all-`absent` plan run from an unrelated directory reported PLAN HOLDS and exited 0. `--root` is now required — which is what the island's own exit-code paragraph had promised.
+- `strategy-shelf` was fully defeated by an **HTML comment**: its anchor probe stripped code fences but not `<!-- -->`, so commenting out all four Forge anchors still exited 0 while GitHub would emit no anchor for any of them.
+
+### Honest state
+
+The roster is complete; what remains is the hardening pass — cross-model verification, supply-chain and tamper-evidence work — reserved for 2.0. Disclosed limits each ship a fixture capturing the boundary as a run.
+
 ## v1.1 — 2026-08-21
 
 Wave 2: fifteen canon-mechanics islands, where the conversation's claims meet the books behind them. Pack total 35 islands, 420 mechanical checks.
@@ -33,7 +56,7 @@ First release. Wave 1 of the roster: twenty islands mined from the Robert C. Mar
 
 ### Islands
 
-Twenty skills across six concerns — doctrine (`boredom-dividend`, `threshold-port`, `margin-ledger`), the five-seat relay (`seat-relay`, `specifier-seat`, `qa-script-seat`), the gates (`crap-gate`, `mutant-hunt`, `mutant-excusal-ledger`, `dependency-fence`, `known-dirty-fixture`), context economy (`steering-audit`, `priority-zone`, `trajectory-hygiene`), structure (`arch-lens`, `structure-interrogation`), planning (`story-cadence`, `spec-mulch`, `essence-pointer`), and the human (`thrash-watch`, `human-subagent`, `strategy-shelf`).
+Twenty skills across six concerns — doctrine (`boredom-dividend`, `threshold-port`, `margin-ledger`), the five-seat relay (`seat-relay`, `specifier-seat`, `qa-script-seat`), the gates (`crap-gate`, `mutant-hunt`, `mutant-excusal-ledger`, `dependency-fence`, `known-dirty-fixture`), context economy (`steering-audit`, `priority-zone`, `trajectory-hygiene`), structure (`arch-lens`, `structure-interrogation`), planning (`story-cadence`, `spec-mulch`, `essence-pointer`), and the human (`thrash-watch`). (`human-subagent` and `strategy-shelf` were named in an early roster draft under this heading but were not built until v1.2 — corrected here rather than left claiming a release contained islands it did not.)
 
 ### Evidence
 

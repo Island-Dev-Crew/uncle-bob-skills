@@ -1,0 +1,12 @@
+# The evasion filter's residue, captured as a run rather than a sentence.
+# Every row below exits 0. None of them names a behaviour anyone could watch
+# for; each one dodges the exact-phrase list by one non-hedge word. The gate
+# asks 'is a behaviour written here', never 'is this English, and is it true'.
+# Read a REVIEWED as 'the field is not on the evasion list', never as 'the
+# corruption clause is real'. Substance is judgment work; see SKILL.md.
+coverage floor	80 percent of lines	probably nothing much	2027-01-01
+mutation score floor	100 percent of mutants killed	nothing I would bet on	2027-01-01
+per-file line ceiling	800 lines	hard to say honestly	2027-01-01
+dependency direction	no outward crossing	see JIRA-4471	2027-01-01
+doc coverage	see the platform wiki	whatever the last audit said	2027-01-01
+build time budget	under 90 seconds	it depends on the team	2027-01-01

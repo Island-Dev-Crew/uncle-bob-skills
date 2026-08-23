@@ -1,0 +1,7 @@
+# The Uncle Bob pack's own register of enforced metrics.
+# metric<TAB>threshold<TAB>corrupts<TAB>review    (see scripts/metric-register.py)
+per-function CRAP ceiling	CRAP score 6 or lower on agent-written functions	driving the coverage term to 100 with assertion-free tests, which collapses the score to plain cyclomatic complexity	2026-11-20
+mutants surviving on the diff	zero surviving mutants on changed lines	excusing awkward mutants into the ledger instead of killing them, so a green run becomes bookkeeping	2026-11-20
+layer dependency direction	no dependency crossing the fence outward	moving a file into the tolerated layer instead of inverting the dependency	2027-02-19
+island body length	SKILL.md body 250 lines or fewer (validate-island.py F10)	splitting one concern across two islands to duck the line count	2027-02-19
+island description length	60 to 1024 characters (validate-island.py F6)	padding a thin description with trigger phrases nobody says, a façade of triggers that clears the 60-character floor	2027-02-19

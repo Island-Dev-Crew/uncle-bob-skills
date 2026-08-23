@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Measurement Humility"
+  short_description: "Standing review obligation for enforced metrics - each names the behaviour it might corrupt and carries a review date that can go red"

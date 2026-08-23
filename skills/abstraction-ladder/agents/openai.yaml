@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Abstraction Ladder"
+  short_description: "The ladder doctrine - a rung reprices labor and never retires the job, plus the rung-below weekend and the discipline test before any practice is cut"

@@ -1,0 +1,6 @@
+# a create-only batch: every row is `absent`, the shape the kind table blesses
+# for a plan that only makes new files - and the shape that held vacuously
+# against an unrelated cwd when --root still had a default.
+absent	src/refunds.py
+absent	src/ledger.py
+absent	tests/test_refunds.py

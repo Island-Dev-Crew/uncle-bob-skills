@@ -1,0 +1,5 @@
+slice=a compatibility spelling misses its join
+stage=qa
+stage=coder
+walked=ｑａ|0|evidence/b.log
+walked=coder|0|evidence/c.log

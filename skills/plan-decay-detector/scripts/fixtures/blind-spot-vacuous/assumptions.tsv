@@ -1,0 +1,4 @@
+# The whole of what this plan wrote down. Both rows are true. Neither names
+# src/payments.py, the module the batch was going to edit - which is gone.
+exists	src/README.md
+lacks	src/README.md	def refund(

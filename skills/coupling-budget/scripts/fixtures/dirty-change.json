@@ -1,0 +1,16 @@
+{
+  "note": "Well-formed spec that fails on the check, not the parse: three added edges against a budget of one, one of them unjustified and one with a reason below the floor.",
+  "budget": 1,
+  "modules": ["web", "billing", "domain", "platform"],
+  "baseline": [["web", "domain"]],
+  "current": [
+    ["web", "domain"],
+    ["web", "billing"],
+    ["web", "platform"],
+    ["billing", "platform"]
+  ],
+  "justifications": [
+    {"edge": ["web", "billing"], "reason": "the checkout page renders live invoice state from billing"},
+    {"edge": ["billing", "platform"], "reason": "wip"}
+  ]
+}

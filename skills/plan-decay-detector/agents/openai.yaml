@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Plan Decay Detector"
+  short_description: "Mid-execution divergence check - the plan states its assumptions in checkable form, and a gate halts the fleet for a re-plan the moment the repo stops matching them"

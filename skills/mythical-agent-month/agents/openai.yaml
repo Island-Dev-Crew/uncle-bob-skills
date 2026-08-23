@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Mythical Agent Month"
+  short_description: "Brooks's law generalised to agent fleets - communication paths grow as n(n-1)/2 while only partitionable work divides, so size the fleet before the handoffs eat the margin"

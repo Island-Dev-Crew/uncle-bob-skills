@@ -1,0 +1,2 @@
+src/store	whether a record lives in SQLite or in the object store
+src/deleted-cache	the eviction policy of a cache that no longer exists

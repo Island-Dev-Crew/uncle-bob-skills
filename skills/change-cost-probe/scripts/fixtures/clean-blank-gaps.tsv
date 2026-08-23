@@ -1,0 +1,20 @@
+# clean 20-minute history with blank gaps a human editor leaves behind:
+# one empty line, one lone TAB, one whitespace-only line.
+G01	20
+G02	20
+G03	20
+G04	20
+G05	20
+
+G06	20
+G07	20
+G08	20
+G09	20
+G10	20
+	
+   	   
+G11	25
+G12	25
+G13	25
+G14	25
+G15	25

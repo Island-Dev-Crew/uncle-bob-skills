@@ -1,0 +1,8 @@
+{
+  "note": "LIMIT FIXTURE. The change introduced web -> billing, but the baseline was written by the same agent and already lists it, so the delta is empty and the gate consents at budget 0. The gate reads one file; it cannot know the baseline is yesterday's truth.",
+  "budget": 0,
+  "modules": ["web", "billing", "domain"],
+  "baseline": [["web", "domain"], ["web", "billing"]],
+  "current": [["web", "domain"], ["web", "billing"]],
+  "justifications": []
+}

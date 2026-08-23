@@ -1,0 +1,11 @@
+slice=sign-in story, one thin end-to-end walk
+stage=specifier
+stage=coder
+stage=cleaner
+stage=hardener
+stage=qa
+walked=specifier|0|evidence/specifier.feature
+walked=coder|0|evidence/coder-tests.log
+walked=cleaner|0|evidence/cleaner-crap.txt
+walked=hardener|0|evidence/hardener-mutants.log
+walked=qa|0|evidence/qa-script.log

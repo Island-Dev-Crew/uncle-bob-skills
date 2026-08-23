@@ -1,0 +1,5 @@
+slice=one log copied twice, cited once per stage
+stage=coder
+stage=qa
+walked=coder|0|evidence/run.log
+walked=qa|0|evidence/copy-of-run.log

@@ -1,0 +1,4 @@
+# model-invoked skill — interface metadata only
+interface:
+  display_name: "Strategy Shelf"
+  short_description: "The old-books curriculum for engineers who direct agents - eight entries from 1968 to 1999, each cut to the ideas that still carry when a model writes the code, plus what to skip"
