@@ -40,8 +40,14 @@ Each is drawn from something that actually cost time in the Forge chain.
 
 Ordered so nothing expensive is spent on a head that is about to move.
 
-**Phase 1 — clear the verification debt (largest, and mine to do).**
+**Phase 1 — clear the verification debt — COMPLETE (`0427e9d`, 2026-08-23).**
 45 findings are already tiered and written down from Waves 2 and 3: **10 tier-B, 35 tier-C, zero tier-A.** Thirteen Wave-3 islands were modified after their last critic and never re-judged. Nothing here is a false green; it is claim precision — an "every" or "never" broader than the code, an exit-code table omitting a code it can emit, a stale count. Under the first law an unbacked sentence is laundering, so this is real debt. Exit condition: every island holds a clean blind-critic verdict at one head.
+
+**Phase 1 evidence.** All 45 findings closed across 14 islands; blind critics passed 11 of 14 and caught five unbacked sentences in the other three — every one about the category-vs-enumeration fixes made earlier in this build, which is the pack's own lesson landing on its author. `instruction-density-cap` claimed a marker class its code did not implement, and the counterexample sat inside the sentence's own example string (`»` is category `Pf`, outside the five chosen), so a guillemet-bulleted rules file counted zero and consented at any cap. `measurement-humility` claimed it peels every punctuation and symbol mark while taking only `Sm`/`Sk` of the symbols, so `none©` and `tbd$` read as substance. `parnas-partition` claimed no respelling of a named marker survives; five ordinary ones did. All three widened to every `P*` and every `S*` (or, for the fold, to whitespace and the non-breaking hyphen), with the one sentence the code still could not back narrowed rather than defended.
+
+The readability pass ran on all 50 islands in the same commit: **mean AI-likeness 38 → 23**, scored by the deterministic `ai-humanizer` scorer, **zero islands scoring higher after**. Substance was verified island by island against `git show HEAD:` rather than the working tree — 50/50 clean, no ledger citation, relative link, or enforced/advisory label lost, and nothing below 85% of its original word count. Readability improved and nothing shrank to buy it.
+
+Standing verification at that head: 600/600 validator checks, 727 committed-tree links resolving, zero cache residue, and the same five `verify-proofs.py` mismatches as before — a heredoc, a `printf`-built fixture dir, and a `cd`-dependent pair, each confirmed correct by running its block whole. Those are the tool's documented limits, not island defects.
 
 **Phase 2 — the dogfood audit.** Run this pack's own doctrine over its own 50 islands: does any `SKILL.md` contain instructions that could invert authority, over-claim harness behaviour, or make an agent act outside the user's request? The measurement above says the mechanical answer is clean; the *semantic* answer needs the same adversarial reading the Forge's supply-chain island applies to third-party skills. A skills pack that has never audited itself for injection surface has no standing to teach the discipline.
 
