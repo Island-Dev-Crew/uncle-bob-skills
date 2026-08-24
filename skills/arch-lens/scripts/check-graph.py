@@ -29,8 +29,13 @@ def main() -> int:
     try:
         data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
     except (OSError, ValueError) as e:
-        check("G1", False, f"unreadable graph: {e}")
-        return 1
+        # Exit 2, not 1. Exit 1 here means "this architecture has a violation", and an
+        # unreadable or malformed graph file is not that — the checks never ran. Run from
+        # the wrong directory, borrowing the verdict code hands a fix-until-green agent a
+        # red architecture and it starts moving modules to satisfy a gate that never read
+        # anything. A path fault and a design fault must not share a code.
+        print(f"check-graph: cannot read the graph: {e}", file=sys.stderr)
+        return 2
     modules, edges = data.get("modules"), data.get("edges")
     g1 = (
         isinstance(modules, list) and bool(modules)

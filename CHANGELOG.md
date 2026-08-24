@@ -12,6 +12,18 @@ The grammar is now one definition in the docstring — candidate, proof, allowli
 
 Two more, fixed by hand earlier in the same pass: exit 3 when nothing was executed at all (a verifier that ran nothing has verified nothing), and `margin-ledger` no longer reading a `#123` story id as a comment.
 
+### Fixed — two more error paths wearing a verdict's exit code
+
+The pack names this as its first bypass class, and two of its own tools still had it. `check-graph.py` answered an unreadable or malformed graph file with **exit 1** — the code that means "this architecture has a violation" — so running it from the wrong directory handed a fix-until-green agent a red architecture and it would start moving modules to satisfy a gate that had read nothing. `validate-island.py` recorded a path that is not a directory as a *failed F1 check*, making "I could not find this" indistinguishable from "this island is malformed". Both now exit 2, the code each already used for being called wrong. Neither change touches a documented verdict: the dirty and clean fixtures still exit 1 and 0, and `prove-gate.sh` still accepts the validator.
+
+### Fixed — a claim of enforcement the island itself denies
+
+`plan-decay-detector` advertised, in its discovery sidecar and its frontmatter, that "a gate halts the fleet" — while its own **Enforced vs advisory** section says "no hook wires it into a fleet today" and "this island only rings the bell". It now says it reports and exits 1 to *call* for a re-plan, which a human or a harness then has to honour. A sweep of the other forty-nine sidecars for enforcement verbs found three, each already qualified in its island.
+
+`arch-lens` still told the reader to run its gate from `unclebob/skills/arch-lens`, a path that stopped existing when this pack was separated out of the Forge. Every other `unclebob/` string in the repo is a real GitHub URL of Martin's own tools.
+
+Quote provenance was re-swept while a Codex finding about one smoothed quotation was being checked (it had already been fixed, and matches the ledger exactly). Of 242 quotations across the fifty islands, every one attributed to the conversation or to a book traces to the concept ledger or a research brief; the nineteen that do not are example prompts, tool output strings, and worked-example prose, none presented as anyone's words.
+
 ### Fixed — closed exit-code claims, made true
 
 Every gate here publishes a closed set of exit codes, and a caller reads that set to decide whether the code under test passed. Two shutdown paths broke the promise without touching a line of gate logic: CPython replaces the status a script chose with **120** when its own shutdown flush meets a dead stdout — the ordinary `gate.py … | head` idiom is enough — and a shell gate killed by SIGPIPE returns **141**. Neither appears in any island's table.

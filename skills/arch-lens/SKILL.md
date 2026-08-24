@@ -58,7 +58,7 @@ The three artifacts travel together. What you are building is a standing instrum
 
 `id` is unique. `parent` builds the drill-down tree (`null` = top level). `path` is repo-relative, and it is the field that makes the final click land on real code. `edges` are dependency arrows at any granularity.
 
-Enforced - [scripts/check-graph.py](scripts/check-graph.py) gates this contract with an exit code. Six things have to hold: JSON parses, ids are unique, parent chains resolve without cycles, edges resolve without self-loops, every module carries a non-empty string `path`, and, given the repo root, every `path` resolves to a real file or directory strictly inside that root (never the root itself, never escaping it). The gate ships the fixture pair that proves it can fail, so the proof is re-runnable rather than merely asserted. Run it from this island's directory (`unclebob/skills/arch-lens`):
+Enforced - [scripts/check-graph.py](scripts/check-graph.py) gates this contract with an exit code. Six things have to hold: JSON parses, ids are unique, parent chains resolve without cycles, edges resolve without self-loops, every module carries a non-empty string `path`, and, given the repo root, every `path` resolves to a real file or directory strictly inside that root (never the root itself, never escaping it). The gate ships the fixture pair that proves it can fail, so the proof is re-runnable rather than merely asserted. Run it from this island's directory (`skills/arch-lens`):
 
 ```bash
 python3 scripts/check-graph.py scripts/fixtures/dirty-graph.json scripts/fixtures/tree  # exit 1 — G3 undeclared parent, G4 self-edge, G5 pathless, G6 bad path

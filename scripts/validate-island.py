@@ -130,8 +130,12 @@ def main() -> int:
     for arg in sys.argv[1:]:
         d = Path(arg)
         if not d.is_dir():
-            check(results, d.name, "F1", False, f"not a directory: {d}")
-            continue
+            # Usage, not a verdict. Recording this as a failed F1 made "I could not find
+            # this path" indistinguishable from "this island is malformed", so a typo or a
+            # wrong working directory reported an island as broken. Exit 2 is the code this
+            # tool already uses for being called wrong.
+            print(f"validate-island: not a directory: {d}", file=sys.stderr)
+            return 2
         validate(d, results)
     fails = [r for r in results if not r[2]]
     print(f"\n{len(results)} checks, {len(fails)} failed, islands: {len(set(r[0] for r in results))}")
