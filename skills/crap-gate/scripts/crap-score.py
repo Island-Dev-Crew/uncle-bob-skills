@@ -51,7 +51,14 @@ def main() -> int:
                    help="TSV file (default stdin): function<TAB>complexity<TAB>coverage_pct")
     args = p.parse_args()
 
-    src = open(args.tsv, encoding="utf-8") if args.tsv else sys.stdin
+    try:
+        src = open(args.tsv, encoding="utf-8") if args.tsv else sys.stdin
+    except OSError as exc:
+        # An unreadable input is not a CRAP breach. Borrowing exit 1 here handed a
+        # fix-until-green agent a dirty verdict over a file that was never scored, and
+        # it would start splitting functions to satisfy a gate that never ran.
+        print(f"crap-score: {exc}", file=sys.stderr)
+        return 2
     with src:
         rows, errors = parse_rows(src)
 

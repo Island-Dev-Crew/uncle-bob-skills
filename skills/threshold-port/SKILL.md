@@ -64,7 +64,7 @@ Verify → fix → re-verify: walk the record row by row against these five cond
 
 ## Enforced vs advisory
 
-- **Enforced (today)** — this island's own shape: `python3 ../../scripts/validate-island.py` on this folder exits 0. In a destination repo, a ported threshold is enforced only where its tool blocks on breach with a non-zero exit (crap4py already does; see [`research/crap-metric.md`](../../research/crap-metric.md)). Until that wiring exists, the level is advisory and the port record must say so.
+- **Enforced (today)** — this island's own shape: `python3 scripts/validate-island.py skills/threshold-port`, run from the pack root, exits 0. In a destination repo, a ported threshold is enforced only where its tool blocks on breach with a non-zero exit (crap4py already does; see [`research/crap-metric.md`](../../research/crap-metric.md)). Until that wiring exists, the level is advisory and the port record must say so.
 - **Advisory (v0)** — the three-move classification, the one-step-at-a-time discipline, the no-agent-vote rule, and the port record format. No script here checks them yet. A later wave can add a port-record linter; until then this is honest guidance, and calling it enforced would be laundering.
 
 **No authority without evidence. Values transfer; rituals stay home; the number moves one measured step at a time.**

@@ -26,7 +26,7 @@ Continue while all three of these hold (advisory: judged, not measured):
 
 ## Kill: the three triggers
 
-Kill-and-respawn when any one fires. All three are **advisory** at v0. No hook today measures how full the window is or detects contamination, so the call is judged, stated, and logged, never auto-blocked; a later wave can add a probe script that reads the fill. The one **enforced** check in this island's lane is the pack validator gating this file's own structure (`unclebob/scripts/validate-island.py`, exit code).
+Kill-and-respawn when any one fires. All three are **advisory** at v0. No hook today measures how full the window is or detects contamination, so the call is judged, stated, and logged, never auto-blocked; a later wave can add a probe script that reads the fill. The one **enforced** check in this island's lane is the pack validator gating this file's own structure (`scripts/validate-island.py`, exit code).
 
 1. **Contamination.** An off-topic injection, a wrong turn, or a bad early steer now colors the output: the soap-opera coffee (C11). The signature is an agent that keeps returning to the dead idea after you correct it. Every correction spends tokens inside the poisoned window. Respawn instead.
 2. **Topic pivot.** The next task differs from the trajectory this window was steered onto. Between focused tasks the lifecycle is born-do-die: "agents are born, do the task, and die so that the next one comes in with a clean context" (C10). Finish, persist, kill, respawn. A fresh context per task beats re-aiming a warm one.

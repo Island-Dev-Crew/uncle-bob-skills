@@ -45,6 +45,6 @@ The interrogation doubles as the acceptance check. Done when:
 
 ## Evidence discipline
 
-Every rule above is `advisory` at v0. No hook or script blocks any step, the record and the gap list are captured by hand, and reading them is your judgment. One `enforced` check exists today: the pack validator (`unclebob/scripts/validate-island.py`), and it gates this island's own structure. Nothing yet checks an interrogation mechanically. A later wave could make step 4 partly enforced by diffing the agent's claimed dependency edges against a computed import graph. Until that script exists and has gone red on a known-bad fixture, the reverify verdict is advisory and says so.
+Every rule above is `advisory` at v0. No hook or script blocks any step, the record and the gap list are captured by hand, and reading them is your judgment. One `enforced` check exists today: the pack validator (`scripts/validate-island.py`), and it gates this island's own structure. Nothing yet checks an interrogation mechanically. A later wave could make step 4 partly enforced by diffing the agent's claimed dependency edges against a computed import graph. Until that script exists and has gone red on a known-bad fixture, the reverify verdict is advisory and says so.
 
 **The agent describes the structure; the human designs it. Interrogate, expect fear, hand back the plan.**

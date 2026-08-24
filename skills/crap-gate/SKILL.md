@@ -65,7 +65,7 @@ This island supplies metric content only:
 
 ## Enforced vs advisory
 
-- `enforced`: the arithmetic and the verdict. [`scripts/crap-score.py`](scripts/crap-score.py) computes the exact formula, exits 1 on any `score > threshold`, and exits 2 fail-closed on malformed or empty input (an empty gate cannot pass). The island's own shape is enforced by the pack validator (`scripts/validate-island.py` at the pack root).
+- `enforced`: the arithmetic and the verdict. [`scripts/crap-score.py`](scripts/crap-score.py) computes the exact formula, exits 1 on any `score > threshold`, and exits 2 fail-closed on malformed or empty input, and on an input it cannot read (an empty gate cannot pass, and an unreadable one is not a breach). The island's own shape is enforced by the pack validator (`scripts/validate-island.py` at the pack root).
 - `advisory`: everything upstream of and around the scorer today. That is the regime choice (4/6/8), the per-language artifact parsing and CC join, changed-files-only scoping, and the mutation-companion pairing. Each is stated so a later wave can mechanize it. Claiming more would launder advisory into enforced.
 
 **Red/green proof.** The scorer earns its `enforced` line by going red on a known-bad input and green on a known-good one: the [`known-dirty-fixture`](../known-dirty-fixture/SKILL.md) ritual. Both fixtures live beside it. Recompute from this island's directory:

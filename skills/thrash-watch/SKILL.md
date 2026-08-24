@@ -47,7 +47,7 @@ Four rungs, **in order**. Take the lowest rung that clears the signature, re-obs
 
 ## Evidence discipline
 
-- **Enforced** (mechanical check exists today): this island's own structure, gated by the pack validator `unclebob/scripts/validate-island.py` and its exit code.
+- **Enforced** (mechanical check exists today): this island's own structure, gated by the pack validator `scripts/validate-island.py` and its exit code.
 - **Advisory** (judged, stated, never auto-blocked): every signature and every rung above. This is a v0 island and says so honestly. No script measures churn-per-turn, revert counts, or apology density yet. A later wave can add a deterministic churn probe; until it exists these rules stay labeled advisory rather than laundered into enforced.
 
 **No authority without evidence. The struggle is visible before the failure is. Name the signature, take the lowest rung that clears it.**

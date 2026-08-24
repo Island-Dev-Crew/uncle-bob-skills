@@ -84,7 +84,7 @@ scripts/diff-scope.sh HEAD~1 HEAD "$(scripts/fixtures/mkrepo.sh clean)"   # exit
 
 The same pair run through [`known-dirty-fixture`](../known-dirty-fixture/SKILL.md)'s `prove-gate.sh` printed `ACCEPTED` at exit 0. Bad-ref input exits 2. Re-run the pair on every change to the script.
 
-- `enforced` for island structure: `unclebob/scripts/validate-island.py` gates this file's frontmatter, sidecar, ledger citations, and line budget at exit 0.
+- `enforced` for island structure: `scripts/validate-island.py` gates this file's frontmatter, sidecar, ledger citations, and line budget at exit 0.
 - `advisory` at v0 for the mutation run, the zero-survivor requirement, and the budget cap: no per-language runner ships here yet. Run the language-native tool ([`gate-toolchain`](../gate-toolchain/SKILL.md) owns picking it and checking it is scoped to the diff) and treat *its* exit code as the gate. A verdict claimed without a tool report is `unverified`. A later wave may add a runner harness that promotes these three to enforced; until it ships, this island says advisory and means it.
 
 **No authority without evidence. A green suite is a claim; a killed mutant is the proof: zero survivors on the diff, inside the margin.**

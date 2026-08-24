@@ -42,7 +42,7 @@ A planning conversation has landed inside this doctrine when every box checks:
 
 ## Enforced vs advisory
 
-Every rule in this island is **advisory**. This is doctrine, and no mechanical checker of batch size, plan decay, or change-cost exists on this island today: v0 ships no script by design (doctrine only, per the roster line). The only **enforced** check touching this island is the pack validator (`unclebob/scripts/validate-island.py`), which gates this file's own shape and says nothing about whether your planning obeys the doctrine. The paths to making it mechanical are already seated elsewhere, in the boundaries below.
+Every rule in this island is **advisory**. This is doctrine, and no mechanical checker of batch size, plan decay, or change-cost exists on this island today: v0 ships no script by design (doctrine only, per the roster line). The only **enforced** check touching this island is the pack validator (`scripts/validate-island.py`), which gates this file's own shape and says nothing about whether your planning obeys the doctrine. The paths to making it mechanical are already seated elsewhere, in the boundaries below.
 
 ## Boundaries: who owns what
 

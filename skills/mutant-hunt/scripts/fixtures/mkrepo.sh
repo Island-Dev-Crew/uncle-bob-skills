@@ -14,6 +14,22 @@ case $1 in clean|dirty) kind=$1 ;; *) usage ;; esac
 
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 dest=${2:-$(mktemp -d)}
+
+# A destination the caller named is guarded before anything is written to it. Given a real
+# repository this script used to overwrite pricing.js, sweep untracked files into a commit
+# via `git add -A`, append two fixture commits onto the user's history — and exit 0. A
+# fixture builder that can damage the tree it is pointed at is not a fixture builder.
+if [ $# -eq 2 ]; then
+  if [ -e "$dest" ] && [ -n "$(ls -A "$dest" 2>/dev/null)" ]; then
+    echo "mkrepo.sh: refusing a non-empty destination: $dest" >&2
+    exit 2
+  fi
+  if parent=$(cd -- "$(dirname -- "$dest")" 2>/dev/null && pwd) \
+     && git -C "$parent" rev-parse --show-toplevel >/dev/null 2>&1; then
+    echo "mkrepo.sh: refusing a destination inside an existing work tree: $dest" >&2
+    exit 2
+  fi
+fi
 mkdir -p "$dest"
 
 g() { git -C "$dest" -c user.name=fixture -c user.email=fixture@invalid -c commit.gpgsign=false "$@"; }

@@ -57,7 +57,7 @@ Every candidate gate gets a margin projection before it enters the stack: `proje
 Red/green proof, run rather than asserted. The gate ships with the fixture pair that proves it can fail: [`scripts/fixtures/dirty-lost-margin.tsv`](scripts/fixtures/dirty-lost-margin.tsv) (one story at 0.80x, below the floor, hidden behind a 1.33x aggregate) and [`scripts/fixtures/clean-in-band.tsv`](scripts/fixtures/clean-in-band.tsv) (every story in band). Recompute the acceptance:
 
 ```bash
-# Run from this island's directory (unclebob/skills/margin-ledger). Elsewhere the
+# Run from this island's directory (skills/margin-ledger, from the pack root). Elsewhere the
 # relative paths fail and the script exits 3 — an IO code, never confusable with
 # the exit-2 fail-closed verdict.
 python3 scripts/margin-ledger.py scripts/fixtures/dirty-lost-margin.tsv   # → exit 1 (RED, LOST 0.80x login-audit)

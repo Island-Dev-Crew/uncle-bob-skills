@@ -40,7 +40,7 @@ Each hole you close this way earns a fixture of its own, so the next reader inhe
 
 ```bash
 <this-skill-dir>/scripts/prove-gate.sh <bad-fixture> <good-fixture> -- <gate-command...>
-# e.g., proving this pack's own validator — run from the pack root (unclebob/):
+# e.g., proving this pack's own validator — run from the pack root:
 skills/known-dirty-fixture/scripts/prove-gate.sh scripts/fixtures/bad-island scripts/fixtures/good-island -- python3 scripts/validate-island.py
 ```
 

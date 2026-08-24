@@ -47,7 +47,7 @@ Contract the qa-script-seat may rely on:
 The two `enforced` claims above rest on a gate that has been shown able to say no. Both runs below were executed from this island's directory, and the fixtures ship beside the script as its regression bed.
 
 ```bash
-# Run from this island's directory (unclebob/skills/specifier-seat); elsewhere the
+# Run from this island's directory (skills/specifier-seat, from the pack root); elsewhere the
 # relative paths do not resolve and the shell reports 127, not a gate verdict.
 scripts/check-handoff.sh scripts/fixtures/dirty-checkout.feature scripts/fixtures/dirty-checkout.qa.md   # exit 1 — 6 checks red
 scripts/check-handoff.sh scripts/fixtures/clean-checkout.feature scripts/fixtures/clean-checkout.qa.md   # exit 0 — PASS
