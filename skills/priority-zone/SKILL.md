@@ -5,32 +5,32 @@ description: The head-of-context budget for the standing prompt - the primacy/re
 
 # Priority Zone: the head-of-context budget
 
-Attention over a context window is not flat. The head is the priority zone: what stands there shapes generation; what sinks to the middle is obeyed *"in the Pirates of the Caribbean sense. They're more like guidelines"* (C3). This island turns that position evidence into two mechanical checks on the standing prompt — the CLAUDE.md, AGENTS.md, or system prompt loaded at the head of every turn: a hard size budget, and a placement lint that keeps hard directives in the head window.
+Attention over a context window is not flat. The head is the priority zone: what stands there shapes generation. What sinks to the middle is obeyed *"in the Pirates of the Caribbean sense. They're more like guidelines"* (C3). The standing prompt is whatever loads at the head of every turn: the CLAUDE.md, the AGENTS.md, or the system prompt. This island turns that position evidence into two mechanical checks on that prompt: a hard size budget, and a placement lint that keeps hard directives in the head window.
 
 ## The evidence
 
-All four grounds are documented with citations in [`research/lost-in-the-middle.md`](../../research/lost-in-the-middle.md); the numbers below are that file's, kept there so they cannot drift:
+All four grounds carry citations in [`research/lost-in-the-middle.md`](../../research/lost-in-the-middle.md). The numbers below are that file's, kept there so they cannot drift:
 
-- **The U-curve.** Liu et al. (TACL 2024) showed accuracy traces a U as relevant material moves through a long context: highest at the very beginning (primacy) and end (recency), degraded in the middle — beginning/end tokens receive more attention *regardless of relevance*. An instruction buried mid-context competes for attention it structurally does not get.
-- **Instruction density.** IFScale: with hundreds of simultaneous directives even frontier models degrade (to ~68% at 500), earlier instructions are favored (primacy again), and errors shift toward *omission* — the rule is not broken, it is silently skipped. Reasoning models hold to roughly 100-250 instructions; a graded decay, not a cliff. Density is cited here only as a second reason the head budget is tight - counting the directives and gating on the count moved out to [`instruction-density-cap`](../instruction-density-cap/SKILL.md).
-- **The smart zone.** Dex Horthy's framing (verified attribution — the transcript mishears the name): recall degrades past ~40% context utilization; ship work in the smart zone. Every token the standing prompt spends is smart-zone territory burned before the work begins.
+- **The U-curve.** Liu et al. (TACL 2024) showed accuracy traces a U as relevant material moves through a long context: highest at the very beginning (primacy) and end (recency), degraded in the middle. Beginning and end tokens draw more attention *regardless of relevance*. An instruction buried mid-context competes for attention it structurally does not get.
+- **Instruction density.** IFScale: with hundreds of simultaneous directives even frontier models degrade, to ~68% at 500. Earlier instructions are favored (primacy again), and errors shift toward *omission*: the rule is not broken, it is silently skipped. Reasoning models hold to roughly 100-250 instructions, a graded decay rather than a cliff. Density is cited here only as a second reason the head budget is tight. Counting the directives and gating on the count moved out to [`instruction-density-cap`](../instruction-density-cap/SKILL.md).
+- **The smart zone.** Dex Horthy's framing (verified attribution; the transcript mishears the name): recall degrades past ~40% context utilization, so ship the work inside the smart zone. Every token the standing prompt spends is smart-zone territory burned before the work begins.
 - **Bob's form.** (C3): *"the stuff at the very beginning and the stuff at the very end have more prominence than the stuff in the middle… the 50th and the 80th sentence in there, they're gone."* His architecture: *"trim that initial prompt down to its absolute minimum so that you can get as much of it as possible into its priority… and then do deterministic tools after the fact."*
 
 ## The budget: what earns the head
 
 The first N tokens carry exactly three things (the split in [`research/lost-in-the-middle.md`](../../research/lost-in-the-middle.md)):
 
-1. **Identity** — who the agent is in this repo, one or two lines.
-2. **Task frame** — what kind of work arrives here and what done means.
-3. **The 3-10 constraints that must shape generation** — style direction, architecture intent, the choices a post-hoc gate cannot recover because they steer *how the code is written*, not whether it passes.
+1. **Identity.** Who the agent is in this repo, one or two lines.
+2. **Task frame.** What kind of work arrives here, and what done means.
+3. **The 3-10 constraints that must shape generation.** Style direction, architecture intent, the choices a post-hoc gate cannot recover because they steer *how the code is written*, not whether it passes.
 
-Everything else is either a pointer to on-demand material or a deterministic gate that runs after generation. Checks compose without limit; standing instructions compete and dilute — so when the budget is tight, a rule leaves the prompt before a constraint does.
+Everything else is either a pointer to on-demand material or a deterministic gate that runs after generation. Checks compose without limit. Standing instructions compete and dilute, so when the budget is tight, a rule leaves the prompt before a constraint does.
 
-Default numbers: **100 lines / ~1500 approximate tokens** for the standing prompt, hard-directive head window of **40 lines**. The defaults are `advisory` — tune them per repo and per model class (IFScale says weaker models hold fewer simultaneous directives). The gate at whatever numbers you choose is mechanical.
+Default numbers: 100 lines and ~1500 approximate tokens for the standing prompt, with a hard-directive head window of 40 lines. Those defaults are `advisory`. Tune them per repo and per model class, since IFScale says weaker models hold fewer simultaneous directives. The gate at whatever numbers you choose is mechanical.
 
 ## The placement lint
 
-Positive target: **hard directives live in the head window**, where primacy lands on them. The lint flags any UPPERCASE directive token (MUST, ALWAYS, NEVER, CRITICAL, REQUIRED, IMPORTANT, SHALL) that appears past the head window — a rule the author considered binding, parked where the U-curve starves it. Each flag has three exits: front-load it into the head (spending one of the 3-10 slots), demote it to pointed-at reference, or hand it to [`steering-audit`](../steering-audit/SKILL.md) to become a deterministic gate.
+Positive target: hard directives live in the head window, where primacy lands on them. The lint flags any UPPERCASE directive token (MUST, ALWAYS, NEVER, CRITICAL, REQUIRED, IMPORTANT, SHALL) that appears past that window. Each flag is a rule the author treated as binding, parked where the U-curve starves it. A flag has three exits: front-load it into the head, spending one of the 3-10 slots; demote it to pointed-at reference; or hand it to [`steering-audit`](../steering-audit/SKILL.md) to become a deterministic gate.
 
 ## Run the gate — verify, fix, re-verify
 
@@ -39,26 +39,26 @@ python3 <this-island>/scripts/zone-lint.py CLAUDE.md
 python3 <this-island>/scripts/zone-lint.py AGENTS.md --max-lines 80 --max-tokens 1200 --head-lines 30
 ```
 
-Exit 0 iff all checks pass: Z1 file exists and is non-empty, Z2 line budget, Z3 approximate-token budget (ceil(chars/4), stated as an approximation), Z4 no hard directive past the head window (fenced code blocks skipped). On any red: trim, front-load, or relocate, then re-run. Loop until exit 0 — the gate consents, or the prompt is not done.
+Exit 0 iff all four checks pass: Z1 file exists and is non-empty, Z2 line budget, Z3 approximate-token budget (ceil(chars/4), stated as an approximation), Z4 no hard directive past the head window (fenced code blocks skipped). On any red: trim, front-load, or relocate, then re-run. Loop until exit 0. Either the gate consents, or the prompt is not done.
 
-Fix moves, in order of preference: **cut** (the line was sediment), **front-load** (it really is one of the 3-10), **point** (move detail behind a reference and keep one pointer line), **gate** (route it to `steering-audit` for prompt-vs-gate classification). How to word what survives — pointers, the two loads, pruning — is the neighboring island's craft, linked below.
+Fix moves, in order of preference: cut (the line was sediment), front-load (it really is one of the 3-10), point (move detail behind a reference and keep one pointer line), gate (route it to `steering-audit` for prompt-vs-gate classification). How to word what survives (pointers, the two loads, pruning) is the neighboring island's craft, linked below.
 
 ## Boundaries
 
-- **Document-level levers stay with [`writing-for-agents`](../../COMPANION.md#writing-for-agents)** — context pointers, the two loads, information hierarchy, pruning, failure modes. That island owns *how to write* what remains in the head. This island owns the **position/budget evidence and its enforcement**: how much may stand at the head, and where hard directives may sit.
-- **Rule classification is [`steering-audit`](../steering-audit/SKILL.md)'s seat** — deciding which rules are generative (stay in the prompt) versus checkable (move to a deterministic gate). This island measures size and position; it never classifies a rule's content.
+- **Document-level levers stay with [`writing-for-agents`](../../COMPANION.md#writing-for-agents).** Context pointers, the two loads, information hierarchy, pruning, failure modes. That island owns *how to write* what remains in the head. This island owns the *position and budget evidence and its enforcement*: how much may stand at the head, and where hard directives may sit.
+- **Rule classification is [`steering-audit`](../steering-audit/SKILL.md)'s seat.** It decides which rules are generative, so they stay in the prompt, and which are checkable, so they move to a deterministic gate. This island measures size and position. It never classifies a rule's content.
 
 ## Enforced vs advisory
 
-- `enforced` (mechanical, exists today): Z1-Z4 in [`scripts/zone-lint.py`](scripts/zone-lint.py) — non-empty file, line budget, approximate-token budget, and the head-window placement lint all fail closed with a non-zero exit.
-- `enforced` — **red/green proof, recomputable** ([`known-dirty-fixture`](../known-dirty-fixture/SKILL.md)'s ritual; run from this island dir). The shipped pair is one prompt twice: sediment pushed its binding rules below the fold.
+- `enforced` (mechanical, exists today): Z1-Z4 in [`scripts/zone-lint.py`](scripts/zone-lint.py). A non-empty file, the line budget, the approximate-token budget, and the head-window placement lint all fail closed with a non-zero exit.
+- `enforced` as a recomputable red/green proof ([`known-dirty-fixture`](../known-dirty-fixture/SKILL.md)'s ritual; run from this island dir). The shipped pair is one prompt twice: sediment pushed its binding rules below the fold.
 
 ```bash
 python3 scripts/zone-lint.py scripts/fixtures/dirty-claude.md --max-lines 16 --max-tokens 200 --head-lines 12  # RED: exit 1 (Z2 23 lines, Z3 ~288 tokens, Z4 MUST/ALWAYS at lines 21-22)
 python3 scripts/zone-lint.py scripts/fixtures/clean-claude.md --max-lines 16 --max-tokens 200 --head-lines 12  # GREEN: exit 0 (Z1-Z4 all OK)
 ```
 
-- `advisory`: the default numbers (100 lines / 1500 tokens / 40-line head window); which 3-10 constraints deserve the head slots; lowercase or paraphrased directives, which the UPPERCASE regex deliberately does not chase (a deterministic proxy, not a semantic judge); and actually wiring the script into a hook or CI — until a hook runs it, running it at all is on you.
+- `advisory`: the default numbers (100 lines / 1500 tokens / 40-line head window); which 3-10 constraints deserve the head slots; lowercase or paraphrased directives, which the UPPERCASE regex deliberately does not chase (a deterministic proxy, not a semantic judge); and wiring the script into a hook or CI. Until a hook runs it, running it at all is on you.
 
 ## Done when
 

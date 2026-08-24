@@ -1,3 +1,5 @@
 coverage floor	>= 80%	none?	2027-01-01
 mutation score	tbd?	teams delete surviving mutants	2027-01-01
 crap ceiling	###	authors split functions to game the count	2027-01-01
+lines of code per file	800 lines	-none-	2027-01-01
+review lag budget	30 days	none-	2027-01-01

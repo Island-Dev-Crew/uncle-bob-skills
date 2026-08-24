@@ -17,14 +17,19 @@ refused unconditionally, at every value of --min-chars including 0 - like an emp
 because that is what it is.
 
 The placeholder markers, in full. Bare (whole declaration, case-insensitive, surrounding
-punctuation ignored): todo, tbd, tba, fixme, xxx+, wip, n/a, placeholder, unknown,
+punctuation ignored): todo, tbd, tba, tbc, fixme, xxx+, wip, n/a, placeholder, unknown,
 undecided, undetermined, unspecified, undocumented, pending, later, none, null, nil, a
-run of ? or of -. Marker-plus-text (declaration OPENS with it): todo, tbd, tba, fixme,
-xxx+, wip; the spelled-out stubs "to be <determined|decided|...>" and
-"not [yet] <determined|decided|...>"; and placeholder / unknown / undecided /
-undetermined / unspecified / undocumented / pending / later / n/a ONLY when an end of
-phrase or a "not yet" tail follows (`unknown at this time`, `placeholder, fill this in
-later`).
+run of ? or of -. Marker-plus-text (declaration OPENS with it): todo, tbd, tba, tbc,
+fixme, xxx+, wip; the spelled-out stubs "to be <determined|decided|confirmed|...>" and
+"[still] not [yet] <determined|decided|confirmed|...>"; and placeholder / unknown /
+undecided / undetermined / unspecified / undocumented / pending / later / n/a ONLY when
+an end of phrase or a "not yet" tail follows (`unknown at this time`, `placeholder, fill
+this in later`). An optional leading "still" guards every branch, so `still not decided`
+and `Still to be determined by the architect` are both refused.
+Both rules are tried twice: once against the declaration as written, once against an
+NFKC-normalized copy with the separator punctuation . - _ · removed, so `T.B.D.`, `T-B-D`
+and fullwidth `ＴＯＤＯ` meet the same rules as `tbd` and `TODO`. The copy is tested, never
+substituted, so folding can only add refusals.
 A soft marker glued to more sentence is honest prose and passes: `Later-binding of the
 codec dispatch table` and `NAT traversal strategy used for peer connections` both pass.
 
@@ -61,6 +66,11 @@ and exits 2. Generate the module list with directories only.
 Known blind spot, deliberately not closed: manifest rows for modules that are NOT in the
 module list are ignored, so a stale declaration left behind by a deleted module passes.
 Captured in scripts/fixtures/stale-blind-spot/ as an exit-0 run.
+
+Second known limit: this detection is lexical and the vocabulary above is finite, so a
+stub phrased outside it passes. Captured in scripts/fixtures/soft-marker-limit/ as an
+exit-0 run. The respellings of markers the vocabulary DOES name are closed, and captured
+in scripts/fixtures/idiom-swap/ as an exit-1 run.
 """
 import argparse
 import os
@@ -78,11 +88,12 @@ from pathlib import Path
 # `placeholder`, `n/a`) DO open honest declarations - `Later-binding of the codec
 # dispatch table`, `N/A handling in the CSV importer` - so they fire only when an end
 # of phrase or a "not yet" tail follows.
-_STUB = r"(?:todo|tbd|tba|fixme|xxx+|wip)"
+_STUB = r"(?:todo|tbd|tba|tbc|fixme|xxx+|wip)s?"
 _SOFT = (r"(?:placeholder|unknown|undecided|undetermined|unspecified|undocumented"
          r"|pending|later|n/?a)")
 _UNSETTLED = (
     r"(?:determined|decided|defined|specified|documented|written|known|named|chosen"
+    r"|confirmed"
     r"|settled|picked|filled(?:\s+in)?|figured\s+out|sorted\s+out|worked\s+out"
     r"|nailed\s+down)"
 )
@@ -95,10 +106,10 @@ PLACEHOLDER = re.compile(
     re.IGNORECASE,
 )
 PLACEHOLDER_PREFIX = re.compile(
-    r"[\s\W_]*(?:"
+    r"[\s\W_]*(?:(?:still|yet)\s+)?(?:"
     + _STUB + r"\b"
-    + r"|to\s+be\s+" + _UNSETTLED + r"\b"
-    + r"|(?:still\s+)?not\s+(?:yet\s+)?" + _UNSETTLED + r"\b"
+    + r"|to\s*be\s*" + _UNSETTLED + r"\b"
+    + r"|not\s*(?:yet\s*)?" + _UNSETTLED + r"\b"
     + r"|" + _SOFT + r"\b" + _SOFT_TAIL
     + r")",
     re.IGNORECASE,
@@ -106,6 +117,12 @@ PLACEHOLDER_PREFIX = re.compile(
 # The four Hangul fillers are category Lo and satisfy str.isalnum() - and so satisfy \w -
 # while rendering as blank. A floor counted in \w alone is buyable with them.
 INVISIBLE_LETTERS = frozenset("\u115f\u1160\u3164\uffa0")
+# `tbd` is caught and `T.B.D.` was not; `TODO` was caught and fullwidth `ＴＯＤＯ` was not. Both
+# are one-token respellings of a marker this gate names, so the placeholder rules are
+# tried a second time against a folded copy: NFKC-normalized, with the separator
+# punctuation `. - _ ·` removed. The copy is TESTED, never substituted - the raw text is
+# still tried first, so this can only add refusals, never withdraw one.
+MARKER_FOLD = re.compile(r"[.\-_\u00b7\u2011\s]")
 DIGITS = re.compile(r"[0-9]+")
 
 
@@ -120,6 +137,14 @@ def substantive_chars(text):
         if unicodedata.category(ch)[0] in ("L", "N") and unicodedata.combining(ch) == 0:
             total += 1
     return total
+
+
+def marker_forms(text):
+    """The declaration as written, then its folded copy when that differs."""
+    yield text
+    folded = MARKER_FOLD.sub("", unicodedata.normalize("NFKC", text)).strip()
+    if folded and folded != text:
+        yield folded
 
 
 class GateError(Exception):
@@ -247,7 +272,8 @@ def main() -> int:
             # Unconditional: presence is checked at every value of --min-chars, including 0.
             violations.append(f"{raw}: declaration is empty")
             continue
-        if PLACEHOLDER.fullmatch(secret) or PLACEHOLDER_PREFIX.match(secret):
+        if any(PLACEHOLDER.fullmatch(form) or PLACEHOLDER_PREFIX.match(form)
+               for form in marker_forms(secret)):
             violations.append(f"{raw}: placeholder declaration {secret!r}")
             continue
         # Count SUBSTANTIVE characters, not raw length: a run of dots, of underscores, of

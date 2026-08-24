@@ -23,7 +23,7 @@ Auto-caption garbles are corrected once, in the ledger, and never re-introduced:
 - **doctrine** — `boredom-dividend` is the generative move the pack is built on (revive practices shelved only because they bored humans); `threshold-port` ports any human practice to an agent; `values-not-disciplines` discipline runs through every island's enforced-vs-advisory section.
 - **the relay** — `seat-relay` stages a story through five specialist seats; `specifier-seat` is its intake and `qa-script-seat` its exit; each seat is born, works, and dies with its context.
 - **the gates** — `crap-gate` (complexity × coverage), `mutant-hunt` (diff-scoped mutation) with `mutant-excusal-ledger` (the honest 100%), `dependency-fence` (layering direction), each proven red before trusted by `known-dirty-fixture`.
-- **context economy** — `steering-audit` sorts rules into prompt-worthy or gate-worthy; `priority-zone` budgets the head of the context; `trajectory-hygiene` decides when to continue and when to kill and respawn.
+- **context economy** — `steering-audit` sorts rules into prompt-worthy or gate-worthy; `priority-zone` budgets the head of the context and `instruction-density-cap` counts how many directives stand in it at once; `trajectory-hygiene` decides when to continue and when to kill and respawn.
 - **structure** — `arch-lens` renders the repo's own drill-down viewer; `structure-interrogation` asks the agents what they actually built and corrects it.
 - **planning** — `story-cadence` argues small batches over plan-maxing; `spec-mulch` deletes the spec on merge; `essence-pointer` specifies by exemplar rather than by download.
 - **the human** — `thrash-watch` recognises agent struggle; `margin-ledger` keeps the productivity margin honest.

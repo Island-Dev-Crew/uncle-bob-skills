@@ -115,7 +115,9 @@ def peelable(ch):
     unsure author fills a corruption clause rather than hostile input.
     """
     category = unicodedata.category(ch)
-    return category.startswith("P") or category in ("Sm", "Sk")
+    # Every punctuation AND every symbol category. Restricting symbols to Sm/Sk let
+    # Sc and So through, so `none©` and `tbd$` read as substance and passed REVIEWED.
+    return category.startswith("P") or category.startswith("S")
 
 
 def bare(text):

@@ -1,0 +1,19 @@
+{
+  "note": "Blank glyphs that draw nothing but sit outside categories C, M and Z: twenty Braille blanks (U+2800, category So) and twenty Hangul fillers (U+3164, category Lo) each survive whitespace collapse at length 20 and once bought a green. The named BLANKS set now takes them out, so both read 0 and go red - and one Braille blank can no longer top a real nineteen-character reason up to the floor, while an ordinary reason above it still passes.",
+  "budget": 4,
+  "modules": ["web", "billing", "domain", "platform"],
+  "baseline": [["web", "domain"]],
+  "current": [
+    ["web", "domain"],
+    ["web", "billing"],
+    ["web", "platform"],
+    ["billing", "domain"],
+    ["billing", "platform"]
+  ],
+  "justifications": [
+    {"edge": ["web", "billing"], "reason": "\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800"},
+    {"edge": ["web", "platform"], "reason": "\u3164\u3164\u3164\u3164\u3164\u3164\u3164\u3164\u3164\u3164\u3164\u3164\u3164\u3164\u3164\u3164\u3164\u3164\u3164\u3164"},
+    {"edge": ["billing", "domain"], "reason": "reads billing totals.\u2800"},
+    {"edge": ["billing", "platform"], "reason": "read only status api call to the ledger"}
+  ]
+}

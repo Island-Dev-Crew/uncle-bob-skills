@@ -24,12 +24,13 @@ character is '#', or an entry:
 Keywords are case-sensitive and must be uppercase; <id> is any run of
 non-space characters; <text> must be non-empty. Ids must be distinct after
 NFKC + casefold + NFC normalization, so 'A1' and 'a1' collide instead of both
-counting, and so do fullwidth 'Ａ１' and NFD 'café'. An id carrying an
-invisible character - Unicode category Cf, Cc, Zl or Zp, e.g. a zero-width
-space no normalization form removes - is refused (exit 2) rather than counted
-as a second id, because two ids that render identically are one id to every
-reader. Anything else on a line is refused by line number - this parser drops
-nothing silently.
+counting, and so do fullwidth 'Ａ１' and NFD 'café'. An id carrying a
+character that renders as nothing is refused (exit 2) rather than counted as a
+second id, because two ids that render identically are one id to every reader.
+Two sets are treated that way: Unicode categories Cf, Cc, Zl and Zp, and the
+fixed DEFAULT_IGNORABLE table below. Confusables are not covered - a Cyrillic
+'Р2' and a Latin 'R2' are two visible ids and both count. Anything else on a
+line is refused by line number - this parser drops nothing silently.
 
 Options:
     --min N     require at least N entries (default 1; N must be >= 1)
@@ -41,9 +42,9 @@ Exit codes:
        blank, comment, nor a well-formed entry
     2  usage error; unreadable/non-regular/oversize/undecodable file; a record
        carrying an invisible character (a control character anywhere, or a
-       format character inside an id) that would make the parser and the
-       reader see different text; or an internal failure - an error is never
-       a verdict
+       character that renders as nothing inside an id) that would make the
+       parser and the reader see different text; or any exception escaping
+       main(), which the tail maps to 2 - an error is never a verdict
 """
 import os
 import re
@@ -74,6 +75,23 @@ CONTROL_RE = re.compile(r"\r(?!\n)|[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u2028\u2
 # second id that renders exactly like the first.
 INVISIBLE_CATEGORIES = ("Cf", "Cc", "Zl", "Zp")
 
+# Default-ignorable code points that those categories miss. U+034F COMBINING
+# GRAPHEME JOINER and the variation selectors U+FE00-U+FE0F are Mn; the Hangul
+# fillers are Lo; U+FFF0-U+FFF8 and most of the tag block are unassigned. Each
+# renders as nothing, so 'R<CGJ>2' would otherwise count as a second id that
+# looks exactly like the first. This is a fixed table transcribed from Unicode
+# 15's Default_Ignorable_Code_Point property, not a live query - it does not
+# grow when Unicode does. Category Mn is deliberately NOT added wholesale: it
+# would refuse a legitimate NFD id like 'cafe' with a combining acute, which is
+# a worse trade than the forged ids it would catch.
+DEFAULT_IGNORABLE = frozenset(
+    [0x034F, 0x115F, 0x1160, 0x17B4, 0x17B5, 0x3164, 0xFFA0]
+    + list(range(0x180B, 0x1810))
+    + list(range(0xFE00, 0xFE10))
+    + list(range(0xFFF0, 0xFFF9))
+    + list(range(0xE0000, 0xE1000))
+)
+
 
 def norm_key(text):
     """The one documented key function for id joins: NFKC, casefold, then NFC.
@@ -89,9 +107,16 @@ def norm_key(text):
 
 
 def invisible_in(text):
-    """Return the first character of text in INVISIBLE_CATEGORIES, or None."""
+    """Return the first invisible character of text, or None.
+
+    Invisible means one of two things: a category in INVISIBLE_CATEGORIES, or a
+    code point listed in DEFAULT_IGNORABLE. Confusables are out of scope - a
+    Cyrillic 'R' is a visible character and this returns None for it.
+    """
     for ch in text:
         if unicodedata.category(ch) in INVISIBLE_CATEGORIES:
+            return ch
+        if ord(ch) in DEFAULT_IGNORABLE:
             return ch
     return None
 
@@ -268,8 +293,11 @@ def main():
 if __name__ == "__main__":
     try:
         _code = main()
-    except SystemExit as _exc:          # argparse usage errors and --help
-        _code = _exc.code if isinstance(_exc.code, int) else (0 if _exc.code is None else 1)
+    # SystemExit gets no clause of its own. No path in this script raises one:
+    # --help returns 0 out of main(), and parse_args() hand-rolls its errors
+    # instead of importing argparse. The clause below therefore sends a stray
+    # sys.exit() to 2 with the rest, so it can never arrive wearing a verdict's
+    # code.
     except BaseException as _exc:       # an exception is not a verdict
         try:
             print(f"error: internal failure: {type(_exc).__name__}: {_exc}", file=sys.stderr)

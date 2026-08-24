@@ -26,7 +26,9 @@ Quoting has one model, POSIX shell's, applied twice over the same rules:
 strip_comment finds the first unquoted WORD-INITIAL '#' honouring backslash
 escapes (so `'it'\''s # 1'` and `"it\"s # ok"` are arguments, and `fix#123` is
 not a comment), then shlex splits the surviving prefix, resolving quotes and
-escapes the way a shell does before any variable or glob expansion. One key
+escapes the way a shell does before any variable or glob expansion. When shlex
+refuses the command outright, a hand fallback resolves the same escapes and
+quote pairs, so broken quoting cannot smuggle a deny-listed flag past the scan. One key
 function normalises every token exactly once (_nfc): NFC, plus
 the U+FEFF byte-order mark an editor may leave behind. So `"--whole-repo"`,
 `--whole"-"repo`, an NFD-pasted flag and a BOM-prefixed one all join the same
@@ -101,10 +103,15 @@ def _say(message: str) -> None:
 
 
 def _peel(token: str) -> str:
-    """Strip surrounding quote pairs — the fallback for unbalanced quoting."""
-    while len(token) >= 2 and token[0] == token[-1] and token[0] in "\"'":
-        token = token[1:-1]
-    return token
+    """Drop quote characters the way a shell drops them once quoting is resolved.
+
+    Only the fallback calls this, and the fallback runs precisely when the
+    quoting is already broken, so which quote marks were acting as quotes is
+    unknowable. Dropping all of them fails closed: `''--whole-repo` and
+    `--whole-repo''` reduce to the flag bash really passes, so a deny-listed
+    head cannot hide inside an empty quote pair.
+    """
+    return token.replace('"', "").replace("'", "")
 
 
 def parse_rows(src):
@@ -165,12 +172,38 @@ def strip_comment(cmd: str) -> str:
     return cmd
 
 
+def _unescape(token: str) -> str:
+    """Resolve backslash escapes left in a raw split, the way a shell resolves them.
+
+    shlex already does this on the happy path. The fallback below splits on
+    whitespace instead, so without this `--whole\\-repo` would keep its
+    backslash and miss its DENY_SCOPE head, and a trailing lone backslash — the
+    one shlex refuses the command over — would stick to the flag it follows.
+    """
+    out, i = [], 0
+    while i < len(token):
+        if token[i] == "\\" and i + 1 < len(token):
+            out.append(token[i + 1])                     # escaped char, backslash consumed
+            i += 2
+        else:
+            if token[i] != "\\":                         # trailing lone backslash: dropped
+                out.append(token[i])
+            i += 1
+    return "".join(out)
+
+
 def tokenize(cmd: str) -> list:
-    """Split a command the way a shell would, keying every token through _nfc."""
+    """Split a command the way a shell would, keying every token through _nfc.
+
+    shlex resolves quotes and escapes on the happy path. When it refuses the
+    command (unbalanced quoting, a trailing lone backslash) the fallback splits
+    on whitespace and resolves the same escapes and quote pairs by hand, so a
+    deny-listed flag cannot ride a broken quoting into a green run.
+    """
     try:
         return [_nfc(t) for t in shlex.split(cmd)]
     except ValueError:                                   # unbalanced quoting
-        return [_peel(_nfc(t)) for t in cmd.split()]
+        return [_peel(_unescape(_nfc(t))) for t in cmd.split()]
 
 
 def _segments(text: str) -> list:
@@ -199,7 +232,12 @@ def tool_named(tool: str, canon: str, tokens: list) -> bool:
 
 
 def scope_status(scope: str, tokens: list) -> str:
-    """present | disabled | absent — exact token match, whole command scanned.
+    """present | disabled | absent — matched on the flag head, whole command scanned.
+
+    A bare declaration is answered by any token sharing its head, so `--in-diff`
+    is satisfied by `--in-diff=story.diff`. A declaration that carries its own
+    value must match the whole token: `--in-diff=story.diff` is NOT satisfied by
+    `--in-diff=other.diff`. Neither spelling can be satisfied by a substring.
 
     Every token sharing the declared flag's head is inspected before answering,
     however the scope column is spelled, and negation wins wherever it sits: a
@@ -279,7 +317,7 @@ def judge(row):
         if status == "disabled":
             reasons.append(f"declared scope '{scope}' is negated in the command")
         elif status == "absent":
-            reasons.append(f"declared scope '{scope}' is absent from the command (comments stripped, match is token-exact)")
+            reasons.append(f"declared scope '{scope}' is absent from the command (comments stripped; bare scope matches the flag head, valued scope the whole token)")
     for head in denied_in_command(tokens, declared_head):
         reasons.append(f"command runs whole-repo flag '{head}' — forbidden inside the loop")
     return reasons

@@ -1,0 +1,6 @@
+src/spool	Still to be determined by the architect
+src/store	To be confirmed with the storage team
+src/wire	T.B.D. — the spool on-disk layout
+src/retry	T-B-D the spool on-disk layout choice
+src/codec	TBC — the spool on-disk layout choice
+src/img	ＴＯＤＯ: decide the on-disk layout

@@ -5,15 +5,15 @@ description: Acceptance ritual for any gate, checker, linter rule, or validator 
 
 # Known-Dirty Fixture: no gate is trusted until it has failed
 
-The repo law demands evidence from a check that could have failed ([`CONTEXT.md`](../../CONTEXT.md)). This island turns that law on the checkers themselves. A gate is a loop the agent cannot exit until the tool consents — *"you must change the code until this tool says that it's okay"* (C4) — and that loop is real only if the tool is able to say no. A gate that has never gone red is an unfalsified claim wearing a uniform: it may be a checker, or it may be `exit 0` with a logo.
+The repo law demands evidence from a check that could have failed ([`CONTEXT.md`](../../CONTEXT.md)). This island turns that law on the checkers themselves. A gate is a loop the agent cannot exit until the tool consents: *"you must change the code until this tool says that it's okay"* (C4). The loop is only real if the tool can say no. A gate that has never gone red is an unfalsified claim wearing a uniform. It may be a checker. It may equally be `exit 0` with a logo.
 
-The pressure is sharpest for **generated** gates. The pack's whole method is *"point your agents at them… and then build one for you"* (C23) — but the moment an agent builds you a checker, that checker is unverified code like everything else the agent writes. It earns guard duty the same way any claim earns authority: by surviving a check that could have failed.
+The pressure is sharpest on *generated* gates. The pack's whole method is *"point your agents at them… and then build one for you"* (C23). But the moment an agent builds you a checker, that checker is unverified code like everything else the agent writes. It earns guard duty the same way any claim earns authority: by surviving a check that could have failed.
 
 ## The ritual
 
-1. **Build the dirty fixture alongside the gate.** A minimal artifact embodying exactly the violation class the gate exists to catch — wrong name, missing field, the smell, the forbidden dependency. Write it from the *rule*, before or while the gate is written, so the fixture encodes what a violation is independently of how the gate happens to detect one.
-2. **RED.** Run the gate on the dirty fixture. Require failure (non-zero exit). If the gate passes it, the gate guards nothing — fix the gate; the fixture stands.
-3. **GREEN.** Run the gate on the known-good fixture. Require a pass (exit 0). A gate rejecting known-good is a false-positive machine that trains everyone to ignore it.
+1. **Build the dirty fixture alongside the gate.** Write a minimal artifact that embodies exactly the violation class the gate exists to catch: the wrong name, the missing field, the smell, the forbidden dependency. Write it from the *rule*, before or while the gate is written. Then the fixture encodes what a violation is, independently of how the gate happens to detect one.
+2. **RED.** Run the gate on the dirty fixture. Require failure (non-zero exit). If the gate passes it, the gate guards nothing. Fix the gate; the fixture stands.
+3. **GREEN.** Run the gate on the known-good fixture. Require a pass (exit 0). A gate that rejects known-good is a false-positive machine, and it trains everyone to ignore it.
 4. **Keep both fixtures in the repo, beside the gate.** They are the gate's evidence and its regression bed; deleting them returns the gate to unverified.
 5. **Re-run the pair on every gate change.** A modified gate is a new gate. When a new violation class appears, extend the dirty fixture first (watch it go red), then teach the gate.
 
@@ -21,12 +21,12 @@ Verify-fix-reverify loop: red check fails → fix the gate → re-run; green che
 
 ## The pair is necessary, not sufficient
 
-A red/green pair proves the gate *can* say no. It does not prove the gate cannot be *fooled*, because the fixture only ever tries the input its author already imagined. This pack learned that the expensive way: gates that separated their own fixtures cleanly were still walked past by inputs those fixtures never tried — a binding check satisfied by a string sitting inside an `echo`, a regression that vanished because its path was spelled with a capital letter, a crash that exited with the code reserved for a real verdict.
+A red/green pair proves the gate *can* say no. It does not prove the gate cannot be *fooled*, because the fixture only ever tries the input its author already imagined. This pack learned that the expensive way. Gates that separated their own fixtures cleanly were still walked past by inputs those fixtures never tried: a binding check satisfied by a string sitting inside an `echo`; a regression that vanished because its path was spelled with a capital letter; a crash that exited with the code reserved for a real verdict.
 
-So after the pair passes, spend a few minutes trying to break your own gate. These six classes account for every bypass found while building this pack, and they recur across languages and gate kinds:
+So after the pair passes, spend a few minutes trying to break your own gate. These six classes account for every bypass found while building this pack, and they recur across languages and gate kinds.
 
-1. **An error path wearing a verdict's exit code.** A crash, unreadable file, decode error, closed stdin, or overflow exits `1` — the code that means "real violation" — so a caller records a verdict the gate never computed. Give every error path its own code (`2` for usage/IO/malformed) and prove it with a fixture.
-2. **Key normalization.** The same entity under a different spelling misses its join and falls to whichever branch is lenient: letter case, Unicode NFC vs NFD (routine on macOS), `./` and `../` and `//`, absolute vs relative. Normalize through one documented key function, or refuse the variant outright — never silently reroute it.
+1. **An error path wearing a verdict's exit code.** A crash, unreadable file, decode error, closed stdin, or overflow exits `1`. That is the code reserved for "real violation", so the caller records a verdict the gate never computed. Give every error path its own code (`2` for usage/IO/malformed) and prove it with a fixture.
+2. **Key normalization.** The same entity under a different spelling misses its join and falls to whichever branch is lenient: letter case, Unicode NFC vs NFD (routine on macOS), `./` and `../` and `//`, absolute vs relative. Normalize through one documented key function, or refuse the variant outright. Never silently reroute it.
 3. **Silent row drops.** A comment rule (`startswith("#")`) applied to a field whose legitimate value can begin with that character deletes data without a word. A dropped row is a false green.
 4. **Unanchored matching.** A required marker satisfied by a superstring, by text inside a comment or a string literal, or by a one-token idiom swap. Anchor patterns end to end, match whole tokens, and escape anything interpolated into a regex.
 5. **Prose broader than the check.** The body says "every", "always", "refuses", while the code handles a narrower case. Widen the code or narrow the sentence; a claim the implementation cannot back is laundering under the first law.
@@ -50,7 +50,7 @@ The fixture path is appended as the gate command's final argument.
 
 - `enforced` — the red/green acceptance itself: `prove-gate.sh` exits non-zero unless red-on-bad AND green-on-good both hold (syntax-checked with `bash -n`, run live below).
 - `enforced` — this island's own structure: the pack validator `../../scripts/validate-island.py` checks F1–F11 mechanically, exit-code gated.
-- `advisory` — fixture *quality* (whether the dirty fixture truly embodies the violation class), writing the fixture from the rule rather than from the gate's behavior, and re-running the pair on every gate change: no hook wires the pair into CI today, so steps 1 and 5 rest on discipline until a later wave installs one.
+- `advisory` — fixture *quality*: whether the dirty fixture truly embodies the violation class, whether it was written from the rule rather than from the gate's behavior, and whether the pair is re-run on every gate change. No hook wires the pair into CI today, so steps 1 and 5 rest on discipline until a later wave installs one.
 
 ### This gate's own red/green proof
 
@@ -61,18 +61,18 @@ The fixture path is appended as the gate command's final argument.
 ./scripts/prove-gate.sh scripts/fixtures/sample-bad.txt scripts/fixtures/sample-good.txt -- ./scripts/fixtures/clean-gate.sh   # exit 0
 ```
 
-`dirty-gate.sh` is a rubber stamp (`exit 0` always) and is rejected: "FAIL red: … it guards nothing". `clean-gate.sh` is a real checker (no `TODO` may remain) and is accepted: "ACCEPTED: red/green proven". Both exit codes were observed in this island's hardening run; recompute them instead of trusting this line.
+`dirty-gate.sh` is a rubber stamp (`exit 0` always), so it is rejected: "FAIL red: … it guards nothing". `clean-gate.sh` is a real checker (no `TODO` may remain), so it is accepted: "ACCEPTED: red/green proven". Both exit codes were observed in this island's hardening run. Recompute them instead of trusting this line.
 
 ## Construction proof
 
 This island demonstrates its own discipline twice, both runs captured in its build session:
 
-- The pack's `validate-island.py` was accepted only after failing **6 checks red** (F4–F9, exit 1) on [`../../scripts/fixtures/bad-island`](../../scripts/fixtures/bad-island/SKILL.md) and passing **green** (12/12, exit 0) on [`../../scripts/fixtures/good-island`](../../scripts/fixtures/good-island/SKILL.md). Recompute it with the command block above.
+- The pack's `validate-island.py` was accepted only after failing 6 checks red (F4–F9, exit 1) on [`../../scripts/fixtures/bad-island`](../../scripts/fixtures/bad-island/SKILL.md) and passing green (12/12, exit 0) on [`../../scripts/fixtures/good-island`](../../scripts/fixtures/good-island/SKILL.md). Recompute it with the command block above.
 - `prove-gate.sh` is itself a gate, so it took the ritual too: run against a gate that cannot fail (`true`), it went red (exit 1, "guards nothing"); run against `validate-island.py` on the pack fixture pair, it went green (exit 0, ACCEPTED).
 
 ## Boundaries
 
-- This island owns gate **acceptance** only — the red/green ritual by which any checker earns the right to guard. **What** a gate checks (a CRAP threshold, a dependency fence, mutation kills) is each gate island's own concern; this island never opines on thresholds or rules.
+- This island owns gate *acceptance* only: the red/green ritual by which any checker earns the right to guard. *What* a gate checks (a CRAP threshold, a dependency fence, mutation kills) is each gate island's own concern; this island never opines on thresholds or rules.
 - Ongoing empirical improvement of a skill is [`skill-tune`](../../COMPANION.md#skill-tune)'s seat. Acceptance happens once per gate version; tuning is a measured loop that starts after acceptance.
 
 ## Done when

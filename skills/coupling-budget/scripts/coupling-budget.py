@@ -14,10 +14,11 @@ Verdicts:
     OVER-BUDGET   count(added) is greater than the declared budget
     UNJUSTIFIED   an added edge with no justification entry
     THIN-REASON   a justification whose reason carries fewer VISIBLE characters
-                  than --min-reason. Visible means: NFC-normalised, then every
-                  codepoint whose Unicode category is control/format (C),
-                  combining mark (M) or separator (Z) is not counted, so twenty
-                  zero-width joiners cannot buy a green.
+                  than --min-reason. Visible means: NFC-normalised, then drop
+                  every codepoint whose Unicode category is control/format (C),
+                  combining mark (M) or separator (Z), and drop the named blank
+                  glyphs listed in BLANKS. Twenty zero-width joiners cannot buy
+                  a green, and neither can twenty Braille blanks.
 
 Exit codes:
     0  no violations. (-h/--help also exits 0, printing usage without judging.)
@@ -32,6 +33,12 @@ import unicodedata
 
 TOP_KEYS = {"note", "budget", "modules", "baseline", "current", "justifications"}
 JUST_KEYS = {"edge", "reason"}
+
+# Blank glyphs that draw nothing but sit OUTSIDE categories C, M and Z, so the category
+# filter alone would count each of them as one visible character: the Hangul fillers
+# (Lo), the Braille blank (So), the Khmer inherent vowels and the Mongolian vowel
+# separator. Named one at a time because no Unicode category collects them.
+BLANKS = frozenset("\u115f\u1160\u3164\uffa0\u2800\u17b4\u17b5\u180e")
 
 
 class SpecError(Exception):
@@ -54,19 +61,22 @@ def collapse(text):
 
 
 def visible_len(text):
-    """The one reason basis: NFC, then count only codepoints that render ink.
+    """The one reason basis: NFC, then count the codepoints left after two subtractions.
 
-    Excluded are the three Unicode category groups that occupy no visible width of
-    their own - C (control and format, which is where a zero-width joiner lives),
-    M (combining marks) and Z (spaces and separators). Counting raw codepoints let
-    twenty zero-width joiners buy a green; this counts what a reviewer would see.
-    The printed count and the THIN-REASON message both use this number, so the
-    verdict and the figure it prints share one basis.
+    First the three Unicode category groups that occupy no width of their own come out
+    - C (control and format, where a zero-width joiner lives), M (combining marks) and
+    Z (spaces and separators). Then the BLANKS set comes out, because a few blank
+    glyphs sit outside all three: U+2800 BRAILLE PATTERN BLANK is category So and
+    U+3164 HANGUL FILLER is Lo, and raw codepoint counting once let either of them buy
+    a green. BLANKS is a named list, not a rendering test - a codepoint that draws
+    nothing and is not on the list still counts 1. The printed count and the
+    THIN-REASON message both use this number, so the verdict and the figure it prints
+    share one basis.
     """
     return sum(
         1
         for char in unicodedata.normalize("NFC", text)
-        if unicodedata.category(char)[0] not in "CMZ"
+        if unicodedata.category(char)[0] not in "CMZ" and char not in BLANKS
     )
 
 

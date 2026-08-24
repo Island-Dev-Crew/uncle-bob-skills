@@ -5,11 +5,16 @@ Usage:
   python3 density-cap.py FILE [--cap N] [--profile NAME] [--show]
 
 Counting rule (deterministic; at most ONE unit per line):
-  D-a  a markdown list item outside a fenced code block: a bullet marker
-       ("-", "*", "+", and the non-markdown glyphs bullet/triangle/square/circle/
-       middot/en-dash/em-dash/arrow/guillemet) or an ordinal ("1.", "1)", "R1.",
-       "a)", and a short word label in front of one: "Rule 1.", "Step 3)"), followed
-       by whitespace.
+  D-a  a markdown list item outside a fenced code block: a bullet marker ("-", "*",
+       "+", or any character Unicode classes as punctuation or a symbol - Pd, Po,
+       Sm, Sk, So - which covers the bullet/triangle/square/circle/middot/dash/
+       arrow/guillemet glyphs and emoji without enumerating them; "#", "|", ">"
+       and a backtick are handled by other branches) or an ordinal ("1.", "1)",
+       "R1.", "a)", and a short word label in front of one: "Rule 1.", "Step 3)"),
+       followed by whitespace. A marker OUTSIDE those classes is not counted - a
+       letter bullet ("o item") or a circled digit, which NFKC folds to a bare
+       digit - a documented under-count, evidenced by
+       scripts/fixtures/letter-bullet-blind-spot.md.
   D-b  a markdown table row outside a fenced code block (a line whose first non-space
        character is "|"), excluding the single |---|:--:| delimiter row that immediately
        follows a table's header - a rules table spends one row per rule, so each row is
@@ -72,6 +77,7 @@ Exit codes (the complete set this script can emit):
      output stream that could not be flushed, or any internal failure
 """
 import argparse
+import bisect
 import os
 import re
 import sys
@@ -87,9 +93,7 @@ CAP_MAX = 100000
 # define but rules files use anyway (bullet, triangle, squares, circles, middot,
 # en/em dash, arrow, guillemet); the ordinal branch accepts a short alphabetic label
 # ("R1.", "A2)"), an optional short word label before it ("Rule 1.", "Step 3)") and a
-# bare letter ("a)"), not only bare digits. Over-counting an em-dash aside or a
-# "Section 3." cross-reference is the safe direction for a gate whose failure mode is a
-# false green.
+# bare letter ("a)"), not only bare digits.
 # Markers are recognised by Unicode PROPERTY, not by an enumeration. A fixed list of
 # glyphs silently missed every marker outside it: a bolded "**1.**", an emoji bullet,
 # and U+25A0 (Google Docs' level-3 bullet, while its level-1 and level-2 glyphs were on
@@ -97,7 +101,11 @@ CAP_MAX = 100000
 # list consented against any cap. Total silence is the worst false-green shape here.
 # Over-counting an em-dash aside or a "Section 3." cross-reference is the safe
 # direction for a gate whose failure mode is a false green.
-MARKER_CATEGORIES = frozenset(("Pd", "Po", "Sm", "Sk", "So"))
+# ALL punctuation and ALL symbol categories, not a chosen five. The narrower set missed
+# Pf/Pi — the guillemets `»«` — so a guillemet-bulleted rules file counted zero and
+# consented at any cap, the exact false green this island exists to prevent.
+MARKER_CATEGORIES = frozenset(("Pc", "Pd", "Ps", "Pe", "Pi", "Pf", "Po",
+                               "Sm", "Sc", "Sk", "So"))
 # Handled by other branches, so never treated as a list marker.
 MARKER_EXCLUDED = frozenset("#|>`")
 # The ordinal branch accepts a short alphabetic label ("R1.", "A2)"), an optional short
@@ -167,9 +175,32 @@ FENCE_RE = re.compile(r"^[ \t]{0,3}(`{3,}|~{3,})(.*)$")
 
 def fenced_indices(lines):
     """Line indices inside a CLOSED fenced code block. An unterminated opener is
-    discarded, so its body falls back to ordinary counted text (fail closed)."""
+    discarded, so its body falls back to ordinary counted text (fail closed).
+
+    Only a bare fence line (no info string) can close a fence, so the closers are
+    indexed once, per fence character, with a suffix maximum of their widths. An
+    opener with no closer after it then costs one lookup instead of a rescan of the
+    whole tail: a file of 20,000 unclosable openers ("```js") took 34s before this
+    index and takes well under a second with it. The verdict is unchanged - the
+    closer chosen is still the first line after the opener with the same fence
+    character, a width at least the opener's, and an empty info string."""
+    n = len(lines)
+    idx_by_char, width_by_char = {}, {}
+    for idx in range(n):
+        m = FENCE_RE.match(lines[idx])
+        if m and not m.group(2).strip():
+            char = m.group(1)[0]
+            idx_by_char.setdefault(char, []).append(idx)
+            width_by_char.setdefault(char, []).append(len(m.group(1)))
+    widest_from = {}
+    for char, widths in width_by_char.items():
+        suffix = [0] * (len(widths) + 1)
+        for k in range(len(widths) - 1, -1, -1):
+            suffix[k] = max(suffix[k + 1], widths[k])
+        widest_from[char] = suffix
+
     inside = set()
-    i, n = 0, len(lines)
+    i = 0
     while i < n:
         m = FENCE_RE.match(lines[i])
         if not m:
@@ -177,14 +208,15 @@ def fenced_indices(lines):
             continue
         marker = m.group(1)
         char, width = marker[0], len(marker)
+        idxs = idx_by_char.get(char, ())
         close = None
-        j = i + 1
-        while j < n:
-            m2 = FENCE_RE.match(lines[j])
-            if m2 and m2.group(1)[0] == char and len(m2.group(1)) >= width and not m2.group(2).strip():
-                close = j
-                break
-            j += 1
+        if idxs:
+            k = bisect.bisect_right(idxs, i)
+            if widest_from[char][k] >= width:      # some closer downstream is wide enough
+                widths = width_by_char[char]
+                while widths[k] < width:
+                    k += 1
+                close = idxs[k]
         if close is None:
             i += 1  # unterminated: not a fence at all
             continue
