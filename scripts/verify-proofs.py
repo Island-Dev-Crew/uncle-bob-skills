@@ -16,6 +16,14 @@ Recognised annotation shapes (the ones the islands actually use):
 Exit 0 iff every extracted command reproduced its documented code. Commands that carry
 no exit annotation are counted and reported, never guessed at.
 
+TRUST BOUNDARY, stated rather than implied. This tool RUNS commands taken out of the
+repository it is checking. That is inherent to re-running a documented proof, not an
+oversight — a proof block that is never executed is a claim again. So it is only safe to
+point at a repository you trust: a fork, a pull request, or an untrusted clone can put a
+command in a fenced block and this tool will run it. Two mitigations, neither a substitute
+for that sentence: the leading token must be python3/bash/./, and a command carrying a
+network, privilege-escalation, or device-destructive primitive is REFUSED rather than run.
+
 KNOWN LIMITS, stated rather than discovered. This runs each annotated command with the
 variable assignments seen earlier in its block, from the island's directory. It does NOT
 replay other setup, so three shapes report a mismatch that is this tool's fault and not
@@ -31,6 +39,15 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+
+# Refused outright rather than executed. Not a sandbox — a `python3 -c` can still do
+# anything — but it closes the shapes that exfiltrate or escalate, which are the ones a
+# hostile proof block would reach for first. Measured against this repo before it shipped:
+# zero of the 382 documented commands match, so it costs no false red today.
+FORBIDDEN = re.compile(
+    r"(?<![\w./-])(?:curl|wget|nc|ncat|netcat|telnet|ssh|scp|sftp|rsync"
+    r"|sudo|doas|chown|chgrp|shutdown|reboot|mkfs|dd)(?![\w./-])"
+)
 
 # `# exit N`, `# -> EXIT=N`, `# → EXIT=N`, tolerating surrounding prose in the comment.
 ANNOT = re.compile(r"#.*?(?:exit\s*=?\s*|EXIT=)(\d+)", re.IGNORECASE)
@@ -105,7 +122,7 @@ def commands(block):
 
 def main() -> int:
     args = sys.argv[1:] or sorted(str(p) for p in Path("skills").glob("*/"))
-    total = ran = mismatched = unannotated = 0
+    total = ran = mismatched = unannotated = refused = 0
     for arg in args:
         d = Path(arg)
         skill = d / "SKILL.md"
@@ -119,8 +136,14 @@ def main() -> int:
                 if expected is None:
                     unannotated += 1
                     continue
-                ran += 1
                 script = "; ".join(setup + [cmd]) if setup else cmd
+                bad = FORBIDDEN.search(script)
+                if bad:
+                    refused += 1
+                    print(f"REFUSED {d.name}: {bad.group(0)!r} is not run by this tool")
+                    print(f"         {cmd}")
+                    continue
+                ran += 1
                 try:
                     p = subprocess.run(script, shell=True, cwd=d, capture_output=True, timeout=120)
                     actual = p.returncode
@@ -131,8 +154,8 @@ def main() -> int:
                     print(f"MISMATCH {d.name}: expected {expected}, got {actual}")
                     print(f"         {cmd}")
     print(f"\n{total} documented commands, {ran} with an exit annotation, "
-          f"{unannotated} unannotated, {mismatched} mismatched")
-    return 1 if mismatched else 0
+          f"{unannotated} unannotated, {refused} refused, {mismatched} mismatched")
+    return 1 if (mismatched or refused) else 0
 
 
 if __name__ == "__main__":

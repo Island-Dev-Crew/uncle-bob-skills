@@ -46,6 +46,7 @@ This pack was built under the IDC Forge methodology and deliberately refuses con
 ```bash
 python3 scripts/validate-island.py skills/*/     # 600 checks across 50 islands
 python3 scripts/verify-proofs.py                 # re-runs every command the islands document
+python3 scripts/lane-check.py                    # every shipped script stays in its lane
 ```
 
 Twelve mechanical checks per island. The validator itself is proven the pack's way: red on `scripts/fixtures/bad-island`, green on `good-island`. The second tool re-runs each island's own proof block and compares exit codes, because a documented run that no longer reproduces is a claim again.
