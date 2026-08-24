@@ -46,6 +46,12 @@ def load_grammar():
     then this harness would quietly probe a different set than the one the pack reports.
     """
     here = Path(__file__).resolve().parent / "verify-proofs.py"
+    # A checker must not modify the tree it is checking. Importing by path compiles the
+    # module and drops `scripts/__pycache__/verify-proofs.*.pyc` into the repo — the same
+    # class of defect this pack caught in v1.0, when a syntax check wrote a byte-cache into
+    # every island it validated. It is gitignored and would never ship, which is exactly why
+    # it would have gone unnoticed.
+    sys.dont_write_bytecode = True
     spec = importlib.util.spec_from_file_location("verify_proofs", here)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)

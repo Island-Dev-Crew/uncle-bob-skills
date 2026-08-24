@@ -78,6 +78,18 @@ Phase 3 shipped [`scripts/lane-check.py`](scripts/lane-check.py): four lanes ove
 
 **The fixes land in `21d4b52` and `9942bad`, and the head has moved past `0eb75eb` on purpose.** (This paragraph deliberately names commits rather than "the current head": the sentence would be false the moment this file was committed, which is the same self-invalidating claim the pack refuses elsewhere.) Codex's verdict bound `0eb75eb` and is void by design — a review that survived its own tree changing would not be a review. The next gate is a re-review at a newly frozen head, by the same independent seat, with a receipt bound to that SHA. Nothing here is a substitute for it: every number above was produced by the builder, which is precisely the seat that cannot grant acceptance.
 
+**Codex's own reproductions, re-run against the fixed tree.** Not the closure agents' reports — the exact inputs from the register, judged against each finding's own *Expected* field:
+
+| Finding | Codex's input | Result |
+|---|---|---|
+| UB-GATE-001 | `printf '#123\t10\t1\nhealthy\t1\t4\n' \| margin-ledger.py --floor 1` | **CLOSED** — `LOST 0.10x`, aggregate `0.45x LOST`, exit 1, identical to Codex's own `#`-less control |
+| UB-AUTH-001 | root symlink to an outside file *and* an outside directory, both scanners | **CLOSED** — each refuses by name at exit 2; `--allow-root` still authorizes deliberately |
+| UB-INSTR-002 | the `look`/`show` trigger followed literally | **CLOSED** — `check-destination.py` refuses a look aimed into the target tree, refuses an occupied destination without `--overwrite`, and resolves symlinks first, so a link pointing back into the repo cannot launder the lane |
+| UB-INSTR-003 | an `npx stryker run --incremental` row into `toolchain-check.py` | **CLOSED** — refused by name; `npx --no-install`, which cannot fetch, is accepted; the clean fixture now declares the lockfile-backed local binary and `remote-runner.tsv` captures the breach |
+| UB-INSTR-001 | the `audit my CLAUDE.md` trigger followed literally | **DISCLOSED-RESIDUAL** — REPORT is the default, steps 3–4 are REPAIR-only, and `readonly-probe.py` proves the toolkit mutates nothing (mutation-tested: a write injected into `inventory.py` takes it red at exit 1). What no script here can check is an agent that decides to `cp` or delete on an observational ask; the island says so and names the permission boundary that would close it |
+
+Two of those five were verified by mutating the gate until it went red, because a gate that has never been watched failing is not evidence. Two mutants of my own were **ineffective and proved nothing** before the third worked — one appended after `sys.exit()` so it never executed, one changed a tool's output while the exit code was computed elsewhere. Both are recorded because a mutation test that cannot fail is the same hollow gate this pack refuses everywhere else.
+
 Four gates green at this head: **600 validator checks / 50 islands · 351 proofs verified + 19 unsequenced, 0 mismatched · 44 scripts, 0 lane breaches · 702 closed-stream probes, 0 leaks · 765 committed relative links, 0 dead.**
 
 **Phase 5 — proportionate release integrity.** Signed tags, a published digest of the release tree, and a `verify` command a user can run before copying a skill into their agent. The company site as first-contact witness publishing the exact release identity and digest — GitHub canonical, the site never a second mutable tree. This is the one piece of the Forge's first-contact design that transfers, because it is cheap and it is the only defence against "did I get what was published."

@@ -12,6 +12,10 @@ The grammar is now one definition in the docstring — candidate, proof, allowli
 
 Two more, fixed by hand earlier in the same pass: exit 3 when nothing was executed at all (a verifier that ran nothing has verified nothing), and `margin-ledger` no longer reading a `#123` story id as a comment.
 
+### Fixed — the new harness modified the tree it was checking
+
+`closed-stream-check.py` loads `verify-proofs.py` by path to reuse its grammar, and that import compiled a byte-cache into `scripts/__pycache__/`. Gitignored, never shipped, and therefore exactly the kind of thing that goes unnoticed — it is also the same defect this pack caught in v1.0, when a syntax check wrote `__pycache__` into every island it validated. The loader now sets `sys.dont_write_bytecode`, and a full run leaves the tree byte-identical.
+
 ### Fixed — two more error paths wearing a verdict's exit code
 
 The pack names this as its first bypass class, and two of its own tools still had it. `check-graph.py` answered an unreadable or malformed graph file with **exit 1** — the code that means "this architecture has a violation" — so running it from the wrong directory handed a fix-until-green agent a red architecture and it would start moving modules to satisfy a gate that had read nothing. `validate-island.py` recorded a path that is not a directory as a *failed F1 check*, making "I could not find this" indistinguishable from "this island is malformed". Both now exit 2, the code each already used for being called wrong. Neither change touches a documented verdict: the dirty and clean fixtures still exit 1 and 0, and `prove-gate.sh` still accepts the validator.
