@@ -16,6 +16,14 @@ This island owns the mid-session lane only: the kill-vs-continue call while a co
 - The context *ending* belongs to [`handoff`](../../COMPANION.md#handoff) — the compaction template, and the wake protocol a fresh agent runs. Handoff is user-invoked (`disable-model-invocation`), so no agent can fire it. When this island's verdict is *kill*, tell the human to run `handoff` for the exit ritual.
 - **Doc-level economy** belongs to [`writing-for-agents`](../../COMPANION.md#writing-for-agents): what earns a place in an agent doc, pointers, pruning, the two loads. This island governs the live window, not the documents loaded into it.
 
+## Report or repair: which one was asked for
+
+Read the invocation before running the loop. The two shapes end in different deliverables, and the wrong one destroys state nobody asked you to touch.
+
+- **Audit-shaped** — "should I kill this context or keep going", "does this session feel poisoned", any request for a read on the trajectory. Check the three triggers, report *continue* or *kill* with the trigger named, and list what would have to cross the survivor line. **That verdict is the deliverable**; step 3 of the checkpoint loop is not entered. Do not kill, respawn, or write to the tree on a question.
+- **Repair-shaped** — "kill this and start clean", "persist what matters and respawn". Only then does the loop run through step 3.
+- **Never commit, stash, reset, or clean a human's working tree** to make a kill safe — not on a topic pivot, not to protect survivors, not at all unasked. A stash is invisible state the fresh context has no reason to look for, and a commit draws a boundary in the human's history that the human did not draw. Name what needs preserving and hand the call back; this is the same rule that leaves the exit ritual with the user-invoked `handoff`. **Advisory**: judged and stated — no hook here inspects the tree.
+
 ## Continue: a healthy trajectory
 
 Continue while all three of these hold (advisory: judged, not measured):
@@ -41,7 +49,7 @@ Respawning is not free: "startup times are high… 10, 15 seconds to even start 
 - **Survives** (anything on disk): files, commits, test results, artifacts, evidence packets, the handoff file, the repo tree itself.
 - **Dies** (anything held only in the window): the conversation, in-flight reasoning, unwritten conclusions, and the contamination, which is the point.
 
-Before killing, move every survivor across that line. Write unwritten conclusions to a file, commit or stash working code, capture evidence. The full exit ritual lives with `handoff`, which is user-invoked, so the human runs it.
+Before killing, move every survivor *you* authored across that line: write unwritten conclusions to a file, capture evidence. Uncommitted working code is a survivor you **name**, not one you move — say what is at risk and let the human commit or stash it (*Report or repair*). The full exit ritual lives with `handoff`, which is user-invoked, so the human runs it.
 
 ## The checkpoint loop
 
@@ -49,7 +57,7 @@ Run it at every natural pause: a task completes, a gate goes green, a new task a
 
 1. **Check** the three triggers against the live session.
 2. **Decide** continue or kill, and name the trigger when killing.
-3. **On kill**, persist survivors to disk, tell the human to run `handoff`, then respawn.
+3. **On kill** — repair-shaped invocations only — persist the survivors you authored, tell the human to run `handoff` and to commit or stash anything live in their tree, then respawn.
 4. **Re-verify.** The fresh context orients from the tree — files, commits, the handoff — never from memory of the dead session. A fresh agent quoting the old session is reading a stale summary; send it back to the tree.
 
 Done when the check ran at the pause, the decision is named with its trigger, and (on kill) every survivor is on disk before the window closes. If re-verify finds a survivor missing, the kill was premature: recover it from the dead session while that session is still open, or re-derive it in the fresh one, then re-verify.

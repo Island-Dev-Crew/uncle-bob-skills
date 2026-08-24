@@ -1,11 +1,20 @@
 ---
 name: mutant-hunt
-description: The merciless hardener gate - prove a story's tests can fail by injecting single-operator mutants into the diff's covered lines, then demanding zero non-equivalent survivors on the diff, never a global score, under a runtime budget cap. Reach for it after a story's suite goes green, when the question becomes whether the tests would actually catch a break - "run mutation testing on this diff", "harden this story", "any surviving mutants", "would these tests catch anything". Differentiator - this island owns only the metric and its budget; excusing an equivalent survivor belongs to mutant-excusal-ledger, and the gate's loop plumbing belongs to agent-guardrails and archipelago.
+description: The merciless hardener gate - prove a story's tests can fail by injecting single-operator mutants into the diff's covered lines, then demanding zero non-equivalent survivors on the diff, never a global score, under a runtime budget cap. Reach for it after a story's suite goes green, when the question becomes whether the tests would actually catch a break - "run mutation testing on this diff", "harden this story", "any surviving mutants", "would these tests catch anything". On a diagnostic ask it reports the surviving mutants and stops there; writing the kill-tests is the repair mode a human asks for. Differentiator - this island owns only the metric and its budget; excusing an equivalent survivor belongs to mutant-excusal-ledger, and the gate's loop plumbing belongs to agent-guardrails and archipelago.
 ---
 
 # Mutant Hunt: zero survivors on the diff
 
 A passing suite is a claim. A killed mutant is evidence from a check that could have failed. This island is the hardener's pass (C7): flip one operator at a time in the story diff, run the suite against each mutant, and require that every non-equivalent mutant on the diff dies. The ledger quote that defines the gate: *"for each of those flips, it runs your entire test suite and expects the test suite to fail… if it doesn't fail, well, that's a surviving mutant and it must be killed"* (C7).
+
+## Report or repair: read the ask first
+
+Route on what the invocation asked for, before the first mutant is generated. The scan runs in both modes; what the ask decides is whether this island writes the killing tests.
+
+- **REPORT is the default.** A diagnosis-shaped ask, *"would these tests catch anything"*, *"any surviving mutants"*, *"run mutation testing on this diff"*, computes the scope, runs the tool under the cap, and stops at the verdict. Hand back the survivor list as kill-tasks addressed to the coder, the cap verdict, and any referral to the excusal ledger. **That report is the deliverable**, and handing it over is finishing, not quitting. Steps 4 and 5 of the loop below are quoted, not entered.
+- **REPAIR is asked for, never inferred.** *"Harden this story"*, *"kill the survivors"*, *"get this diff to zero"* unlocks the fix-until-green loop: new red-capable tests written, the same mutants rerun. A diagnostic ask plus an ugly survivor list is still a diagnostic ask. Survivors raise urgency, not authority.
+
+Two rules bind either mode, both **advisory**, since nothing inspects an invocation's shape today. A capped or crashed run can leave a mutated file behind: confirm the working tree matches the ref you started from before reporting, because a mutant left in the tree is a defect this island injected. And a survivor is never resolved by shrinking the scope filter or weakening an assertion. That makes the number move without making the test red-capable, which is a falsified verdict, not a kill.
 
 ## The mechanism
 
@@ -60,10 +69,10 @@ The gate exists inside the productivity margin (C5): *"as long as you can keep t
 1. Compute scope (`diff-scope.sh`); empty scope → vacuous pass, record the exit, done.
 2. Run the mutation tool in diff/incremental mode over the scope, under the cap.
 3. Zero non-equivalent survivors → gate passes; hand the report onward (boundaries below).
-4. Survivors → emit one kill-task each; coder writes the killing tests.
+4. Survivors → emit one kill-task each. In REPORT that list is where the run ends; in REPAIR the coder writes the killing tests.
 5. Rerun the same mutants. Loop 4–5 until no survivor is left unhandled: each one is either killed or excused *in the ledger island*, never silently dropped.
 
-Done means: every mutant in scope is killed, excused-with-justification (ledger), or explicitly reported `unverified` under a cap overrun. No fourth state.
+Done means, in REPAIR: every mutant in scope is killed, excused-with-justification (ledger), or explicitly reported `unverified` under a cap overrun. No fourth state. In REPORT, done means the verdict is handed over intact: the survivors stay open and named, and closing them is the repair a human asks for next.
 
 ## Boundaries: what this island owns, and what it points at
 

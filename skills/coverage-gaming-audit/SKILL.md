@@ -1,6 +1,6 @@
 ---
 name: coverage-gaming-audit
-description: Audit a green coverage number for tests that execute code without asserting on it - assertion-free tests, assertions only on mocks, swallowed exceptions, unreviewed snapshots - and route every finding to the mutation run that settles it. Reach for it when a coverage report or CRAP score goes green and you do not yet believe it, when inheriting a suite of unknown quality, or when someone says "is this coverage real", "assertion-free tests", "gamed coverage", "100% coverage but nothing is tested", "audit this test suite". Differentiator - this island owns detection of gamed coverage and the routing to mutation; the score being distrusted belongs to crap-gate and the mutation run that proves the case belongs to mutant-hunt.
+description: Audit a green coverage number for tests that execute code without asserting on it - assertion-free tests, assertions only on mocks, swallowed exceptions, unreviewed snapshots - and route every finding to the mutation run that settles it. Reports by default - on an audit or diagnosis ask the finding list is the deliverable, the fix-until-green loop is not entered, and deleting a test is never interchangeable with adding the missing assertion. Reach for it when a coverage report or CRAP score goes green and you do not yet believe it, when inheriting a suite of unknown quality, or when someone says "is this coverage real", "assertion-free tests", "gamed coverage", "100% coverage but nothing is tested", "audit this test suite". Differentiator - this island owns detection of gamed coverage and the routing to mutation; the score being distrusted belongs to crap-gate and the mutation run that proves the case belongs to mutant-hunt.
 ---
 
 # Coverage Gaming Audit: execution is not assertion
@@ -21,6 +21,16 @@ This island patrols the gap: **find the tests that execute without asserting, an
 | **Unreviewed snapshot** | a snapshot committed on first run and re-blessed whenever it breaks | the assertion exists but was never read by a human, so it asserts today's bug |
 
 The first three are structural and machine-findable. The fourth is a review-history question no parser can answer, so it is `advisory` here. It is checked by asking when the snapshot was last read on purpose, and an auto-blessed snapshot counts as no assertion at all.
+
+## Report or repair: read the invocation before anything runs
+
+The two modes end differently, so classify the ask before the scanner starts.
+
+**REPORT is the default, and on a diagnostic ask it is the whole job.** The questions this island answers to are diagnoses — *is this coverage real*, *audit this test suite*, a suite of unknown quality just inherited. To a question, the scan is the instrument and **the finding list is the deliverable**: run the scanner over the suite, report every finding with its file, line and pattern, state the verdict with the exit code that produced it, stop. Exit 1 is the answer, not a red to be cleared, and no test file is edited. The fix-until-green loop below is not entered on a question.
+
+**REPAIR is entered only when the human asked for the repair** — *fix these*, *make the scan pass*, a named repair scope. Then the loop below applies, inside that scope and no wider.
+
+**Deleting a test is never the other half of "add the assertion".** The two are not interchangeable: adding the assertion recovers the evidence the suite was missing, while deleting removes the finding *and* the coverage claim standing on it, and it is the cheapest path to exit 0 — exactly the move a fix-until-green loop reaches for, on an island whose whole subject is suites optimised toward a number. So deletion is out of scope on a REPORT run, and under a repair mandate it is proposed one test at a time, quoted with the reason it should go, and waits for that human to confirm that test. A gate whose fastest green is deleting the failing test measures nothing.
 
 ## The scan
 
@@ -70,10 +80,10 @@ Then **collection scope**, since a file the scan never reads is the quietest fal
 
 Detection is cheap and shallow; mutation is expensive and conclusive. The mutation run flips one operator at a time and demands the suite notice: *"for each of those flips, it runs your entire test suite and expects the test suite to fail… if it doesn't fail, well, that's a surviving mutant and it must be killed"* (C7). **A surviving mutant on a covered line is the direct evidence that an assertion is missing**, the thing coverage can never tell you ([`research/mutation-testing.md`](../../research/mutation-testing.md)). Mutation testing is therefore the mandatory companion of any coverage-derived gate, not an optional upgrade.
 
-The routing, run as a fix-until-green loop the agent cannot exit until the tools consent (C4):
+The routing under a repair mandate, run as a fix-until-green loop the agent cannot exit until the tools consent (C4). On a REPORT invocation it stops after step 1, at the reported findings:
 
 1. **Scan.** Run the scanner over the changed tests. Exit 1 hands you a list of suspect tests with file, line, and pattern.
-2. **Repair at the finding.** Add the assertion the test was missing, or delete the test. A test that asserts nothing is worse than no test: it buys coverage credit for nothing.
+2. **Repair at the finding.** Add the assertion the test was missing. A test that asserts nothing is worse than no test: it buys coverage credit for nothing — which is why the repair is the assertion. Deleting the test is a scope change, not the other option: per-test human confirmation, per the rule above.
 3. **Re-scan** to exit 0.
 4. **Mutate the code those tests cover.** Exit 0 from the scanner means every test asserts *something*; only the mutation run tells you whether it asserts the *right* thing. Hand the scope to the mutation gate.
 5. **Every survivor returns as a kill-task**: write the test that fails on that exact change. The loop closes only when both tools consent.
@@ -93,6 +103,7 @@ Steps 4 and 5 run on the neighbouring island, not here. Skipping them leaves the
 - `enforced`: the three structural verdicts and their exit codes. [`scripts/assertless-scan.py`](scripts/assertless-scan.py) parses with `ast`, exits 1 on any `NO-ASSERTION` / `MOCK-ONLY` / `SWALLOWED` finding, exits 0 only when at least one test was scanned and none was flagged, exits 3 fail-closed when there is nothing to audit, and exits 2 on every error path: usage (`--help` included), IO, decode, parse, an unwritable stdout, and any unhandled internal exception. No crash can be read as a verdict. It seals its own exit rather than leaving it to the interpreter, so a std stream it cannot flush at shutdown cannot substitute CPython's 120 for the code it chose. Run against Python test files today; **no other language ships a scanner here**, so on a non-Python suite every rule on this page is `advisory` until you build the equivalent parser.
 - `enforced`: the `--assert-helper` excusal *record*. Every summary line and every `error:` line names the declared helpers, so a widened run cannot be mistaken for a clean one in a captured artifact. Whether the declaration was *justified* is still a human judgement, and that part is `advisory`.
 - `enforced`: this island's own shape, checked by the pack validator (`scripts/validate-island.py` at the pack root).
+- `advisory`: the REPORT-by-default routing and the per-test confirmation before any deletion. The scanner reports findings and an exit code; nothing in it can tell an audit ask from a repair mandate, and no gate here can refuse a deletion. The discipline is the human's until a later wave mechanizes it, and a run that reached exit 0 by deleting tests states which ones.
 - `advisory`: the snapshot-review pattern (no parser can see review history), the justification behind each `--assert-helper`, the tautological-assertion class outside a broad handler, and inside one the part of it the literal fold refuses, which `test_limit.py` above captures as a run. The routing to mutation is advisory too: the mutation run happens on [`mutant-hunt`](../mutant-hunt/SKILL.md) under *its* enforcement, and this island cannot make it fire. Each is stated so a later wave can mechanize it; claiming more would launder advisory into enforced.
 
 **Red/green proof.** The scanner earns its `enforced` line by having been watched failing: the [`known-dirty-fixture`](../known-dirty-fixture/SKILL.md) ritual. Both fixtures live beside it; recompute from this island's directory:
@@ -133,12 +144,13 @@ plus: a file with no test functions exits 3, a missing path exits 2, an undecoda
 
 ## Done means
 
+- [ ] The invocation was classified REPORT or REPAIR before the scan ran, and a REPORT run ended at the reported findings
 - [ ] Scanner exits 0 over the changed tests, with every `--assert-helper` used recorded as a written excusal
-- [ ] Each finding was repaired by adding the missing assertion or deleting the test, never by loosening the scan
+- [ ] Each finding was repaired by adding the missing assertion, never by loosening the scan; any deletion was confirmed by the human, test by test
 - [ ] Mutation run fired on the code those tests cover, with zero unhandled survivors, on [`mutant-hunt`](../mutant-hunt/SKILL.md)
 - [ ] Any CRAP or coverage number reported alongside states its mutation-companion status
 - [ ] Non-Python suites state plainly that the scan is `advisory` here, so the verdict reads `unverified` rather than green
 
-An open box means the verdict stays `unverified`: repair, re-scan, re-mutate, re-check the boxes.
+An open box means the verdict stays `unverified`: repair, re-scan, re-mutate, re-check the boxes. A REPORT run leaves every box below the first open by design — its deliverable is the finding list and the verdict, and the suite reads `unverified` until someone asks for the repair, which is the honest state and not a green.
 
 **Coverage proves the line ran. Only a dead mutant proves someone was watching.**

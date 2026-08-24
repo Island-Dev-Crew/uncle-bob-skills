@@ -1,17 +1,26 @@
 ---
 name: arch-lens
-description: Have the agents build the repo its own drill-down architecture viewer - a small repo-local static tool that shows the modular structure as a diagram with dependency arrows, drills from module into submodules on click, and lands on the code itself. Use when a codebase has outgrown what one head holds, when an architecture conversation needs a shared picture, or when the user says "show me the architecture", "build an architecture viewer", "I want to click into the modules", or "map the dependencies visually". Differentiator - viewing and navigating only, built by the agent for this repo; ranking refactor candidates and the deletion test live in arch-survey, the module vocabulary in deep-modules.
+description: Have the agents build the repo its own drill-down architecture viewer - a small repo-local static tool that shows the modular structure as a diagram with dependency arrows, drills from module into submodules on click, and lands on the code itself. Use when a codebase has outgrown what one head holds, when an architecture conversation needs a shared picture, or when the user says "show me the architecture", "build an architecture viewer", "I want to click into the modules", or "map the dependencies visually". Differentiator - viewing and navigating only, built by the agent for this repo and generated into the working tree, never committed into a repo you were asked to visualise; ranking refactor candidates and the deletion test live in arch-survey, the module vocabulary in deep-modules.
 ---
 
 # Arch Lens: the repo builds its own viewer
 
 Have the agents build the repo its own drill-down architecture viewer, the way RCM had his: *"I also had my agents build me an architecture viewer so I can pop up on the screen a nice little UML diagram… shows me the modular structure of the system and where the dependencies run and I can click on a module and I can see inside it to the submodules… and it'll actually pop the code up on the screen"* ([C13](../../01-CONCEPT-LEDGER.md)).
 
-The move is *agents-build-their-own-instruments*. The viewer is not a package to install. It is a small tool the agent writes for *this* repo's language and layout, then commits beside the code it renders. RCM ran the same interrogation by hand: *"What's the structure here? How does this module interrelate with that module?"* (C12). A standing diagram answers that question instead of a prompt asked again every time. What the picture reveals may scare you. Deciding how to re-partition stays a human judgment (C12), and that call is made next door, per the boundary below.
+The move is *agents-build-their-own-instruments*. The viewer is not a package to install. It is a small tool the agent writes for *this* repo's language and layout, and - when the human asks to keep it - commits beside the code it renders. RCM ran the same interrogation by hand: *"What's the structure here? How does this module interrelate with that module?"* (C12). A standing diagram answers that question instead of a prompt asked again every time. What the picture reveals may scare you. Deciding how to re-partition stays a human judgment (C12), and that call is made next door, per the boundary below.
 
 ## Boundary: visualization/navigation only
 
 This island is VISUALIZATION/NAVIGATION only. Ranking refactor candidates, churn mining, and the deletion test are [`arch-survey`](../../COMPANION.md#arch-survey)'s seat. The design vocabulary — module, interface, depth, the deletion test itself — is [`deep-modules`](../../COMPANION.md#deep-modules)'s. Any "this looks shallow" observation the diagram provokes is handed to them, never judged here. Advisory - a routing rule kept by discipline; nothing blocks it mechanically.
+
+## First, read the ask: a look, or an instrument?
+
+Two shapes arrive at this island and they end differently. Route on what was actually asked, before anything is generated.
+
+- **A look** - *"show me the architecture"*, *"map the dependencies visually"*, *"what does this repo look like?"* The picture and what it shows are the deliverable. Extract, check, render, walk, then put the diagram in front of the human and report what it revealed. Generated files stay in the working tree, unstaged: no `git add`, no commit, no push. **Never commit into a repo you were asked to visualise.** Four files land on disk here - `extract.*`, `graph.json`, `graph.js`, `index.html` - and a request to look authorises writing them, not entering them in someone else's history. Step 5's standing-instrument upkeep and the commit line in *Done when* are not entered on this shape; whether the lens is kept is the human's decision to make.
+- **An instrument** - *"build the repo an architecture viewer"*, *"commit the lens so it regenerates"*. The repair was asked for. The whole build loop below applies, step 5 included, and the artifacts land where the next agent finds them.
+
+Unsure which one arrived? Generate, report the four paths, and ask. RCM's viewer was something he popped up on a screen (C13); keeping it is the same class of human judgment as deciding how to re-partition (C12). Advisory - nothing here inspects the target repo's index, and the gate in the next section checks whether the graph is true, never whether it was committed.
 
 ## The deliverable (v0)
 
@@ -56,12 +65,12 @@ python3 <this-skill-dir>/scripts/check-graph.py tools/arch-lens/graph.json <repo
 2. **Check.** Run `check-graph.py` with the repo root. Fix the extractor and re-run until it exits 0. Enforced - the exit code is the gate.
 3. **Render.** Build `index.html` off `graph.js`, and keep it self-contained. Advisory at v0 - the suggested spot-check is `test -f tools/arch-lens/index.html && ! grep -qE '(https?:)?//[a-z]' tools/arch-lens/index.html`, which exits 0 only when the page exists and carries no absolute or protocol-relative URL. The `test -f` guard earns its keep: a bare `grep -q` reports green on a file that was never written. Stated as a command, not yet wired as a gate.
 4. **Walk.** Open the page from `file://` and walk one full drill-down: top diagram → a module → a submodule → the source on screen. A failed hop is an extract or render bug. Fix it and re-walk until the whole path lands. Advisory - witnessed by human or agent eyes; state which hop was walked.
-5. **Re-verify on change.** After the next code move, regenerate and re-run step 2. A standing instrument that has drifted red is worse than none. Enforced when run - step 2's exit code is the same gate. Advisory that anyone remembers to run it at all, until a hook or CI job schedules the regeneration.
+5. **Re-verify on change** (instrument shape). After the next code move, regenerate and re-run step 2. A standing instrument that has drifted red is worse than none. Enforced when run - step 2's exit code is the same gate. Advisory that anyone remembers to run it at all, until a hook or CI job schedules the regeneration.
 
 ## Done when
 
 - `check-graph.py tools/arch-lens/graph.json <repo-root>` exits 0 (enforced).
 - One full drill-down walk from the top diagram to a real source file is performed and stated (advisory).
-- Extractor, data, and page are committed in the target repo, so the next agent regenerates instead of rebuilding (advisory - no check inspects the target repo's index).
+- On the instrument shape, extractor, data, and page are committed in the target repo, so the next agent regenerates instead of rebuilding (advisory - no check inspects the target repo's index). On a look they are generated, their paths reported, and the commit is the human's call - that report closes the invocation.
 
 **No authority without evidence. The lens shows what is; the checker says when the lens is true; what to fix about it is the neighbors' call.**

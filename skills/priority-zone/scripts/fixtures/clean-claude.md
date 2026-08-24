@@ -11,4 +11,6 @@ Constraints that shape generation:
 - New packages live under internal/ unless an outside caller needs them.
 
 Reference, on demand: docs/architecture.md, docs/testing.md.
+Operational rules — gofmt, changelog, sandbox-key rotation, testdata —
+moved to docs/checklists.md. Relocated, not dropped; still required.
 Gates run after generation: make lint, make test, make crap.
