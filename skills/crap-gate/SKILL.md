@@ -5,7 +5,7 @@ description: Per-function CRAP ceiling as a fix-until-green gate on agent-writte
 
 # CRAP Gate: small and fully tested
 
-The cleaner seat's instrument. Bob states the live loop in one sentence: *"why don't you run crap over everything you've just done and it would run crap and then it would clean up the code"* (C6). Its shape is the deterministic-tool loop: *"you're putting them into a loop and you're saying, 'Okay, you must change the code until this tool says that it's okay'"* (C4). This island supplies what that loop measures: the formula, the threshold regimes, the input contract, and the score's known blind spot. Every non-transcript claim below stands on [`crap-metric.md`](../../research/crap-metric.md). Quotes reach the page only through the [concept ledger](../../01-CONCEPT-LEDGER.md).
+The cleaner seat's instrument. Bob states the live loop in one sentence: *"why don't you run crap over everything you've just done and it would run crap and then it would clean up the code"* (C6). Its shape is the deterministic-tool loop: *"you're putting them into a loop and you're saying, 'Okay, you must you must [sic] change the code until this tool says that it's okay.'"* (C4). This island supplies what that loop measures: the formula, the threshold regimes, the input contract, and the score's known blind spot. Every non-transcript claim below stands on [`crap-metric.md`](../../research/crap-metric.md). Quotes reach the page only through the [concept ledger](../../01-CONCEPT-LEDGER.md).
 
 ## The formula
 
@@ -65,17 +65,21 @@ This island supplies metric content only:
 
 ## Enforced vs advisory
 
-- `enforced`: the arithmetic and the verdict. [`scripts/crap-score.py`](scripts/crap-score.py) computes the exact formula, exits 1 on any `score > threshold`, and exits 2 fail-closed on malformed or empty input, and on an input it cannot read (an empty gate cannot pass, and an unreadable one is not a breach). The island's own shape is enforced by the pack validator (`scripts/validate-island.py` at the pack root).
+- `enforced`: the arithmetic and the verdict. [`scripts/crap-score.py`](scripts/crap-score.py) computes the exact formula, exits 1 on any `score > threshold`, and exits 2 fail-closed on every path where it did not actually score the input: malformed or empty input, an input it cannot read or decode, a non-finite or overflowing complexity, coverage, threshold or score, and an output stream it cannot write. An empty gate cannot pass, an unreadable one is not a breach, a `nan` ceiling is not a ceiling, and a report nobody received is not a verdict. Those three codes are the whole set — a dead output pipe exits 2, never CPython's shutdown code 120. The island's own shape is enforced by the pack validator (`scripts/validate-island.py` at the pack root).
 - `advisory`: everything upstream of and around the scorer today. That is the regime choice (4/6/8), the per-language artifact parsing and CC join, changed-files-only scoping, and the mutation-companion pairing. Each is stated so a later wave can mechanize it. Claiming more would launder advisory into enforced.
 
-**Red/green proof.** The scorer earns its `enforced` line by going red on a known-bad input and green on a known-good one: the [`known-dirty-fixture`](../known-dirty-fixture/SKILL.md) ritual. Both fixtures live beside it. Recompute from this island's directory:
+**Red/green proof.** The scorer earns its `enforced` line by going red on a known-bad input and green on a known-good one: the [`known-dirty-fixture`](../known-dirty-fixture/SKILL.md) ritual. All three fixtures live beside it. Recompute from this island's directory:
 
 ```bash
 python3 scripts/crap-score.py --threshold 6 scripts/fixtures/dirty-over-ceiling.tsv   # exit 1 — render_invoice 26.50 BREACH
 python3 scripts/crap-score.py --threshold 6 scripts/fixtures/clean-under-ceiling.tsv  # exit 0 — 2 functions, 0 over
+python3 scripts/crap-score.py --threshold 6 scripts/fixtures/nonfinite-input.tsv      # exit 2 — a nan row and an overflowing row are refused, not scored
+python3 scripts/crap-score.py --threshold nan scripts/fixtures/dirty-over-ceiling.tsv # exit 2 — a non-finite ceiling used to pass every breach
+bash -c 'printf "f\377\t2\t0\n" > /tmp/crap-undecodable.tsv; python3 scripts/crap-score.py /tmp/crap-undecodable.tsv' # exit 2 — bytes that are not UTF-8 were never scored
+bash -c 'python3 scripts/crap-score.py scripts/fixtures/clean-under-ceiling.tsv | true; exit ${PIPESTATUS[0]}' # exit 2 — a dead output pipe, not CPython's 120
 ```
 
-The clean fixture carries the boundary case: `is_expired`, comp 2, cov 0, scoring exactly 6.00, passing. So the pair proves the gate discriminates at the ceiling rather than rejecting everything. Deleting either fixture returns the gate to `unverified`.
+The clean fixture carries the boundary case: `is_expired`, comp 2, cov 0, scoring exactly 6.00, passing. So the pair proves the gate discriminates at the ceiling rather than rejecting everything. The four runs under it are the non-verdict half of the same ritual, each watched failing: the third fixture is a coverage/CC join that emitted `nan` and an overflowing complexity — both used to print `ok` and exit 0 — and the last two are a `nan` ceiling and a dead output pipe. Deleting any of these fixtures returns the gate to `unverified`.
 
 ## Done means
 

@@ -389,7 +389,7 @@ if __name__ == "__main__":
         _code = _exc.code if isinstance(_exc.code, int) else (0 if _exc.code is None else 1)
     except BaseException as _exc:              # an exception is not a verdict
         try:
-            print(f"error: internal failure: {{type(_exc).__name__}}: {{_exc}}", file=sys.stderr)
+            print(f"error: internal failure: {type(_exc).__name__}: {_exc}", file=sys.stderr)
         except BaseException:
             pass
         _code = 2

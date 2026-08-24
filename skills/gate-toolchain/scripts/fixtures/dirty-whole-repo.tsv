@@ -5,16 +5,16 @@ java	crap	crap4java	--changed	crap4java --changed --threshold 6
 python	mutation	mutmut	--whole-repo	mutmut run --whole-repo
 python	mutation	mutmut	--all=true	mutmut run --all=true
 go	crap	crap4java	--changed	crap4java --changed
-typescript	mutation	stryker	--incremental	npx stryker run
-typescript	mutation	stryker	--incremental	npx stryker run # --incremental
-typescript	mutation	stryker	--incremental	npx stryker run --incremental=false
+typescript	mutation	stryker	--incremental	./node_modules/.bin/stryker run
+typescript	mutation	stryker	--incremental	./node_modules/.bin/stryker run # --incremental
+typescript	mutation	stryker	--incremental	./node_modules/.bin/stryker run --incremental=false
 java	crap	crap4java	--changed	echo --changed
-typescript	mutation	stryker	--incremental=false	npx stryker run --incremental=false
+typescript	mutation	stryker	--incremental=false	./node_modules/.bin/stryker run --incremental=false
 python	mutation	mutmut	--incremental	mutmut run --whole-repo --incremental
-typescript	mutation	stryker	--incremental	npx stryker run --incremental --incremental=false
-typescript	mutation	stryker	--incremental	npx stryker run --incremental "--whole-repo"
+typescript	mutation	stryker	--incremental	./node_modules/.bin/stryker run --incremental --incremental=false
+typescript	mutation	stryker	--incremental	./node_modules/.bin/stryker run --incremental "--whole-repo"
 java	mutation	pit	--changed	echo --changed -Dcapital=1
-typescript	mutation	stryker	--incremental	npx stryker run --incremental=00
-typescript	mutation	stryker	--incremental=true	npx stryker run --incremental=true --incremental=false
+typescript	mutation	stryker	--incremental	./node_modules/.bin/stryker run --incremental=00
+typescript	mutation	stryker	--incremental=true	./node_modules/.bin/stryker run --incremental=true --incremental=false
 python	mutation	mutmut	--incremental	mutmut run --incremental --msg 'it'\''s # 1' --whole-repo
 java	mutation	pit	--changed	mvn org.pitest:pitest-maven:mutationCoverage -Dmessage=fix#123 --changed --whole-repo

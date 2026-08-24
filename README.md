@@ -14,13 +14,16 @@ This pack is that conversation turned into fifty working islands, each grounded 
 
 ## Install
 
-Copy any island into your agent's skills folder:
+**The supported topology is the whole pack.** Clone it and point your agent's skills folder at `skills/`:
 
 ```bash
-cp -R skills/crap-gate ~/.claude/skills/
+git clone https://github.com/Island-Dev-Crew/uncle-bob-skills.git
+ln -s "$PWD/uncle-bob-skills/skills" ~/.claude/skills/uncle-bob
 ```
 
 The islands are plain `SKILL.md` files with an `agents/openai.yaml` sidecar, so they load in Claude Code, Codex, Pi, and Hermes alike. There is no runtime, no package, and no install step — the gate scripts need only `python3` and `bash`.
+
+Copying one island out on its own is not supported, and the reason is mechanical rather than stylistic: **all fifty link outside their own directory** — 442 distinct relative targets across the pack, and 42 islands cite the pack validator or `prove-gate.sh` as the evidence for their only `enforced` claim. Lift one island out and those links resolve to nothing: the two laws in [CONTEXT.md](CONTEXT.md), the ledger concept its every quote rests on, the boundary in [COMPANION.md](COMPANION.md) that says what it refuses, its sibling islands, and the validator that proves it. What survives is the prose; what is severed is the evidence graph the prose points at — which is the one thing this pack asks to be judged on. A single-island copy is a reading copy, not a working one.
 
 ## The founding layer (v1.0)
 
@@ -72,11 +75,22 @@ Nothing here asks to be believed:
 
 ```bash
 python3 scripts/validate-island.py skills/*/     # 600 checks across 50 islands
-python3 scripts/verify-proofs.py                 # re-runs every command the islands document
+python3 scripts/verify-proofs.py                 # re-runs every command an island states an exit code for
 python3 scripts/lane-check.py                    # every shipped script stays in its lane
 ```
 
-Twelve mechanical checks per island. The validator is proven the same way everything else is — it goes red on `scripts/fixtures/bad-island` and green on `good-island`. Every gate script ships its own dirty and clean fixture, and the second tool re-runs each island's documented commands and compares the exit codes, because a proof block that no longer reproduces is a claim rather than evidence.
+Twelve mechanical checks per island. The validator is proven the same way everything else is — it goes red on `scripts/fixtures/bad-island` and green on `good-island`. Every gate script ships its own dirty and clean fixture.
+
+The second tool re-runs **every command an island states an exit code for**, and says out loud what it did not run rather than passing over it. Its summary line counts each class at the head you run it on: proofs run, `PENDING` (a runnable line with no code documented for it), `TEMPLATE` (a `<placeholder>` argument), `SKIPPED` (a leading token off its allowlist), `REFUSED`. Pass `--strict` to make any PENDING a failure. The classification itself is proven the pack's way, against a fixture carrying all five shapes in one block:
+
+```bash
+python3 scripts/verify-proofs.py scripts/fixtures/proof-grammar-island            # exit 0 — 2 proofs run
+python3 scripts/verify-proofs.py --strict scripts/fixtures/proof-grammar-island   # exit 4 — 1 PENDING
+python3 scripts/verify-proofs.py scripts/fixtures/hostile-proof-island            # exit 1 — REFUSED
+python3 scripts/verify-proofs.py scripts/fixtures/good-island                     # exit 3 — nothing ran
+```
+
+Exit 3 is the one that matters: a verifier that executed nothing has verified nothing, and reporting that as a pass is the same failure as a gate that scans zero files.
 
 [04-WAVE1-GAUNTLET.md](04-WAVE1-GAUNTLET.md), [05-WAVE2-GAUNTLET.md](05-WAVE2-GAUNTLET.md) and [06-WAVE3-GAUNTLET.md](06-WAVE3-GAUNTLET.md) record what blind critics caught before each wave shipped — including gates that separated their own fixtures perfectly and were still walked past, which is why the critics were eventually told to forge inputs rather than re-run the author's.
 
@@ -91,12 +105,13 @@ Each island was authored by one agent, then judged by a **blind critic** that ne
 | [CONTEXT.md](CONTEXT.md) | the pack's substrate — the two laws, grounding rules, how the islands compose |
 | [01-CONCEPT-LEDGER.md](01-CONCEPT-LEDGER.md) | 28 concepts (C1–C28) from the conversation, each with a transcript-verified quote |
 | [00-EXTRACTION.md](00-EXTRACTION.md) | the two-channel video analysis — what was said, what was shown, what checked out |
-| [02-ROSTER-50.md](02-ROSTER-50.md) | the full 50-island roster; islands 21–50 are not yet built |
-| [03-FORGE50-AUDIT.md](03-FORGE50-AUDIT.md) | the overlap audit that set every island's boundary |
-| [04-WAVE1-GAUNTLET.md](04-WAVE1-GAUNTLET.md) | build and gauntlet record — verdicts, defects, and what remains advisory |
-| [COMPANION.md](COMPANION.md) | 21 concerns this pack deliberately does not own, and who does |
-| [research/](research/) | seven primary-sourced briefs; unsourced claims flagged `UNVERIFIED` |
-| [source/](source/) | the transcript, the timestamped captions, and the frames worth keeping |
+| [02-ROSTER-50.md](02-ROSTER-50.md) | **historical** — the roster as planned, before any island was built |
+| [03-FORGE50-AUDIT.md](03-FORGE50-AUDIT.md) | **historical** — the overlap audit that set every island's boundary |
+| [04](04-WAVE1-GAUNTLET.md)/[05](05-WAVE2-GAUNTLET.md)/[06-GAUNTLET](06-WAVE3-GAUNTLET.md) | build and gauntlet record per wave — verdicts, defects, and what remains advisory |
+| [07-HARDENING-PLAN-2.0.md](07-HARDENING-PLAN-2.0.md) | **live** — the 2.0 threat model and its five phases, with each phase's evidence |
+| [COMPANION.md](COMPANION.md) | 22 concerns this pack deliberately does not own, and who does |
+| [research/](research/) | seven primary-sourced briefs; [research/README.md](research/README.md) states the per-claim `UNVERIFIED` convention |
+| [source/](source/) | eleven notable frames, plus the recipe that regenerates the transcript this pack was checked against |
 
 ## Honest state
 
@@ -104,7 +119,13 @@ v1.2 completes the roster: **50 islands**, mechanically clean and gauntleted, wi
 
 Most in-island rules are `advisory` and say so — six of the final fifteen ship no script at all, because who holds a design and whether a human can restate a change are not arithmetic, and a gate around judgment would be theatre. Several islands document a limit they chose not to close and ship a fixture capturing it as a run: `stability-order` cannot see a pure dependency cycle, `coverage-gaming-audit` cannot see a `conftest.py`-hooked suite, `comment-as-spec` cannot resolve an imported base class, `instruction-density-cap` under-counts a rule wearing no marker it recognises. An evidenced boundary beats a silent one.
 
-What remains is the hardening pass — cross-model verification, supply-chain and tamper-evidence work — reserved for 2.0 rather than folded in here.
+### What is in the tree, counted from the tree
+
+**50** islands under `skills/` · **28** ledger concepts (C1–C28) · **22** companion boundaries · **7** research briefs · **11** notable frames · every shipped skill script lane-checked, with `scripts/lane-check.py` printing how many it scanned rather than this line asserting a number that drifts.
+
+**Not in the tree, deliberately:** the full transcript and the complete `.srt` caption file. Both are the whole of someone else's recorded conversation, so this repository cites them and does not redistribute them — they are in `.gitignore`, and [source/README.md](source/README.md) carries the two commands that regenerate them from the published video. Every quote-verification step in this pack runs against that regenerated file, not against a copy shipped here. A fresh clone therefore has the frames and the recipe, not the transcript.
+
+**Document lifecycle**, so a stale plan is never read as a live claim: `README`, `CONTEXT`, `CHANGELOG`, `COMPANION`, the ledger and the briefs are **live** and describe the tree as it stands. `02-ROSTER-50` and `03-FORGE50-AUDIT` are **historical** — they record what was planned and why, before the islands existed, and are kept unrewritten rather than back-edited into agreement. `04`/`05`/`06` are **records** of a wave that has closed. `07-HARDENING-PLAN-2.0` is **live**: phases 1–3 are complete with their evidence written in, phase 4 (cross-family review at a frozen head) is in progress — one independent non-Anthropic round has been returned and closed, the SHA-bound receipt has not — and phase 5 (release integrity) is open. That is what remains before 2.0.
 
 ## Credit
 

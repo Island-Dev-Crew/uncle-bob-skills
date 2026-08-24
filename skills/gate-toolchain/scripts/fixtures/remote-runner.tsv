@@ -1,0 +1,10 @@
+# remote-runner fixture: fetch-and-run launchers, red. Every row below is mapped,
+# named and diff-scoped, so the only thing under test is how the command reaches its
+# binary. Rows 1 and 5 must pass (repo-local path; an explicit --no-install pin), so
+# the rule discriminates rather than rejecting every JS command.
+# language<TAB>gate<TAB>tool<TAB>scope_arg<TAB>command
+typescript	mutation	stryker	--incremental	./node_modules/.bin/stryker run --incremental
+typescript	mutation	stryker	--incremental	npx stryker run --incremental
+typescript	mutation	stryker	--incremental	pnpm dlx stryker run --incremental
+python	mutation	mutmut	--incremental	pipx run mutmut run --incremental
+typescript	mutation	stryker	--incremental	npx --no-install stryker run --incremental

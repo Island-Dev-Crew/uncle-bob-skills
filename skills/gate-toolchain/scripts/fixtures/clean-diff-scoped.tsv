@@ -2,9 +2,9 @@
 # language<TAB>gate<TAB>tool<TAB>scope_arg<TAB>command
 
 java	crap	crap4java	--changed	crap4java --changed --threshold 6
-typescript	mutation	stryker	--incremental	npx stryker run --incremental
+typescript	mutation	stryker	--incremental	./node_modules/.bin/stryker run --incremental
 java	mutation	pit	-DwithHistory	mvn org.pitest:pitest-maven:mutationCoverage -DwithHistory=true
 rust	mutation	cargo-mutants	--in-diff	cargo mutants --in-diff story.diff
 python	mutation	mutmut	--incremental	mutmut run --incremental --msg 'note # 1'
-typescript	mutation	stryker	--incremental=true	npx stryker run --incremental=true
+typescript	mutation	stryker	--incremental=true	./node_modules/.bin/stryker run --incremental=true
 rust	mutation	cargo-mutants	--in-diff=café.diff	cargo mutants --in-diff=café.diff

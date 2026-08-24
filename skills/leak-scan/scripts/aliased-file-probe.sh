@@ -12,6 +12,11 @@
 # Exit 0 when every spelling collapsed, 1 when any probe saw two files, 2 on a
 # setup fault. Case and Unicode-form probes are skipped, out loud, on a
 # filesystem that does not fold them.
+# A dead stdout must not become the verdict. `gate.sh … | head` closes the pipe early, the
+# next write takes SIGPIPE, and the shell dies at 128+13 = 141 — a code this script's table
+# does not name, arriving after the work was already done correctly. Handling the signal
+# turns that into the usage/IO code 2, which is the one that means "no verdict here".
+trap 'exit 2' PIPE
 set -u
 
 here=$(cd "$(dirname "$0")" && pwd) || exit 2

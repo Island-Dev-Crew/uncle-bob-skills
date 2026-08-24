@@ -15,7 +15,7 @@ Martin's canon is one idea applied at three scales: **constrain structure so cha
 
 ## What holds up in 2026 for agent-directed engineering
 
-From the interview transcript (`…/scratchpad/va-unclebob/transcript.txt`) plus the sources above, his line is precise: **values transfer, disciplines don't.**
+From the interview transcript (`../source/transcript.txt`) plus the sources above, his line is precise: **values transfer, disciplines don't.**
 
 **Explicitly NOT imposed on agents:** strict TDD nano-cycle. Direct quote: "test-driven development… that's a human discipline… I cannot and will not enforce that on the agents. I don't think it makes any sense to make an agent write a single line of a test and then write a single line of the production code… it's probably a mistake to impose a human discipline on an agent. It is not a mistake to impose human values on the agent." He also doesn't read agent code: "my goal… I don't have to look at the code at all… I will look at the crap scores… and do spot checks" (transcript; corroborated by explainx.ai).
 
@@ -44,5 +44,5 @@ From the interview transcript (`…/scratchpad/va-unclebob/transcript.txt`) plus
 - swarm-forge: https://github.com/unclebob/swarm-forge
 - O'Reilly live course: https://www.oreilly.com/live-events/ai-agents-for-clean-code-with-uncle-bob-martin/0642572376765/
 - X posts: https://x.com/unclebobmartin/status/2082497764223492161 ; https://x.com/unclebobmartin/status/2046206145597972849
-- Interview transcript (local): /private/tmp/claude-502/-Users-IDC2-5-Desktop-IDC-skills/061b386e-e97d-4adb-adf8-6065dec28950/scratchpad/va-unclebob/transcript.txt
+- Interview transcript (local): ../source/transcript.txt
 - Secondary corroboration: https://explainx.ai/blog/uncle-bob-ai-coding-gauntlet-tests-not-reviews-july-2026 ; https://akitaonrails.com/en/2026/04/20/clean-code-for-ai-agents/

@@ -60,10 +60,12 @@ This pack was built under the IDC Forge methodology and deliberately refuses con
 
 ```bash
 python3 scripts/validate-island.py skills/*/     # 600 checks across 50 islands
-python3 scripts/verify-proofs.py                 # re-runs every command the islands document
+python3 scripts/verify-proofs.py                 # re-runs every command an island states an exit code for
 python3 scripts/lane-check.py                    # every shipped script stays in its lane
 ```
 
-Twelve mechanical checks per island. The validator itself is proven the pack's way: red on `scripts/fixtures/bad-island`, green on `good-island`. The second tool re-runs each island's own proof block and compares exit codes, because a documented run that no longer reproduces is a claim again.
+Twelve mechanical checks per island. The validator itself is proven the pack's way: red on `scripts/fixtures/bad-island`, green on `good-island`. The second tool re-runs each island's proof block and compares exit codes, because a documented run that no longer reproduces is a claim again — and it names what it did not run rather than passing over it: `PENDING` for a runnable line with no code stated, `TEMPLATE` for a `<placeholder>` argument, `SKIPPED` for a leading token off its allowlist, and exit 3 when nothing ran at all. `--strict` turns any PENDING red. Its own grammar goes red on `scripts/fixtures/proof-grammar-island` and green there without `--strict`.
+
+These three run over the pack as a whole. That is the supported topology: **every island links outside its own directory** — to the two laws above, to the ledger concept its quotes rest on, to a sibling, to the validator that proves its `enforced` line. Copy one island out alone and the prose survives while its evidence graph does not.
 
 Roll Tide · Island Development Crew · Huntsville, AL

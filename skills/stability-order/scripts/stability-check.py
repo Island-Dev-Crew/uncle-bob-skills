@@ -20,6 +20,7 @@ Exit: 0 green · 1 violations found · 2 usage / IO / malformed input (fail clos
 """
 import argparse
 import json
+import os
 import sys
 
 EPS = 1e-9
@@ -144,4 +145,33 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    # The exit-code contract has to survive the interpreter's own shutdown. CPython flushes
+    # the std streams after main() returns, and if that flush raises — a pipe whose reader
+    # has already gone, which is the ordinary `gate.py … | head` idiom — it REPLACES the
+    # status this script chose with 120, a code no table here names. An unhandled exception
+    # is the other leak, and the worse one: it exits 1, and 1 is a VERDICT here, so a crash
+    # would be read as a real finding about the code under test.
+    try:
+        _code = main()
+    except SystemExit as _exc:                 # argparse raises this from inside
+        _code = _exc.code if isinstance(_exc.code, int) else (0 if _exc.code is None else 1)
+    except KeyboardInterrupt:
+        _code = 2
+    except BaseException as _exc:              # an exception is not a verdict
+        try:
+            print(f"error: internal failure: {type(_exc).__name__}: {_exc}", file=sys.stderr)
+        except BaseException:
+            pass
+        _code = 2
+    for _stream, _fd in ((sys.stdout, 1), (sys.stderr, 2)):
+        try:
+            if _stream is not None:
+                _stream.flush()
+        except BaseException:
+            if _code in (0, 1):                # output that never landed is not a verdict
+                _code = 2
+            try:                               # so the shutdown flush cannot raise again
+                os.dup2(os.open(os.devnull, os.O_WRONLY), _fd)
+            except BaseException:
+                pass
+    sys.exit(_code)

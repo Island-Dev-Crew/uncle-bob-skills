@@ -36,5 +36,5 @@ The transcript claims check out against public evidence: Martin's GitHub hosts c
 - https://x.com/unclebobmartin/status/2046759028588724443
 - https://blog.ndepend.com/crap-metric-thing-tells-risk-code/ · https://betterstack.com/community/guides/ai/crap-metric/ · https://www.qt.io/software-insights/stop-writing-tests-for-the-wrong-functions-and-releasing-bugs-you-never-saw-coming
 - https://github.com/ahilke/js-crap-score · https://pypi.org/project/crap4py/ · https://docs.phpunit.de/en/12.5/code-coverage.html · https://github.com/minikin/cargo-crap · https://github.com/7Factor/crap4dotnet · https://www.qt.io/quality-assurance/blog/release7.5.0.-coco-now-covers-python-ranks-testing-risk-with-crap-metrics-and-cuts-embedded-setup-overhead-qt-for-mcus
-- Transcript (local, primary for the 2026 use-case): /private/tmp/claude-502/-Users-IDC2-5-Desktop-IDC-skills/061b386e-e97d-4adb-adf8-6065dec28950/scratchpad/va-unclebob/transcript.txt
+- Transcript (local, primary for the 2026 use-case): ../source/transcript.txt
 - UNVERIFIED: "Alberg" as co-creator (correct: Savoia & Evans); agents' "larger accurate short-term memory" (Martin's assertion, no independent source); a tool-level default threshold of 6 in Martin's repos (his gate appears to live in agent instructions, not tool defaults).

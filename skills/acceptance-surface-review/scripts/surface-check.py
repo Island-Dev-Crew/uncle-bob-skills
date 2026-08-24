@@ -29,10 +29,14 @@ how a 'code:' declaration hides inside what looks like a comment. Refuse it;
 never reroute. A CR anywhere but at end-of-line is refused like the rest.
 
 Paths are RELATIVE, resolved against the MANIFEST's own directory, never the
-cwd; declared_path() is the single place that join happens. An absolute value is
-malformed rather than silently rerouted: it ignores the manifest's directory
-entirely, so the same manifest would judge different files on different machines.
-A relative value that climbs with '..' is still relative and still allowed.
+cwd; declared_path() is the single place that join happens AND the single place
+scope is enforced. An absolute value is malformed rather than silently rerouted:
+it ignores the manifest's directory entirely, so the same manifest would judge
+different files on different machines. A relative value that climbs out with '..'
+is refused on exactly those terms - a contributor-authored manifest may not widen
+the surface past the root its caller declared. The default root is the manifest's
+own directory; --root DIR adds another, explicitly and repeatably, for the
+monorepo case where story and implementation legitimately sit in different trees.
 
 Prose artifacts (spec, qa) take TWO size ceilings, because one is evadable:
 a newline count alone passes a 24 KB QA procedure whose steps are packed one
@@ -125,21 +129,42 @@ def parse(path: Path) -> dict:
     return keys
 
 
-def declared_path(label: str, value: str, base: Path) -> Path:
-    """The ONE place a declared value becomes a filesystem path.
+def within(p: Path, root: Path) -> bool:
+    """True when p IS root or sits under it. Parts, never a string prefix: '/a/bc'
+    must not read as inside '/a/b', and a path on another Windows drive is inside
+    nothing here."""
+    return p == root or root in p.parents
+
+
+def declared_path(label: str, value: str, base: Path, roots: list) -> Path:
+    """The ONE place a declared value becomes a filesystem path, and the ONE place
+    scope is enforced.
 
     Absolute values are refused rather than rerouted: they ignore `base` entirely, so
-    the same manifest would judge different files on different machines. Relative is
-    the whole contract here - containment is NOT claimed, '..' resolves as written.
+    the same manifest would judge different files on different machines. A relative
+    value that climbs OUT with '..' is refused on the same terms and for a sharper
+    reason: the manifest is contributor-authored text, and a '..' entry silently adds
+    a file the caller never put in scope while the gate still prints 'surface
+    complete'. Containment is resolved, not textual - .resolve() runs first, so a
+    symlink pointing out of the root is refused exactly like a literal '..', and
+    'p/../p' that lands back inside still passes. The default root is `base` itself,
+    the same directory paths already resolve against; --root adds others deliberately.
     A path the OS cannot even name (an embedded NUL raises ValueError, an over-long
     one raises OSError) is malformed input, not a breach - nothing was judged, so it
     must land on 2 like every other unreadable manifest, never on the VERDICT code."""
     if value.startswith("/") or Path(value).is_absolute():
         raise Malformed(f"{label} {value!r}: absolute path - declare it relative to the manifest")
     try:
-        return (base / value).resolve()
+        p = (base / value).resolve()
     except (OSError, ValueError) as e:
         raise Malformed(f"{label} {value!r}: unusable path ({e})")
+    if not any(within(p, r) for r in roots):
+        raise Malformed(
+            f"{label} {value!r}: resolves to {p}, outside the review root(s) "
+            f"{[str(r) for r in roots]} - a manifest may not widen its own scope; "
+            f"pass --root DIR to put that tree in scope deliberately"
+        )
+    return p
 
 
 def has_substance(data: bytes) -> bool:
@@ -180,7 +205,7 @@ def substance_breach(label: str, value: str, p: Path) -> str:
     return ""
 
 
-def prose_breaches(label: str, values: list, base: Path, cap: int, byte_cap: int) -> list:
+def prose_breaches(label: str, values: list, base: Path, roots: list, cap: int, byte_cap: int) -> list:
     """spec/qa: the shared substance test, plus BOTH size ceilings a human budget needs.
 
     Newlines alone are not a size: prose packed onto few long lines - a numbered list
@@ -189,7 +214,7 @@ def prose_breaches(label: str, values: list, base: Path, cap: int, byte_cap: int
     the line ceiling is what keeps a merely wide artifact honest. Both are reported."""
     if not values:
         return [f"no '{label}:' artifact declared - the human surface is incomplete"]
-    p = declared_path(label, values[0], base)
+    p = declared_path(label, values[0], base, roots)
     hollow = substance_breach(label, values[0], p)
     if hollow:
         return [hollow]
@@ -206,13 +231,16 @@ def prose_breaches(label: str, values: list, base: Path, cap: int, byte_cap: int
     return out
 
 
-def judge(path: Path, cap: int, byte_cap: int) -> list:
+def judge(path: Path, cap: int, byte_cap: int, extra_roots: list) -> list:
     keys = parse(path)
     base = path.resolve().parent
+    # The manifest's own directory is ALWAYS a root - it is where relative paths
+    # already resolve, so the default scope is the tightest one and needs no flag.
+    roots = [base] + extra_roots
     tier = keys["tier"][0]
     policy = TIERS[tier]
-    out = prose_breaches("spec", keys["spec"], base, cap, byte_cap)
-    out += prose_breaches("qa", keys["qa"], base, cap, byte_cap)
+    out = prose_breaches("spec", keys["spec"], base, roots, cap, byte_cap)
+    out += prose_breaches("qa", keys["qa"], base, roots, cap, byte_cap)
     code = keys["code"]
     if policy == "forbidden" and code:
         out.append(
@@ -222,7 +250,7 @@ def judge(path: Path, cap: int, byte_cap: int) -> list:
     if policy == "required" and not code:
         out.append(f"tier '{tier}' requires at least one 'code:' path; none declared")
     for c in code:
-        hollow = substance_breach("code", c, declared_path("code", c, base))
+        hollow = substance_breach("code", c, declared_path("code", c, base, roots))
         if hollow:
             out.append(hollow)
     return out
@@ -246,6 +274,21 @@ def take_int_flag(args: list, flag: str):
         raise Malformed(f"usage error: {flag} needs an integer in 1..{MAX_BUDGET}")
     del args[i : i + 2]
     return v
+
+
+def take_str_flags(args: list, flag: str) -> list:
+    """Pull EVERY '<flag> VALUE' pair out of args in place, in order. Repeatable by
+    design - one --root per tree a manifest may legitimately reach into - because a
+    single extra root would push a two-tree repo straight back to a blanket escape.
+    A missing value is a usage error (exit 2), never a silent skip."""
+    out = []
+    while flag in args:
+        i = args.index(flag)
+        if i + 1 >= len(args):
+            raise Malformed(f"usage error: {flag} needs a directory")
+        out.append(args[i + 1])
+        del args[i : i + 2]
+    return out
 
 
 def err(msg: str) -> None:
@@ -282,6 +325,7 @@ def main(argv: list) -> int:
     try:
         cap = take_int_flag(args, "--max-lines") or DEFAULT_MAX_LINES
         byte_cap = take_int_flag(args, "--max-bytes") or cap * BYTES_PER_LINE
+        declared_roots = take_str_flags(args, "--root")
     except Malformed as e:
         err(f"ERROR  {e}")
         return 2
@@ -289,13 +333,29 @@ def main(argv: list) -> int:
         err(__doc__)
         return 2
 
+    # Canonicalise each extra root ONCE, against the cwd: --root is the operator's
+    # word, not the manifest's. A root that is not an existing directory is a usage
+    # error rather than a root that quietly contains nothing - a typo must not read
+    # as a narrower scope that happens to pass.
+    roots = []
+    for r in declared_roots:
+        try:
+            rp = Path(r).resolve()
+        except (OSError, ValueError) as e:
+            err(f"ERROR  usage error: --root {r!r} is unusable ({e})")
+            return 2
+        if not rp.is_dir():
+            err(f"ERROR  usage error: --root {r!r} is not an existing directory")
+            return 2
+        roots.append(rp)
+
     breaches = 0
     for a in args:
         p = Path(a)
         try:
             if not p.is_file():
                 raise Malformed(f"{a}: manifest not found")
-            found = judge(p, cap, byte_cap)
+            found = judge(p, cap, byte_cap, roots)
         except Malformed as e:
             err(f"ERROR  {e}")
             return 2

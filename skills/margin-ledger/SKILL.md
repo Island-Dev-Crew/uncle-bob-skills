@@ -64,7 +64,7 @@ Every candidate gate gets a margin projection before it enters the stack: `proje
 
 ## Enforced vs advisory (v0, stated honestly)
 
-- **Enforced today**: the arithmetic and the floor verdict. [`scripts/margin-ledger.py`](scripts/margin-ledger.py) computes margins exactly, exits 1 on a floor breach, exits 2 fail-closed on an empty or malformed ledger, and exits 3 on an unreadable ledger or bad invocation. Codes 2 and 3 are deliberately distinct. While both were 2, running from the wrong directory produced a path error that read exactly like a legitimate fail-closed verdict. The island's own shape is enforced by the pack validator (`scripts/validate-island.py` at the pack root).
+- **Enforced today**: the arithmetic and the floor verdict. [`scripts/margin-ledger.py`](scripts/margin-ledger.py) computes margins exactly, exits 1 on a floor breach, exits 2 fail-closed on an empty or malformed ledger — a `nan` or `inf` minute included, since every comparison is False against NaN and such a row used to print WIDE at exit 0 — and exits 3 on an unreadable ledger or bad invocation, a non-finite `--floor` among them, which disabled the breach test wholesale. Codes 2 and 3 are deliberately distinct. While both were 2, running from the wrong directory produced a path error that read exactly like a legitimate fail-closed verdict. The island's own shape is enforced by the pack validator (`scripts/validate-island.py` at the pack root).
 Red/green proof, run rather than asserted. The gate ships with the fixture pair that proves it can fail: [`scripts/fixtures/dirty-lost-margin.tsv`](scripts/fixtures/dirty-lost-margin.tsv) (one story at 0.80x, below the floor, hidden behind a 1.33x aggregate) and [`scripts/fixtures/clean-in-band.tsv`](scripts/fixtures/clean-in-band.tsv) (every story in band). Recompute the acceptance:
 
 ```bash
@@ -73,6 +73,8 @@ Red/green proof, run rather than asserted. The gate ships with the fixture pair 
 # the exit-2 fail-closed verdict.
 python3 scripts/margin-ledger.py scripts/fixtures/dirty-lost-margin.tsv   # → exit 1 (RED, LOST 0.80x login-audit)
 python3 scripts/margin-ledger.py scripts/fixtures/clean-in-band.tsv       # → exit 0 (GREEN, aggregate 3.20x IN-BAND)
+python3 scripts/margin-ledger.py --floor 1 scripts/fixtures/dirty-issue-number-story.tsv  # → exit 1 (a '#123' story is a row, not a comment)
+python3 scripts/margin-ledger.py scripts/fixtures/dirty-nonfinite-minutes.tsv  # → exit 2 (a 'nan' minute is malformed, never WIDE at exit 0)
 ```
 
 Both exit codes above were observed on the shipped fixtures. The pair also passes the pack ritual ([`known-dirty-fixture`](../known-dirty-fixture/SKILL.md)) in one run: `skills/known-dirty-fixture/scripts/prove-gate.sh skills/margin-ledger/scripts/fixtures/dirty-lost-margin.tsv skills/margin-ledger/scripts/fixtures/clean-in-band.tsv -- python3 skills/margin-ledger/scripts/margin-ledger.py` → ACCEPTED, exit 0 (from the pack root). Deleting either fixture returns this gate to `unverified`.

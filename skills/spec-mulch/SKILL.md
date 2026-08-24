@@ -67,11 +67,14 @@ The itch for a what-does-this-system-do document is legitimate. Scratch it with 
 
 - **Enforced when run**: [`scripts/mulch-check.sh`](scripts/mulch-check.sh) is deterministic. It scans every text file under the target (any extension; binaries and `.git` skipped), and prose mentions of the marker are ignored. It exits 1 while any line-start-marked spec survives, and exits 0 when the tree is clean. The story filter matches the story id as a whole token, never a substring.
 
-**Red/green proof**: the gate carries its own [`known-dirty-fixture`](../known-dirty-fixture/SKILL.md) acceptance in the repo. Run from `scripts/`:
+**Red/green proof**: the gate carries its own [`known-dirty-fixture`](../known-dirty-fixture/SKILL.md) acceptance in the repo. The gate resolves its fixtures relative to `scripts/`, so each
+command carries its own directory rather than leaving it to a sentence above the block —
+a proof that only reproduces from a working directory stated in prose is one the pack's
+own verifier cannot re-run, and an unreproducible proof is a claim.
 
 ```bash
-./mulch-check.sh fixtures/dirty-repo   # exit 1 — lists specs/story-17-checkout-tax.txt
-./mulch-check.sh fixtures/clean-repo   # exit 0 — the same tree after the mulch
+bash -c 'cd scripts && ./mulch-check.sh fixtures/dirty-repo'   # exit 1 — lists specs/story-17-checkout-tax.txt
+bash -c 'cd scripts && ./mulch-check.sh fixtures/clean-repo'   # exit 0 — the same tree after the mulch
 ```
 
 The two trees differ by exactly one file: the surviving marked spec (a `.txt`, so the extension-blind scan is under test too). The ADR sits in *both* trees and opens a line with a backticked `MULCH-ON-MERGE: story-17`, yet it is never listed. Green here is the line-start anchor working, not the string being absent. On the dirty tree the story filter also separates: `story-17` exits 1, `story-1` exits 0.

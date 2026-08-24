@@ -1,4 +1,4 @@
 # LIMIT fixture — a disclosed hole, not a passing gate. Negation is read only in its
 # '='-valued spellings. A space-separated `--incremental false` is two tokens, so the
 # scope reads present and this file exits 0 while the run is not incremental.
-typescript	mutation	stryker	--incremental	npx stryker run --incremental false
+typescript	mutation	stryker	--incremental	./node_modules/.bin/stryker run --incremental false

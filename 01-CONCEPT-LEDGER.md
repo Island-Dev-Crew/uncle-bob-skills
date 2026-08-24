@@ -36,6 +36,7 @@ Concepts are numbered `C1…C28` and are the ONLY citation targets the roster (0
 - **Cleaner:** *"run crap analysis and just general code review… clean up whatever mess the implementer made because the implementer will have made a horrible mess by that point."*
 - **Hardener:** *"the guy who runs the mutation testing and he's absolutely merciless… it's going to have 100% coverage."*
 - **QA agent:** *"takes the written QA document, turns it into an executable script that manipulates the system and comes up with a deterministic result."*
+- **The relay's own cost, RCM in the same breath:** *"there's communication overhead like crazy in that. and yet it's still faster by a large token than a human."* Provenance: auto-captions ~00:17:52–00:18:01, SRT cues 903–907, RCM's turn (MP takes over at 00:18:02 with "Let's talk about that"). Garble flagged: "by a large token" is an auto-caption artifact, kept verbatim rather than silently corrected.
 
 **C10 — Born-do-die lifecycle; focus controls context.** (RCM) *"when you focus the agents down to a single task, you're keeping the context window under control. The lost in the middle problem becomes much less of a problem"*; *"agents are born, do the task, and die so that the next one comes in with a clean context."* Cost side: *"startup times are high… 10, 15 seconds to even start up… then it's got to figure out its whole context all over again."* Plus parallelism: *"you could have three coders running at the same time. And my little laptop can support a lot more than three."*
 

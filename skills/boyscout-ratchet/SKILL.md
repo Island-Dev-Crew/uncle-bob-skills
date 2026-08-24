@@ -134,19 +134,10 @@ python3 scripts/ratchet.py --baseline scripts/fixtures/baseline.tsv \
 
 Every one of them was a false or mis-coded green first. The case variant, the NFC/NFD pair, the `#`-prefixed row and the BOM'd record each reported exit 0 on a file that had regressed or blown the ceiling. The BOM one did it on the `dirty-abs-path` regression in a fourth spelling, worse on all three axes and still under the ceiling. The `inf` baseline reported exit 0 with the crap axis silently switched off. The latin-1 record crashed out on exit 1, the code reserved for a real verdict, sending a CI consumer to repair code over an encoding fault. The closed stdout returned 0 having printed nothing at all. Deleting any fixture returns the gate to `unverified`.
 
-The broken pipe is the last one. It needs a reader rather than a file, so it is a probe rather than a fixture, captured at exit 2 where it returned 120 before fd 1 was neutralised:
+The broken pipe is the last one. It needs a reader rather than a file, so it is a probe rather than a fixture, captured at exit 2 where it returned 120 before fd 1 was neutralised. The probe **exits with the code it is reporting** and prints nothing itself: written as a heredoc that only printed the child's status, the block annotated exit 2 while the command itself returned 0 — an annotation no run had produced, and one no line-based verifier could re-run. It stays silent because a probe of a dead output stream must not itself depend on a live one.
 
 ```bash
-python3 - <<'EOF'   # exit 2
-import os, subprocess, sys
-r, w = os.pipe(); os.close(r)                       # a reader that is already gone
-p = subprocess.Popen([sys.executable, "scripts/ratchet.py",
-      "--baseline", "scripts/fixtures/baseline.tsv",
-      "--current", "scripts/fixtures/clean-improved.tsv",
-      "--ceiling", "6", "--budget", "5"], stdout=w, stderr=subprocess.PIPE)
-os.close(w); _, err = p.communicate()
-print(p.returncode, err.decode().strip())           # -> 2 io error: cannot emit the verdict: [Errno 32] Broken pipe
-EOF
+python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);p=subprocess.Popen([sys.executable,"scripts/ratchet.py","--baseline","scripts/fixtures/baseline.tsv","--current","scripts/fixtures/clean-improved.tsv","--ceiling","6","--budget","5"],stdout=w,stderr=subprocess.PIPE);os.close(w);_,err=p.communicate();sys.exit(p.returncode)'  # exit 2 — ratchet writes `io error: cannot emit the verdict: [Errno 32] Broken pipe` to stderr
 ```
 
 ## Boundaries

@@ -1,0 +1,6 @@
+# limit fixture: a coverage/CC join that emitted non-finite numbers.
+# nan defeats every comparison in the gate, so this row used to print ok and exit 0.
+# function<TAB>complexity<TAB>coverage_pct
+parse_row	5	80
+render_invoice	nan	0
+cache_key	1e200	0

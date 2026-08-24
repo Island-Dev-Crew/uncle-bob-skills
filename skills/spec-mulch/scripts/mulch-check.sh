@@ -9,6 +9,11 @@
 #        mulch-check.sh [dir] <story-id>   # only specs marked for one story
 #
 # Exit 0 green · 1 red (survivors listed) · 2 usage error.
+# A dead stdout must not become the verdict. `gate.sh … | head` closes the pipe early, the
+# next write takes SIGPIPE, and the shell dies at 128+13 = 141 — a code this script's table
+# does not name, arriving after the work was already done correctly. Handling the signal
+# turns that into the usage/IO code 2, which is the one that means "no verdict here".
+trap 'exit 2' PIPE
 set -euo pipefail
 
 dir="${1:-.}"

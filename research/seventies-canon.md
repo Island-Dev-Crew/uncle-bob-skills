@@ -1,8 +1,8 @@
-All research verified. Final report follows.
+Labels are per claim, not per document — see [README.md](README.md). Every claim below carries a source except the one marked `UNVERIFIED` in the sources line at the end: the *origin of the "tactical versus strategic" vocabulary itself*, which is commonly attributed to Ousterhout and was not traced to a primary here. The books, dates and arguments are sourced; that one attribution is not.
 
 ## Core mechanism
 
-In the interview transcript, Bob Martin frames the agent-era gap as "tactical versus strategic programming": agents are "really good at tactical, really bad at strategic," and his prescription is "the old books, the ones that nobody reads because they're old… Tom DeMarco… Ed Yourdon… the pragmatic programmer" (transcript, /private/tmp/…/va-unclebob/transcript.txt, sentence-lines 485–534). The 1970s–80s canon is strategy distilled: it was written when compute was scarce and every design decision had to be made *before* code was cheap — exactly the position of a 2026 engineer whose agents make code nearly free but design errors compounding.
+In the interview transcript, Bob Martin frames the agent-era gap as "tactical versus strategic programming": agents are "really good at tactical, really bad at strategic," and his prescription is "the old books, the ones that nobody reads because they're old… Tom DeMarco… Ed Yourdon… the pragmatic programmer" (transcript, ../source/transcript.txt, sentence-lines 485–534). The 1970s–80s canon is strategy distilled: it was written when compute was scarce and every design decision had to be made *before* code was cheap — exactly the position of a 2026 engineer whose agents make code nearly free but design errors compounding.
 
 ## Provenance & history
 
@@ -55,4 +55,4 @@ In the interview transcript, Bob Martin frames the agent-era gap as "tactical ve
 [13] https://www.praxisframework.org/files/royce1970.pdf
 [14] https://pragprog.com/titles/tpp20/the-pragmatic-programmer-20th-anniversary-edition/ (https://en.wikipedia.org/wiki/The_Pragmatic_Programmer)
 
-Bob's "old books" framing: local transcript at /private/tmp/claude-502/-Users-IDC2-5-Desktop-IDC-skills/061b386e-e97d-4adb-adf8-6065dec28950/scratchpad/va-unclebob/transcript.txt (he names DeMarco, Yourdon, and The Pragmatic Programmer explicitly). UNVERIFIED: none — all claims above are sourced; note the "tactical vs. strategic" vocabulary itself originates outside this canon (commonly attributed to Ousterhout's *A Philosophy of Software Design*, not verified here).
+Bob's "old books" framing: local transcript at ../source/transcript.txt (he names DeMarco, Yourdon, and The Pragmatic Programmer explicitly), regenerable per [`../source/README.md`](../source/README.md). **UNVERIFIED (one claim):** the origin of the "tactical vs. strategic" vocabulary. It originates outside this canon and is commonly attributed to Ousterhout's *A Philosophy of Software Design*; that attribution was not traced to a primary here, so any island leaning on it cites this line, not a source.

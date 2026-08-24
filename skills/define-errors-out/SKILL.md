@@ -1,6 +1,6 @@
 ---
 name: define-errors-out
-description: Ousterhout's define-errors-out review pass. Delete error cases by redesigning the API instead of adding another handler for them, with the count of raised and propagated error paths before vs after as the verdict. Reach for it when an interface is accumulating exceptions, when an agent keeps answering a failure with one more try/except block, or when someone says "define errors out of existence", "too many error paths", "this API throws too much", or "stop adding handlers". Differentiator - this island removes branches by redesign; measuring complexity and enforcing its ceiling belong to crap-gate, and debugging a failure that actually happened belongs to the Forge.
+description: Ousterhout's define-errors-out review pass. Delete error cases by redesigning the API instead of adding another handler for them, with the count of raised and propagated error paths before vs after as the verdict. Reach for it when an interface is accumulating exceptions, when an agent keeps answering a failure with one more try/except block, or when someone says "define errors out of existence", "too many error paths", "this API throws too much", or "stop adding handlers". A complaint enters DIAGNOSE, which reports and edits nothing; REPAIR needs explicit authority to change a named module. Differentiator - this island removes branches by redesign; measuring complexity and enforcing its ceiling belong to crap-gate, and debugging a failure that actually happened belongs to the Forge.
 ---
 
 # Define Errors Out: the case, not the handler
@@ -11,10 +11,25 @@ For an agent fleet the payoff is doubled. An error path is a branch, and a branc
 
 This island owns one pass: **inventory the error paths, interrogate each one, recount.** Quotes reach it only through the [concept ledger](../../01-CONCEPT-LEDGER.md).
 
-## The pass
+## Two modes, and a trigger phrase enters the first one
+
+"This API throws too much" is a complaint, not a work order. It reports a symptom; it does not name the module that may be rewritten, or say that anything may be rewritten at all. So the pass has two modes, and every trigger phrase in the description above enters **DIAGNOSE**.
+
+- **DIAGNOSE** — read-only, and the default. Fix the boundary, print the worklist, name the defusal each path is a candidate for, and hand back that report with the boundary you propose. Nothing is edited.
+- **REPAIR** — the numbered pass below. Entered only once the human names the module and says to change it. Answering a complaint by rewriting source takes an authority nobody granted.
+
+The mode gate is `advisory`: no script can tell an authorized rewrite from an unauthorized one. What the tool backs is the diagnosis half. Inventory mode takes one path, prints the worklist, and returns no verdict — so DIAGNOSE has a command that does not demand an `AFTER` nobody has written, and does not answer a diagnosis with the `FAIL` a baseline compared against an unchanged working copy would return.
+
+```bash
+python3 scripts/error-paths.py scripts/fixtures/before.py             # exit 0 — worklist of 3 printed, no verdict, nothing written
+python3 scripts/error-paths.py scripts/fixtures/after-defined-out.py  # exit 0 — a worklist of zero is a report, never a PASS
+python3 scripts/error-paths.py --inventory scripts/fixtures/before.py # exit 2 — still no flags; one bare path is the whole interface
+```
+
+## The pass (REPAIR)
 
 1. **Fix the boundary.** Name the module under review, then capture its current state as the baseline: `git show HEAD:path/to/mod.py > /tmp/before.py`.
-2. **Inventory.** Run the counter over baseline and working copy. It lists every raise site, every except handler, and every assert with its enclosing scope. That listing is the worklist: one line per error path, nothing summarized away.
+2. **Inventory.** Run the counter in inventory mode over the module under review. It lists every raise site, every except handler, and every assert with its enclosing scope. That listing is the worklist: one line per error path, nothing summarized away.
 3. **Interrogate each path** with the four defusals below, in order. The first one that fits wins. A path that survives all four stays, and earns a one-line written justification naming why it is irreducible.
 4. **Rewrite, then recount.** The gate is the delta. Loop until the tool consents (C4).
 
@@ -45,7 +60,9 @@ Counting handlers is what gives the gate its teeth: **wrapping a case in one mor
 python3 scripts/error-paths.py BEFORE.py AFTER.py
 ```
 
-Exit codes carry distinct meanings and never share one: `0` the after version exposes strictly fewer error paths; `1` a real negative verdict (same, more, or a baseline with nothing to remove); `2` misuse, meaning bad arguments, an unreadable or undecodable file, unparseable source, a `BEFORE` declaring no top-level `def`/`class`, or an `AFTER` missing any top-level `def`/`class` `BEFORE` declared.
+In the gate, exit codes carry distinct meanings and never share one: `0` the after version exposes strictly fewer error paths; `1` a real negative verdict (same, more, or a baseline with nothing to remove); `2` misuse, meaning bad arguments, an unreadable or undecodable file, unparseable source, a `BEFORE` declaring no top-level `def`/`class`, or an `AFTER` missing any top-level `def`/`class` `BEFORE` declared.
+
+Inventory mode grades nothing, so it never returns `1`. It exits `0` when the worklist printed — a worklist of zero included, which is a report and not a PASS — and `2` on the same misuse set minus the two checks that need a second file.
 
 That last check anchors on the whole definition set, not the error-bearing subset, because a redesign of one module does not delete its unrelated siblings. So deleting the raising function is exit 2. So is an unrelated file, the moment the baseline has one sibling the forgery lacks. Only `def`/`async def`/`class` count as definitions: `Window = "unrelated"` is a name, not a definition, and can never stand in for the `class Window` it replaced. A baseline whose error paths sit at module scope has no definition to anchor on at all, so it is misuse rather than a free pass.
 
@@ -94,13 +111,14 @@ A gate whose holes are written down is worth more than one whose holes are disco
 
 ## Enforced vs advisory
 
-- `enforced`: the count and the verdict, and nothing wider than this list. `error-paths.py` derives both figures from the AST (raises, handlers, asserts). It exits 1 when the after version does not expose strictly fewer error paths, exits 1 on a zero-path baseline, and exits 2 fail-closed on bad arguments, an unreadable/undecodable/unparseable file, a `BEFORE` declaring no top-level `def`/`class`, and an `AFTER` missing any top-level `def`/`class` `BEFORE` declared. Both directions were executed above. The guarantee is **definition-shaped**, not module-shaped: it never certifies that the two inputs are one module. The island's own shape is enforced by the pack validator (`scripts/validate-island.py` at the pack root).
-- `advisory`: everything that is judgment. Whether the two inputs are even the same module (same-path discipline, the fourth hole's mitigation). Which defusal applies to a given path. Whether a surviving path is genuinely irreducible. Whether a removal was a redesign, a swallow, or a sentinel. The whole-changed-set scoping that closes the relocation hole. And the language reach: the counter reads Python only today, and the two counted constructs port to any language with throw/catch, but no other parser ships here.
+- `enforced`: the count and the verdict, and nothing wider than this list. `error-paths.py` derives both figures from the AST (raises, handlers, asserts). It exits 1 when the after version does not expose strictly fewer error paths, exits 1 on a zero-path baseline, and exits 2 fail-closed on bad arguments, an unreadable/undecodable/unparseable file, a `BEFORE` declaring no top-level `def`/`class`, and an `AFTER` missing any top-level `def`/`class` `BEFORE` declared. Both directions were executed above. The guarantee is **definition-shaped**, not module-shaped: it never certifies that the two inputs are one module. Inventory mode is enforced only in this narrow sense: it reads one path, prints, and returns `0` or `2`, never `1` and never a grade. The island's own shape is enforced by the pack validator (`scripts/validate-island.py` at the pack root).
+- `advisory`: everything that is judgment. Whether the pass had authority to edit at all — the DIAGNOSE/REPAIR gate is prose, and no script can check who authorized a rewrite. Whether the two inputs are even the same module (same-path discipline, the fourth hole's mitigation). Which defusal applies to a given path. Whether a surviving path is genuinely irreducible. Whether a removal was a redesign, a swallow, or a sentinel. The whole-changed-set scoping that closes the relocation hole. And the language reach: the counter reads Python only today, and the two counted constructs port to any language with throw/catch, but no other parser ships here.
 
 Claiming more than this would launder advisory into enforced, and the pack's first law forbids it ([CONTEXT.md](../../CONTEXT.md)).
 
 ## Done means
 
+- [ ] Mode named before anything was written: DIAGNOSE returned a report, or a human authorized REPAIR on a named module
 - [ ] Baseline captured and the worklist printed: every raise site, handler, and assert in the module under review, none summarized away
 - [ ] Every path on the worklist either removed by a named defusal (1–4) or kept with a one-line written justification
 - [ ] `error-paths.py BEFORE AFTER` exits 0 across every file the change touched

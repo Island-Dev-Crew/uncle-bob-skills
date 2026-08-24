@@ -2,7 +2,8 @@
 """error-paths.py — count the error paths an interface exposes, before vs after.
 
 Usage:
-  error-paths.py BEFORE.py AFTER.py
+  error-paths.py MODULE.py            inventory (DIAGNOSE) — the worklist, no verdict
+  error-paths.py BEFORE.py AFTER.py   the gate (REPAIR) — the before/after delta is the verdict
 
 An error path is a place a caller can observe a failure. Counted from the AST,
 never from grep (a grep for 'raise' also matches comments and string literals):
@@ -14,12 +15,18 @@ Counting handlers is the point: wrapping a case in one more `try` — or swallow
 it with `except: pass` — leaves the count where it was or raises it. The only
 move that lowers the count is deleting the case from the design.
 
-Exit codes (distinct meanings, never shared):
+Exit codes for the gate (distinct meanings, never shared):
   0  PASS   — AFTER exposes strictly fewer error paths than BEFORE
   1  FAIL   — AFTER exposes the same number or more, or BEFORE exposed none
   2  USAGE  — bad arguments, unreadable or undecodable file, unparseable source,
               a BEFORE that declares no top-level def/class, or an AFTER missing
               any top-level def/class BEFORE declared
+
+Inventory mode grades nothing, so it never returns 1:
+  0  the worklist printed — a worklist of zero is a report, never a PASS
+  2  bad arguments, unreadable or undecodable file, unparseable source
+Inventory opens one file for reading and prints; it writes nothing. A diagnostic
+complaint buys a reading, not a rewrite.
 
 Only `def`/`async def`/`class` at module level count as definitions: an
 assignment of the same name (`Window = "unrelated"`) is a name, not a
@@ -93,9 +100,32 @@ def report(label, path, found):
         print("  (none)")
 
 
+def inventory(path):
+    """DIAGNOSE: the worklist for one module, and no verdict at all.
+
+    A complaint ("this API throws too much") authorises a reading, not a rewrite,
+    and a reading cannot supply an AFTER nobody has written yet. Running the gate
+    against an unchanged working copy answers a diagnosis with FAIL (n → n), which
+    is a verdict on work no one has done. This mode is that missing command.
+    """
+    found = sites(parse(path))
+    report("INVENTORY", path, found)
+    print(
+        f"\n{len(found)} error path(s) on the worklist — no verdict: inventory reports, "
+        "it does not grade. The gate is `error-paths.py BEFORE.py AFTER.py`."
+    )
+    return 0
+
+
 def main(argv):
-    if len(argv) != 3 or any(a.startswith("-") for a in argv[1:]):
-        die("error-paths.py BEFORE.py AFTER.py  (no flags — the before/after delta is the only verdict)")
+    if len(argv) not in (2, 3) or any(a.startswith("-") for a in argv[1:]):
+        die(
+            "error-paths.py MODULE.py  (inventory, no verdict)  |  "
+            "error-paths.py BEFORE.py AFTER.py  (the gate) — no flags, "
+            "the before/after delta is the only verdict"
+        )
+    if len(argv) == 2:
+        return inventory(argv[1])
     before_path, after_path = argv[1], argv[2]
     before_tree, after_tree = parse(before_path), parse(after_path)
     before_defs, after_defs = top_defs(before_tree), top_defs(after_tree)
@@ -148,7 +178,7 @@ if __name__ == "__main__":
         _code = _exc.code if isinstance(_exc.code, int) else (0 if _exc.code is None else 1)
     except BaseException as _exc:              # an exception is not a verdict
         try:
-            print(f"error: internal failure: {{type(_exc).__name__}}: {{_exc}}", file=sys.stderr)
+            print(f"error: internal failure: {type(_exc).__name__}: {_exc}", file=sys.stderr)
         except BaseException:
             pass
         _code = 2

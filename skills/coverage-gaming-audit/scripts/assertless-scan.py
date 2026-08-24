@@ -597,8 +597,57 @@ def file_key(p):
     return (st.st_dev, st.st_ino)
 
 
-def collect(paths):
+def halt_on_walk_error(err):
+    """A directory the walk could not read is not an empty directory.
+
+    `os.walk` swallows a scandir failure by default: an unreadable subtree is
+    dropped silently, nothing is printed, and the scan reports a clean verdict
+    over test files it never opened. That is the same under-collection false
+    green as a skipped symlinked tree, only quieter — and a mode-000 directory,
+    a root-owned mount, or a checkout restored with tight permissions all reach
+    it without any hostile intent. Re-raising puts the OSError on `collect`'s
+    error path, which `run` turns into exit 2: a non-verdict, never a green.
+    """
+    raise err
+
+
+def canonical(path):
+    """The one spelling a containment test may compare: fully resolved, every '.',
+    '..' and symlink component gone, so a prefix test states a fact about the
+    filesystem rather than about the string the caller typed."""
+    return os.path.normcase(os.path.realpath(path))
+
+
+def require_inside(path, roots):
+    """PATH AUTHORITY: this scan reads exactly what the caller named.
+
+    Following links let a symlink inside a scanned tree point at a sibling
+    checkout, and the scanner then read and PRINTED findings from files nobody
+    authorized it to open. Documenting that behaviour is not authority to take
+    it. An escape is refused BY NAME and fail-closes, because pruning it in
+    silence would be the same false green the followlinks default already
+    produced once. `--allow-root` is how a caller widens the scan deliberately —
+    a decision they make, rather than one a link makes for them. Not a sandbox: a
+    hard link or a bind mount is a real entry inside the tree and no path test
+    sees through it.
+    """
+    real = canonical(path)
+    for r in roots:
+        if real == r or real.startswith(r.rstrip(os.sep) + os.sep):
+            return
+    raise OSError(
+        f"{path} resolves to {os.path.realpath(path)}, outside every authorized "
+        f"root - pass --allow-root to authorize that target, or take the link "
+        f"out of the scanned tree")
+
+
+def collect(paths, allow_roots=()):
     seen, files = set(), []
+    roots = [canonical(p) for p in paths]
+    for r in allow_roots:
+        if not os.path.exists(r):
+            raise OSError(f"--allow-root {r}: no such path")
+        roots.append(canonical(r))
     for raw in paths:
         p = Path(raw)
         if p.is_dir():
@@ -609,7 +658,7 @@ def collect(paths):
             # risk of a directory cycle, so each directory is visited once by its real
             # path; file-level duplicates still fold through file_key below.
             found, walked = [], set()
-            for root, dirs, names in os.walk(p, followlinks=True):
+            for root, dirs, names in os.walk(p, followlinks=True, onerror=halt_on_walk_error):
                 try:
                     real = os.path.realpath(root)
                 except OSError:
@@ -618,7 +667,12 @@ def collect(paths):
                     dirs[:] = []
                     continue
                 walked.add(real)
-                found.extend(Path(root) / n for n in names if TEST_FILE.match(n))
+                for d in list(dirs):
+                    require_inside(os.path.join(root, d), roots)
+                for n in names:
+                    if TEST_FILE.match(n):
+                        require_inside(os.path.join(root, n), roots)
+                        found.append(Path(root) / n)
             found = sorted(found)
         elif p.is_file():
             found = [p]
@@ -689,6 +743,8 @@ def run(argv):
     global _RECORD
     ap = RecordingParser(description="Flag tests that execute code without asserting on it.")
     ap.add_argument("paths", nargs="+", help="test files, or directories scanned for test_*.py / *_test.py")
+    ap.add_argument("--allow-root", action="append", default=[], metavar="DIR",
+                    help="authorize an additional root the scan may read (repeatable)")
     ap.add_argument("--assert-helper", action="append", default=[], metavar="NAME",
                     help="treat calls to NAME as a real assertion (repeatable; each use is an excusal)")
     args = ap.parse_args(argv)
@@ -701,7 +757,7 @@ def run(argv):
         return 2
 
     try:
-        files = collect(args.paths)
+        files = collect(args.paths, args.allow_root)
     except OSError as e:
         print(f"error: {e} ({excusal})", file=sys.stderr)
         return 2

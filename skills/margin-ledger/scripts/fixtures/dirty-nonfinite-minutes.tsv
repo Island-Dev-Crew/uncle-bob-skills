@@ -1,0 +1,3 @@
+# DIRTY: a spreadsheet divide-by-zero cell exported as nan, hiding a real 0.80x breach
+checkout-flow	300	240
+login-audit	60	nan

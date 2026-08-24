@@ -8,16 +8,20 @@ The pack's grounding rule is that no island quotes the conversation from memory:
 
 **Not here:** the full transcript and the complete timestamped caption file. Both are the whole of someone else's recorded conversation, and this repository does not redistribute them. The ledger's short attributed quotes are ordinary citation; a full transcript is a copy.
 
-## Regenerate the transcript in one command
+## Regenerate the transcript — two commands
 
-The evidence stays reproducible — pull it yourself, and every verification in this repo can be re-run against it:
+The evidence stays reproducible — pull it yourself, and every verification in this repo can be re-run against it. Two deterministic steps: `yt-dlp` fetches the captions, then a short Python filter flattens them into the prose transcript. Neither is wrapped in a script, because a wrapper here would be one more thing to trust; run them in order and read what each does.
+
+**Step 1 — fetch the captions.**
 
 ```bash
 yt-dlp --skip-download --write-auto-sub --sub-lang en --sub-format srt \
        -o "zcLPGC-tvgk.%(ext)s" "https://www.youtube.com/live/zcLPGC-tvgk"
 ```
 
-That writes the caption file beside this README. To produce the flattened prose transcript the ledger was checked against, strip the cue numbers and timestamps:
+That writes `zcLPGC-tvgk.en.srt` beside this README, and nothing else — it is not yet the transcript the ledger cites.
+
+**Step 2 — flatten them.** This produces `transcript.txt`, the file every quote check in this repo runs against, by stripping cue numbers, timestamps and the rolling repeats auto-captions emit:
 
 ```bash
 python3 - <<'EOF' > transcript.txt

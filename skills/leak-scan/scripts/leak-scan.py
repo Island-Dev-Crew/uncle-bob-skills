@@ -20,12 +20,16 @@ Detects the literal shape of information leakage only; mirrored schemas and
 parallel switches remain human review work.
 
 Usage:
-  leak-scan.py [--waivers FILE] [--ext .py,.ts] PATH [PATH ...]
+  leak-scan.py [--waivers F] [--ext .py,.ts] [--allow-root D] PATH [PATH ...]
 
 A directory argument is walked with symlinked subdirectories FOLLOWED (guarded
 against link loops by directory identity), because os.walk's default skips them
 in silence and a shared package reached through a link is exactly where the
-counterpart module lives.
+counterpart module lives. Followed only INSIDE the authorized roots, though: the
+canonical target of every directory walked and every file read must lie under a
+PATH argument or under a --allow-root (repeatable). A link that leaves them all
+is refused BY NAME (exit 2) rather than read, because a scan is authorized over
+what the caller named and a link in the tree can name anything on the machine.
 
 Exit codes — distinct meanings get distinct codes, and 0/1/2/3 are the only codes
 this script produces (the interpreter's own 120, from a std-stream flush failing
@@ -37,8 +41,9 @@ a verdict this scanner did not compute:
                   and computes no verdict, so do not read a 0 from a run that
                   never scanned as a clean tree
   1  leakage      at least one unwaived literal appears in >= 2 files
-  2  usage/IO     bad arguments, unreadable path or directory, undecodable or
-                  malformed waiver ledger, a closed or broken stdout — including
+  2  usage/IO     bad arguments, unreadable path or directory, a symlink whose
+                  target leaves every authorized root, undecodable or malformed
+                  waiver ledger, a closed or broken stdout — including
                   a --help or usage message that could not be written — fewer
                   than 2 distinct files to compare (fail-closed: a single-file
                   scan cannot detect cross-module leakage), an interrupt, or any
@@ -250,7 +255,42 @@ def file_identity(path):
         os.path.normcase(os.path.realpath(path))
 
 
-def collect_files(paths, exts):
+def canonical(path):
+    """The one spelling a containment test may compare: fully resolved and
+    case-folded. Every '.', '..', '//' segment and every symlink component is
+    gone, so a prefix test on it is a statement about the filesystem rather than
+    about the string the caller typed."""
+    return os.path.normcase(os.path.realpath(path))
+
+
+def require_inside(path, roots):
+    """PATH AUTHORITY: this scan may read exactly what the caller named. Every
+    directory the walk descends into and every file it reads must resolve inside
+    an authorized root — a PATH argument, or a --allow-root. A symlink inside a
+    walked tree can point at a sibling checkout, ~/.ssh or /etc, and following
+    one made this scanner read, and PRINT lines from, files nobody authorized it
+    to open; documenting that behaviour is not authority to take it. An escape is
+    refused BY NAME and fail-closes (exit 2) — reading it is unauthorized, and
+    pruning it in silence would be the same false green os.walk's followlinks
+    default already produced once. --allow-root is how a caller expands the scan
+    deliberately, which is a decision they make rather than one a link makes for
+    them. Not a sandbox: a HARD link, or a bind mount, is a real entry inside the
+    tree and no path test can see through it."""
+    real = canonical(path)
+    for r in roots:
+        if real == r or real.startswith(r.rstrip(os.sep) + os.sep):
+            return
+    die(f"{path} resolves to {os.path.realpath(path)}, outside every authorized "
+        f"root — pass --allow-root to authorize that target, or take the link "
+        f"out of the scanned tree")
+
+
+def collect_files(paths, exts, allow_roots=()):
+    roots = [canonical(p) for p in paths]
+    for r in allow_roots:
+        if not os.path.exists(r):
+            die(f"--allow-root {r}: no such path")
+        roots.append(canonical(r))
     found = []
     for p in paths:
         if os.path.isdir(p):
@@ -279,12 +319,20 @@ def collect_files(paths, exts):
                     dirs[:] = []        # a link loop back into a walked subtree
                     continue
                 walked.add(ident)
-                dirs[:] = [d for d in dirs if d not in SKIPPED_DIRS]
+                kept = []
+                for d in dirs:
+                    if d in SKIPPED_DIRS:
+                        continue
+                    require_inside(os.path.join(root, d), roots)
+                    kept.append(d)
+                dirs[:] = kept
                 for n in sorted(names):
                     # Extensions are compared case-folded: a leak stated in
                     # SERVER.PY must not be invisible to a --ext .py walk.
                     if n.lower().endswith(exts):
-                        found.append(os.path.join(root, n))
+                        f = os.path.join(root, n)
+                        require_inside(f, roots)
+                        found.append(f)
         elif os.path.isfile(p):
             found.append(p)
         else:
@@ -416,6 +464,10 @@ def main(argv=None):
     ap.add_argument("--waivers", help="TSV ledger: literal, TAB, reason")
     ap.add_argument("--ext", default=",".join(DEFAULT_EXTS),
                     help="comma-separated extensions walked inside directories")
+    ap.add_argument("--allow-root", action="append", default=[], metavar="DIR",
+                    help="authorize ONE more root the walk may follow a symlink "
+                         "into (repeatable). Without it, a link whose target "
+                         "leaves every PATH argument is refused, not read")
     ap.add_argument("--no-stale", action="store_true",
                     help="changed-set runs: report leakage only, never stale "
                          "waivers (exit 3 becomes impossible). Staleness is a "
@@ -430,7 +482,7 @@ def main(argv=None):
     if not exts:
         die("--ext resolved to an empty extension set")
 
-    files = collect_files(args.paths, exts)
+    files = collect_files(args.paths, exts, args.allow_root)
     if len(files) < 2:
         die(f"{len(files)} comparable file(s) — fewer than two modules cannot "
             f"exhibit cross-module leakage, so this scan cannot pass. Widen the "

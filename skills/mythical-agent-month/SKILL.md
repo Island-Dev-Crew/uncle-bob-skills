@@ -11,7 +11,16 @@ The answer is fifty years old. The [seventies-canon brief](../../research/sevent
 
 ### A grounding note, because this island is about honest cost
 
-The roster line for this island carries the phrase "communication overhead like crazy" as a C9 quote. The phrase is in the source transcript, but it is **not in [the concept ledger](../../01-CONCEPT-LEDGER.md)**. An island may quote the conversation only from the ledger ([CONTEXT.md](../../CONTEXT.md)); claims that go beyond the conversation cite a brief in `research/` instead. So this island rests no claim on that phrase and never cites it as ledger-backed authority. Everything quoted above is ledger-backed, and the ledger gap is recorded here rather than papered over.
+The roster line for this island carries the phrase "communication overhead like crazy" as a C9 quote, and for a while it reached the roster without passing through [the concept ledger](../../01-CONCEPT-LEDGER.md) — the only place an island may quote the conversation from ([CONTEXT.md](../../CONTEXT.md)); claims that go beyond the conversation cite a brief in `research/` instead. The gap is now closed at the source rather than by demoting the words: C9 carries the sentence verbatim with its locus (auto-captions ~00:17:52–00:18:01, SRT cues 903–907, RCM's turn), so every quote on this island is ledger-backed and re-greppable in `source/`. Re-grep the ledger rather than trusting this sentence.
+
+The re-grep is two of them, and its control is a phrase that is *only* in the transcript — the exact shape this finding caught:
+
+```bash
+bash -c 'grep -qF "communication overhead like crazy" ../../01-CONCEPT-LEDGER.md && grep -qF "communication overhead like crazy" ../../source/transcript.txt'   # exit 0
+bash -c 'grep -qF "Diet Coke" ../../01-CONCEPT-LEDGER.md && grep -qF "Diet Coke" ../../source/transcript.txt'                                                   # exit 1
+```
+
+The second fails at the ledger grep, which is what a roster quote with no ledger entry looks like — so the first is not a grep that always says yes.
 
 ## Where this island sits
 
@@ -38,7 +47,7 @@ Compare the two topologies at the same headcount, using nothing but edge counts:
 
 Five seats: 4 edges. Five peers: 10 edges. Same headcount, two and a half times the surface, and the relay's edges are the cheap kind. That is the whole case for staging specialists in series. It is also why the relay can afford five agents on work that would drown five peers.
 
-The relay's costs are still real and still additive. Each seat pays the fixed startup and context-rebuild toll (C10), and the stack must keep the margin above the human floor or *"you've lost the game"* (C5). Serial staging buys a better edge count; it does not buy immunity.
+The relay's costs are still real and still additive, and Bob says so about the very relay he runs: *"there's communication overhead like crazy in that. and yet it's still faster by a large token than a human"* (C9). Each seat pays the fixed startup and context-rebuild toll (C10), and the stack must keep the margin above the human floor or *"you've lost the game"* (C5). Serial staging buys a better edge count; it does not buy immunity.
 
 ## The sizing model
 
@@ -132,6 +141,7 @@ At `S=480, p=0.9, h=8, fleet=6` the mesh model charges 15 paths and returns `1`.
 
 - **`enforced`** — the arithmetic and the refusals. `fleet-cost.py` exits `1` on a fleet size whose last agent does not reduce exact-rational elapsed time, and `2` on every input it cannot parse into exactly the four named keys. Its own red/green acceptance is enforced by `prove-gate.sh` (run above, exit 0). This island's shape is enforced by [`validate-island.py`](../../scripts/validate-island.py).
 - **`advisory`** — every input number. `S`, `p`, and `h` are estimates, and the script cannot check any of them. A wrong `p` produces a confident wrong verdict. Write the three numbers down with their source before running it, exactly as `margin-ledger` demands of a human baseline, or the output is a guess wearing an exit code.
+- **`advisory`** — provenance breadth. The pair of greps above proves *this* phrase now sits in both the ledger and the transcript; no checker sweeps every quote in the pack for the same double-sourcing.
 - **`advisory`** — the topology judgement (mesh versus chain versus hub), the choice to stage serially rather than fan out, and everything about *which* agent to cut. No checker sees your fleet's shape.
 
 ## Done when

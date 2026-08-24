@@ -11,7 +11,7 @@ Ousterhout's thesis: the root enemy is complexity, defined by two causes — **d
 
 ## What holds up in 2026 for agent-directed engineering
 
-The local transcript (`/private/tmp/claude-502/-Users-IDC2-5-Desktop-IDC-skills/061b386e-e97d-4adb-adf8-6065dec28950/scratchpad/va-unclebob/transcript.txt`) is a host + Uncle Bob conversation (Ousterhout invoked, not present; exact venue/date UNVERIFIED). Verbatim substance:
+The local transcript (`../source/transcript.txt`) is a host + Uncle Bob conversation (Ousterhout invoked, not present; exact venue/date UNVERIFIED). Verbatim substance:
 
 - **Deep modules for agents** — the host proposes deep modules are "really good with models because they can read the interface without having to understand the implementation"; Bob: "Yeah, absolutely… they pay attention to the structure. It can allow them to not read the code beneath them, which is both a danger and an advantage… as long as the code is consistent, you're okay. They also pay attention to the tests."
 - **TDD concession** — Bob: "I cannot and will not enforce [TDD] on the agents… I allow the agents to behave more like John [Ousterhout] would, which is to write a function and then write the test for that function… They always fall back on doing that. So I figure that's probably" fine. He substitutes **post-hoc deterministic gates** (mutation testing, CRAP/coverage, cyclomatic limits) run by fresh-context agents ("born, do the task, and die").
@@ -38,4 +38,4 @@ Assessment: module-shape rules translate directly into context-budget rules. A d
 - https://github.com/johnousterhout/aposd-vs-clean-code (written debate, Sept 2024–Feb 2025)
 - https://www.youtube.com/watch?v=3Vlk6hCWBw0 (recorded discussion, Mar 2025)
 - https://www.informit.com/store/clean-code-a-handbook-of-agile-software-craftsmanship-9780135398579 and https://www.oreilly.com/library/view/clean-code-a/9780135398586/ (Clean Code 2nd ed., Oct 8 2025; "Appendix: The Clean Code Debate," p.561)
-- Local transcript: /private/tmp/claude-502/-Users-IDC2-5-Desktop-IDC-skills/061b386e-e97d-4adb-adf8-6065dec28950/scratchpad/va-unclebob/transcript.txt (deep-modules-for-agents exchange; TDD concession — venue/date UNVERIFIED)
+- Local transcript: ../source/transcript.txt (deep-modules-for-agents exchange; TDD concession — venue/date UNVERIFIED)

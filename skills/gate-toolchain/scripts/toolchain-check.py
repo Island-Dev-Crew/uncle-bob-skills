@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """toolchain-check.py — gate a per-language gate-toolchain manifest.
 
-Checks three things per declared gate, and only these three:
+Checks four things per declared gate, and only these four:
   1. the tool is the mapped implementation for that language + gate;
   2. the command actually names that tool — matched on whole squashed segments,
      so `echo --changed -Dcapital=1` cannot satisfy `pit` by burying `pit`
@@ -21,6 +21,10 @@ Checks three things per declared gate, and only these three:
      either column: declared, or merely sitting in the command that runs.
      Shell comments are stripped before the scan, so a flag parked behind '#'
      does not count as present.
+  4. the command runs a lockfile-backed local binary, not a fetch-and-run
+     launcher (`npx`, `pnpm dlx`, `bunx`, `uvx`, `npm exec`, `pipx run`) that
+     resolves an unpinned package off a registry and executes it. An explicit
+     `--no-install`/`--offline` pin clears the rule.
 
 Quoting has one model, POSIX shell's, applied twice over the same rules:
 strip_comment finds the first unquoted WORD-INITIAL '#' honouring backslash
@@ -79,6 +83,12 @@ ALIASES = {"pit": "pitest", "stryker-js": "stryker", "strykerjs": "stryker",
            "stryker-net": "stryker", "qt-coco": "coco", "cosmicray": "cosmic-ray"}
 DENY_SCOPE = {"--all", "--full", "--everything", "--whole-repo", "--all-files",
               "--repo", "--entire-repo", "--no-incremental"}
+# Fetch-and-run launchers: forms that resolve a package off a registry and
+# execute it when it is not already installed. A gate command must run the
+# binary the lockfile pins, not whatever the network answers with today.
+REMOTE_RUNNERS = {"npx", "pnpx", "bunx", "uvx", "dlx"}
+REMOTE_PAIRS = {("npm", "exec"), ("pipx", "run")}
+LOCAL_PIN = {"--no-install", "--offline"}
 FALSEY = {"false", "0", "no", "off", "none", ""}
 FLAG_RE = re.compile(r"^--?[A-Za-z0-9][A-Za-z0-9._-]*(=.*)?$")
 SQUASH_RE = re.compile(r"[^a-z0-9]+")
@@ -288,6 +298,30 @@ def denied_in_command(tokens: list, declared_head: str) -> list:
     return found
 
 
+def remote_runner(tokens: list) -> str:
+    """Name the fetch-and-run launcher this command uses, or '' when it uses none.
+
+    `npx stryker`, `pnpm dlx`, `bunx`, `uvx`, `npm exec` and `pipx run` all
+    resolve a package off a registry and execute it when it is not already
+    installed, so following the row can run code the lockfile never pinned.
+    A repository-local binary (`./node_modules/.bin/stryker`) names no launcher
+    and passes. An explicit `--no-install`/`--offline` pin also passes: the pin
+    is read as present in the command, not as bound to the launcher (advisory).
+    Quoted compounds are split again so `sh -c "npx ..."` still shows its head.
+    """
+    words = []
+    for token in tokens:
+        words.extend(w.lower() for w in token.split() if w)
+    if any(w.split("=", 1)[0] in LOCAL_PIN for w in words):
+        return ""
+    for i, word in enumerate(words):
+        if word in REMOTE_RUNNERS:
+            return word
+        if i + 1 < len(words) and (word, words[i + 1]) in REMOTE_PAIRS:
+            return f"{word} {words[i + 1]}"
+    return ""
+
+
 def judge(row):
     """Return a list of breach reasons for one row (empty list == pass)."""
     _, lang, gate, tool, scope, raw_cmd = row
@@ -320,6 +354,9 @@ def judge(row):
             reasons.append(f"declared scope '{scope}' is absent from the command (comments stripped; bare scope matches the flag head, valued scope the whole token)")
     for head in denied_in_command(tokens, declared_head):
         reasons.append(f"command runs whole-repo flag '{head}' — forbidden inside the loop")
+    launcher = remote_runner(tokens)
+    if launcher:
+        reasons.append(f"command runs '{launcher}', a fetch-and-run launcher that can install an unpinned package — declare the lockfile-backed local binary, or pin with --no-install/--offline")
     return reasons
 
 

@@ -45,7 +45,7 @@ python3 <this-island>/scripts/zone-lint.py CLAUDE.md
 python3 <this-island>/scripts/zone-lint.py AGENTS.md --max-lines 80 --max-tokens 1200 --head-lines 30
 ```
 
-Exit 0 iff all four checks pass: Z1 file exists and is non-empty, Z2 line budget, Z3 approximate-token budget (ceil(chars/4), stated as an approximation), Z4 no hard directive past the head window (fenced code blocks skipped). On any red: trim, front-load, or relocate, then re-run. On a repair invocation, loop until exit 0 — the human applying each diff, the agent re-running the gate. Either the gate consents, or the prompt is not done.
+Exit 0 iff all four checks pass: Z1 file exists and is non-empty, Z2 line budget, Z3 approximate-token budget (ceil(chars/4), stated as an approximation), Z4 no hard directive past the head window (fenced code blocks skipped; an *unmatched* opening fence is refused rather than honoured — its tail is scanned as prose under a printed warning, so a truncated fence cannot hide a directive). On any red: trim, front-load, or relocate, then re-run. On a repair invocation, loop until exit 0 — the human applying each diff, the agent re-running the gate. Either the gate consents, or the prompt is not done.
 
 Fix moves, in order of preference: cut (the line was sediment), front-load (it really is one of the 3-10), point (move detail behind a reference and keep one pointer line — relocation, not deletion: the rule still binds from where it now lives), gate (route it to `steering-audit` for prompt-vs-gate classification). How to word what survives (pointers, the two loads, pruning) is the neighboring island's craft, linked below.
 
@@ -57,11 +57,12 @@ Fix moves, in order of preference: cut (the line was sediment), front-load (it r
 ## Enforced vs advisory
 
 - `enforced` (mechanical, exists today): Z1-Z4 in [`scripts/zone-lint.py`](scripts/zone-lint.py). A non-empty file, the line budget, the approximate-token budget, and the head-window placement lint all fail closed with a non-zero exit.
-- `enforced` as a recomputable red/green proof ([`known-dirty-fixture`](../known-dirty-fixture/SKILL.md)'s ritual; run from this island dir). The shipped pair is one prompt twice: sediment pushed its binding rules below the fold. The clean half does not delete the operational rules it drops out of the head — it relocates them behind a pointer to `docs/checklists.md` and says so in the file (*"Relocated, not dropped; still required"*). That is the *point* move as shipped evidence: green here is a prompt that got re-ordered, not one that got shorter by losing rules.
+- `enforced` as a recomputable red/green proof ([`known-dirty-fixture`](../known-dirty-fixture/SKILL.md)'s ritual; run from this island dir). The shipped pair is one prompt twice: sediment pushed its binding rules below the fold. The clean half does not delete the operational rules it drops out of the head — it relocates them behind a pointer to `docs/checklists.md` and says so in the file (*"Relocated, not dropped; still required"*). That is the *point* move as shipped evidence: green here is a prompt that got re-ordered, not one that got shorter by losing rules. The third fixture is that same prompt with a truncated fence — the shape where an unclosed opening fence would otherwise swallow the file's tail and silence the directives in it.
 
 ```bash
 python3 scripts/zone-lint.py scripts/fixtures/dirty-claude.md --max-lines 16 --max-tokens 200 --head-lines 12  # RED: exit 1 (Z2 23 lines, Z3 ~288 tokens, Z4 MUST/ALWAYS at lines 21-22)
 python3 scripts/zone-lint.py scripts/fixtures/clean-claude.md --max-lines 16 --max-tokens 200 --head-lines 12  # GREEN: exit 0 (Z1-Z4 all OK)
+python3 scripts/zone-lint.py scripts/fixtures/unclosed-fence-claude.md --max-lines 16 --max-tokens 200 --head-lines 12  # RED: exit 1 (Z4 still sees MUST/ALWAYS at lines 15-16 behind an unclosed fence, and warns about it)
 ```
 
 - `advisory`: the default numbers (100 lines / 1500 tokens / 40-line head window); which 3-10 constraints deserve the head slots; lowercase or paraphrased directives, which the UPPERCASE regex deliberately does not chase (a deterministic proxy, not a semantic judge); and wiring the script into a hook or CI. Until a hook runs it, running it at all is on you.

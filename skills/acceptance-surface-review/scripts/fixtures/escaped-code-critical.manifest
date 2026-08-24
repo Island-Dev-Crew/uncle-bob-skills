@@ -1,0 +1,10 @@
+# Review surface - story CHK-22, capture payment at checkout.
+# Honest tier, real prose, and a 'code:' entry that climbs out of the
+# directory this manifest sits in. A contributor can write this line in
+# a monorepo without thinking twice; the caller's scope never named that
+# tree. The build that shipped ten fixtures read the outside file and
+# printed 'surface complete', exit 0.
+tier: critical
+spec: artifacts/checkout.feature
+qa: artifacts/checkout.qa.md
+code: ../surface-check.py

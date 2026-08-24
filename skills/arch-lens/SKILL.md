@@ -1,6 +1,6 @@
 ---
 name: arch-lens
-description: Have the agents build the repo its own drill-down architecture viewer - a small repo-local static tool that shows the modular structure as a diagram with dependency arrows, drills from module into submodules on click, and lands on the code itself. Use when a codebase has outgrown what one head holds, when an architecture conversation needs a shared picture, or when the user says "show me the architecture", "build an architecture viewer", "I want to click into the modules", or "map the dependencies visually". Differentiator - viewing and navigating only, built by the agent for this repo and generated into the working tree, never committed into a repo you were asked to visualise; ranking refactor candidates and the deletion test live in arch-survey, the module vocabulary in deep-modules.
+description: Have the agents build the repo its own drill-down architecture viewer - a small repo-local static tool that shows the modular structure as a diagram with dependency arrows, drills from module into submodules on click, and lands on the code itself. Use when a codebase has outgrown what one head holds, when an architecture conversation needs a shared picture, or when the user says "show me the architecture", "build an architecture viewer", "I want to click into the modules", or "map the dependencies visually". Differentiator - viewing and navigating only, built by the agent for this repo; a look renders out-of-tree and only an authorized instrument build writes into the repo, never committed into a repo you were asked to visualise; ranking refactor candidates and the deletion test live in arch-survey, the module vocabulary in deep-modules.
 ---
 
 # Arch Lens: the repo builds its own viewer
@@ -17,14 +17,26 @@ This island is VISUALIZATION/NAVIGATION only. Ranking refactor candidates, churn
 
 Two shapes arrive at this island and they end differently. Route on what was actually asked, before anything is generated.
 
-- **A look** - *"show me the architecture"*, *"map the dependencies visually"*, *"what does this repo look like?"* The picture and what it shows are the deliverable. Extract, check, render, walk, then put the diagram in front of the human and report what it revealed. Generated files stay in the working tree, unstaged: no `git add`, no commit, no push. **Never commit into a repo you were asked to visualise.** Four files land on disk here - `extract.*`, `graph.json`, `graph.js`, `index.html` - and a request to look authorises writing them, not entering them in someone else's history. Step 5's standing-instrument upkeep and the commit line in *Done when* are not entered on this shape; whether the lens is kept is the human's decision to make.
-- **An instrument** - *"build the repo an architecture viewer"*, *"commit the lens so it regenerates"*. The repair was asked for. The whole build loop below applies, step 5 included, and the artifacts land where the next agent finds them.
+- **A look** - *"show me the architecture"*, *"map the dependencies visually"*, *"what does this repo look like?"* The picture and what it shows are the deliverable, and **the target tree is not touched**. Extract, check, render and walk into an out-of-tree report directory - one the human names, or a scratch dir outside the repo - then put the diagram in front of them and report what it revealed. Four files land there - `extract.*`, `graph.json`, `graph.js`, `index.html` - and a request to look authorises writing them *outside* the repo, not into someone else's tree or history: no writes under the repo root, no `git add`, no commit, no push. **Never commit into a repo you were asked to visualise.** Step 5's standing-instrument upkeep and the commit line in *Done when* are not entered on this shape; whether the lens becomes a repo artifact is the human's decision to make.
+- **An instrument** - *"build the repo an architecture viewer"*, *"commit the lens so it regenerates"*. The write into the tree was asked for. The whole build loop below applies, step 5 included, and the artifacts land in `tools/arch-lens/` where the next agent finds them.
 
-Unsure which one arrived? Generate, report the four paths, and ask. RCM's viewer was something he popped up on a screen (C13); keeping it is the same class of human judgment as deciding how to re-partition (C12). Advisory - nothing here inspects the target repo's index, and the gate in the next section checks whether the graph is true, never whether it was committed.
+Unsure which one arrived? **Ask before anything is generated into the tree.** Re-rendering a look out-of-tree costs a minute; a hand-tuned `tools/arch-lens/index.html` overwritten without being asked does not come back. RCM's viewer was something he popped up on a screen (C13); keeping it is the same class of human judgment as deciding how to re-partition (C12).
+
+Enforced - [scripts/check-destination.py](scripts/check-destination.py) gates where the build may write, before it writes. It refuses a `look` destination that resolves inside the target repo (symlinks resolved first, so a link back in does not launder the lane), refuses an `instrument` destination that is not strictly inside it, and refuses either when the destination already holds a lens - `graph.json`, `graph.js`, `index.html`, `extract.*` - unless replacing it was authorized with `--overwrite`. It creates and deletes nothing, and the mode is the caller's claim: it gates the destination, not the intent. Run it from this island's directory:
+
+```bash
+python3 scripts/check-destination.py look scripts/fixtures/occupied/tools/newlens scripts/fixtures/occupied  # exit 1 — D2 a look aimed into the target tree
+python3 scripts/check-destination.py instrument scripts/fixtures/occupied/tools/arch-lens scripts/fixtures/occupied  # exit 1 — D3 a lens already there, unauthorized
+python3 scripts/check-destination.py instrument scripts/fixtures/occupied/tools/arch-lens scripts/fixtures/occupied --overwrite  # exit 0 — overwrite authorized
+python3 scripts/check-destination.py look scripts/fixtures/lookout scripts/fixtures/occupied  # exit 0 — out-of-tree, non-lens files ignored
+python3 scripts/check-destination.py peek scripts/fixtures/lookout scripts/fixtures/occupied  # exit 2 — usage; an error path never borrows the verdict's code
+```
+
+Each red goes red on one check and green on the other, so neither is proved by a failure it was not built to catch. Deleting `scripts/fixtures/occupied/` or `scripts/fixtures/lookout/` returns this gate to `unverified`.
 
 ## The deliverable (v0)
 
-A `tools/arch-lens/` directory inside the target repo. No server, no build step, no network:
+One directory - `tools/arch-lens/` inside the target repo on the instrument shape, the out-of-tree report directory on a look. No server, no build step, no network:
 
 - `extract.*` is an import-graph extractor the agent writes for the repo's own language(s). It emits `graph.json` in the contract below.
 - `graph.json` is the extract itself: modules as a drill-down tree, dependencies as edges.
@@ -59,8 +71,9 @@ The dirty fixture is deliberately valid JSON of the correct shape. It clears G1/
 python3 <this-skill-dir>/scripts/check-graph.py tools/arch-lens/graph.json <repo-root>   # exit 0 required
 ```
 
-## Build loop: extract → check → render → walk
+## Build loop: place → extract → check → render → walk
 
+0. **Place.** Settle the destination from the shape above and run `check-destination.py <mode> <dest> <repo-root>` before the first file is written; on step 5's regeneration of an already-installed instrument, `--overwrite` is the authorized re-run. Enforced when run - the exit code is the gate. Advisory that anyone runs it at all: nothing outside this loop forces the preflight, so a build that skips it is back to the unguarded write this step exists to stop.
 1. **Extract.** Write the smallest extractor that maps the repo's real import/require/include statements into `modules` + `edges`. Directories become parents; files become leaves. Advisory - at v0, whether the graph matches the code's true imports is the agent's claim, because no differ exists yet. Mark the extract `unverified` until steps 2 and 4 pass.
 2. **Check.** Run `check-graph.py` with the repo root. Fix the extractor and re-run until it exits 0. Enforced - the exit code is the gate.
 3. **Render.** Build `index.html` off `graph.js`, and keep it self-contained. Advisory at v0 - the suggested spot-check is `test -f tools/arch-lens/index.html && ! grep -qE '(https?:)?//[a-z]' tools/arch-lens/index.html`, which exits 0 only when the page exists and carries no absolute or protocol-relative URL. The `test -f` guard earns its keep: a bare `grep -q` reports green on a file that was never written. Stated as a command, not yet wired as a gate.
@@ -69,8 +82,9 @@ python3 <this-skill-dir>/scripts/check-graph.py tools/arch-lens/graph.json <repo
 
 ## Done when
 
+- `check-destination.py <mode> <dest> <repo-root>` exited 0 before anything was written (enforced).
 - `check-graph.py tools/arch-lens/graph.json <repo-root>` exits 0 (enforced).
 - One full drill-down walk from the top diagram to a real source file is performed and stated (advisory).
-- On the instrument shape, extractor, data, and page are committed in the target repo, so the next agent regenerates instead of rebuilding (advisory - no check inspects the target repo's index). On a look they are generated, their paths reported, and the commit is the human's call - that report closes the invocation.
+- On the instrument shape, extractor, data, and page are committed in the target repo, so the next agent regenerates instead of rebuilding (advisory - no check inspects the target repo's index). On a look they are generated outside the repo, their paths reported, and whether any of it enters the tree is the human's call - that report closes the invocation.
 
 **No authority without evidence. The lens shows what is; the checker says when the lens is true; what to fix about it is the neighbors' call.**
