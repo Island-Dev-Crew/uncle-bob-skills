@@ -11,16 +11,19 @@ The answer is fifty years old. The [seventies-canon brief](../../research/sevent
 
 ### A grounding note, because this island is about honest cost
 
-The roster line for this island carries the phrase "communication overhead like crazy" as a C9 quote, and for a while it reached the roster without passing through [the concept ledger](../../01-CONCEPT-LEDGER.md) — the only place an island may quote the conversation from ([CONTEXT.md](../../CONTEXT.md)); claims that go beyond the conversation cite a brief in `research/` instead. The gap is now closed at the source rather than by demoting the words: C9 carries the sentence verbatim with its locus (auto-captions ~00:17:52–00:18:01, SRT cues 903–907, RCM's turn), so every quote on this island is ledger-backed and re-greppable in `source/`. Re-grep the ledger rather than trusting this sentence.
+The roster line for this island carries the phrase "communication overhead like crazy" as a C9 quote, and for a while it reached the roster without passing through [the concept ledger](../../01-CONCEPT-LEDGER.md) — the only place an island may quote the conversation from ([CONTEXT.md](../../CONTEXT.md)); claims that go beyond the conversation cite a brief in `research/` instead. The gap is now closed at the source rather than by demoting the words: C9 carries the sentence verbatim with its locus (auto-captions ~00:17:52–00:18:01, SRT cues 903–907, RCM's turn), so every quote on this island is ledger-backed, and re-greppable in `source/` once the transcript is regenerated. Re-grep the ledger rather than trusting this sentence.
 
-The re-grep is two of them, and its control is a phrase that is *only* in the transcript — the exact shape this finding caught:
+The re-grep has two halves, and a clone can only run one of them unaided. The ledger is tracked, so its half reproduces anywhere. `source/transcript.txt` is deliberately gitignored — it is the whole of someone else's recorded conversation, cited here and not redistributed — so a fresh clone has nothing to grep until it runs the two regeneration commands in [`source/README.md`](../../source/README.md). The third line below is written to say so rather than to fail:
 
 ```bash
-bash -c 'grep -qF "communication overhead like crazy" ../../01-CONCEPT-LEDGER.md && grep -qF "communication overhead like crazy" ../../source/transcript.txt'   # exit 0
-bash -c 'grep -qF "Diet Coke" ../../01-CONCEPT-LEDGER.md && grep -qF "Diet Coke" ../../source/transcript.txt'                                                   # exit 1
+bash -c 'grep -qF "communication overhead like crazy" ../../01-CONCEPT-LEDGER.md'   # exit 0
+bash -c 'grep -qF "Diet Coke" ../../01-CONCEPT-LEDGER.md'                           # exit 1
+bash -c '[ -f ../../source/transcript.txt ] || exit 0; grep -qF "communication overhead like crazy" ../../source/transcript.txt'   # exit 0
 ```
 
-The second fails at the ledger grep, which is what a roster quote with no ledger entry looks like — so the first is not a grep that always says yes.
+The second fails at the ledger grep, which is what a roster quote with no ledger entry looks like — so the first is not a grep that always says yes. That failure is the whole of what the control proves in a fresh clone. "Diet Coke" is also *in* the recording, which is what makes it the right control rather than a random string, but confirming that half needs the regenerated transcript like everything else below.
+
+The third is the transcript half, and its guard is the honest part rather than a way around the check. With no transcript present it skips and reports `0` having graded nothing; with one present the `grep -qF` runs and a phrase the source does not carry returns `1`. So its `0` means "checked, or not there to check", and `ls ../../source/transcript.txt` is what tells you which of the two you got. The guard stays silent by choice, not by force. An announcement written with bash's *builtin* `echo` does take SIGPIPE when this pack's own closed-stream harness closes stderr — measured, 141, and 141 names no verdict — because the builtin makes the shell itself the writer. An external `/bin/echo` does not: the child dies and the guard's own `exit 0` stands, so a loud guard is reachable. Silence is preferred here because the skip is not news at the point it happens, and `ls ../../source/transcript.txt` distinguishes the two zeros afterwards.
 
 ## Where this island sits
 
@@ -141,7 +144,8 @@ At `S=480, p=0.9, h=8, fleet=6` the mesh model charges 15 paths and returns `1`.
 
 - **`enforced`** — the arithmetic and the refusals. `fleet-cost.py` exits `1` on a fleet size whose last agent does not reduce exact-rational elapsed time, and `2` on every input it cannot parse into exactly the four named keys. Its own red/green acceptance is enforced by `prove-gate.sh` (run above, exit 0). This island's shape is enforced by [`validate-island.py`](../../scripts/validate-island.py).
 - **`advisory`** — every input number. `S`, `p`, and `h` are estimates, and the script cannot check any of them. A wrong `p` produces a confident wrong verdict. Write the three numbers down with their source before running it, exactly as `margin-ledger` demands of a human baseline, or the output is a guess wearing an exit code.
-- **`advisory`** — provenance breadth. The pair of greps above proves *this* phrase now sits in both the ledger and the transcript; no checker sweeps every quote in the pack for the same double-sourcing.
+- **`enforced`** — the ledger half of the provenance re-grep. `01-CONCEPT-LEDGER.md` ships in the repository, so the first two greps above reproduce in any clone, and the control still fails there for the reason claimed.
+- **`advisory`** — the transcript half, in a clone that has not regenerated `source/transcript.txt`. The guard turns the absent file into a skip, so its `0` certifies nothing about the source. Run the two commands in [`source/README.md`](../../source/README.md) and that same line becomes enforced. Provenance breadth stays advisory in both worlds: no checker sweeps every quote in the pack for the same double-sourcing.
 - **`advisory`** — the topology judgement (mesh versus chain versus hub), the choice to stage serially rather than fan out, and everything about *which* agent to cut. No checker sees your fleet's shape.
 
 ## Done when

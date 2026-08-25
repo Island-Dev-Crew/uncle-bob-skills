@@ -75,10 +75,37 @@ def check_python(path, src):
     return out
 
 
+def strip_shell_comment(line):
+    """Drop a trailing shell comment without cutting a hash that lives inside a quote.
+
+    Cutting at the first hash reads like comment-stripping and is not: a quoted hash — a colour
+    literal, a `sed` script, a regex — truncated the line, and everything after it went
+    unscanned. Nothing in this pack hides a breach behind one today (measured: fifteen lines
+    carry a quoted hash, none with a lane primitive after it), but a scanner that silently reads
+    less than it claims is the false green this tool exists to prevent, and the same defect was
+    just found in verify-proofs.py, where it truncated a command that was then executed.
+    """
+    out = []
+    quote = None
+    for i, ch in enumerate(line):
+        if quote:
+            out.append(ch)
+            if ch == quote:
+                quote = None
+        elif ch in "\"'":
+            quote = ch
+            out.append(ch)
+        elif ch == "#" and (not out or out[-1].isspace()):
+            break
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
 def check_shell(path, src):
     out = []
     for i, line in enumerate(src.splitlines(), 1):
-        bare = line.split("#")[0]
+        bare = strip_shell_comment(line)
         m = NET_SHELL.search(bare)
         if m:
             out.append(f"L1 network invocation {m.group(0)!r} (line {i})")

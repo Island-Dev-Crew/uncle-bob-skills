@@ -22,7 +22,7 @@ Two shapes arrive at this island and they end differently. Route on what was act
 
 Unsure which one arrived? **Ask before anything is generated into the tree.** Re-rendering a look out-of-tree costs a minute; a hand-tuned `tools/arch-lens/index.html` overwritten without being asked does not come back. RCM's viewer was something he popped up on a screen (C13); keeping it is the same class of human judgment as deciding how to re-partition (C12).
 
-Enforced - [scripts/check-destination.py](scripts/check-destination.py) gates where the build may write, before it writes. It refuses a `look` destination that resolves inside the target repo (symlinks resolved first, so a link back in does not launder the lane), refuses an `instrument` destination that is not strictly inside it, and refuses either when the destination already holds a lens - `graph.json`, `graph.js`, `index.html`, `extract.*` - unless replacing it was authorized with `--overwrite`. It creates and deletes nothing, and the mode is the caller's claim: it gates the destination, not the intent. Run it from this island's directory:
+Enforced - [scripts/check-destination.py](scripts/check-destination.py) gates where the build may write, before it writes. It refuses a `look` destination that resolves inside the target repo (symlinks resolved first, so a link back in does not launder the lane), refuses an `instrument` destination that is not strictly inside it, and refuses either when the destination already holds a lens - `graph.json`, `graph.js`, `index.html`, `extract.*` - unless replacing it was authorized with `--overwrite`. A reserved name worn by something that is not a regular file - a directory, or a symlink live or dangling - is refused outright and `--overwrite` does not clear it: nothing can be created over a directory, and over a link the write goes THROUGH to wherever the link points, which is how a look reaches back inside the tree the lane check just kept it out of. It creates and deletes nothing, and the mode is the caller's claim: it gates the destination, not the intent. Run it from this island's directory:
 
 ```bash
 python3 scripts/check-destination.py look scripts/fixtures/occupied/tools/newlens scripts/fixtures/occupied  # exit 1 — D2 a look aimed into the target tree
@@ -30,9 +30,13 @@ python3 scripts/check-destination.py instrument scripts/fixtures/occupied/tools/
 python3 scripts/check-destination.py instrument scripts/fixtures/occupied/tools/arch-lens scripts/fixtures/occupied --overwrite  # exit 0 — overwrite authorized
 python3 scripts/check-destination.py look scripts/fixtures/lookout scripts/fixtures/occupied  # exit 0 — out-of-tree, non-lens files ignored
 python3 scripts/check-destination.py peek scripts/fixtures/lookout scripts/fixtures/occupied  # exit 2 — usage; an error path never borrows the verdict's code
+python3 scripts/check-destination.py instrument scripts/fixtures/obstructed/tools/arch-lens scripts/fixtures/obstructed --overwrite  # exit 1 — D3 a directory wearing the name graph.json
+python3 scripts/check-destination.py look scripts/fixtures/reachback scripts/fixtures/obstructed --overwrite  # exit 1 — D3 a dangling index.html link reaching back into the tree
 ```
 
-Each red goes red on one check and green on the other, so neither is proved by a failure it was not built to catch. Deleting `scripts/fixtures/occupied/` or `scripts/fixtures/lookout/` returns this gate to `unverified`.
+Each red goes red on exactly one check and green on the others, so none is proved by a failure it was not built to catch, and the last two stay red *with* `--overwrite` because that flag authorizes replacing a lens, not removing whatever else wears its name. Deleting `scripts/fixtures/occupied/`, `scripts/fixtures/lookout/`, `scripts/fixtures/obstructed/` or `scripts/fixtures/reachback/` returns this gate to `unverified`.
+
+What stays open, stated rather than implied: the gate reads the destination once, so a link planted between the check and the write is outside what this exit code promises, and a symlink under the destination that does *not* wear a lens name is not on the build's write path and is not inspected. D2 also compares the two resolved paths as text, and text is not the last word on where a path lands - on a case-insensitive filesystem `…/Repo/tools` and `…/repo/tools` are one directory that no string comparison relates, so a `look` aimed at the target tree through a different spelling of its case is still cleared. That one is open, not closed, and it is a D2 hole, not a D3 one.
 
 ## The deliverable (v0)
 

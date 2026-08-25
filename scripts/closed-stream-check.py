@@ -36,7 +36,14 @@ import subprocess
 import sys
 from pathlib import Path
 
-LEAKED = {120, 141}
+# Every exit code any island in this pack documents, measured rather than assumed: 0, 1, 2, 3
+# and 4 (the last is verify-proofs' --strict). A probed command may legitimately return a
+# different one of these than it returns normally — closing its output is a real condition and
+# refusing is the correct answer to it. What it may NOT do is return a code no table names.
+#
+# This used to be `LEAKED = {120, 141}`: two hard-coded examples instead of a rule. Everything
+# else passed, including a TIMEOUT and any code a gate invented on its way out.
+DOCUMENTED = {0, 1, 2, 3, 4}
 
 
 def load_grammar():
@@ -65,7 +72,7 @@ def probe(script, cwd, stream):
     kw = {"stdout": w, "stderr": subprocess.DEVNULL} if stream == 1 else \
          {"stderr": w, "stdout": subprocess.DEVNULL}
     try:
-        return subprocess.run(["bash", "-c", script], cwd=cwd, timeout=60, **kw).returncode
+        rc = subprocess.run(["bash", "-c", script], cwd=cwd, timeout=60, **kw).returncode
     except subprocess.TimeoutExpired:
         return "TIMEOUT"
     finally:
@@ -73,6 +80,13 @@ def probe(script, cwd, stream):
             os.close(w)
         except OSError:
             pass
+    # A child killed by a signal reaches Python as the NEGATIVE signal number, while a shell
+    # reports the same death as 128+n. Comparing the raw value against shell-convention
+    # constants meant the SIGPIPE half of this tool could never fire on the common path:
+    # `bash -c '<one command>'` exec-optimises, so bash IS the gate, and its SIGPIPE death
+    # arrived here as -13 while the table was looking for 141. Fourteen real deaths across ten
+    # islands were reported as clean, by the very gate built to catch them.
+    return 128 - rc if rc < 0 else rc
 
 
 def main(argv):
@@ -80,31 +94,51 @@ def main(argv):
     args = argv[1:] or sorted(str(p) for p in Path("skills").glob("*/"))
     probed = 0
     leaks = []
+    refused = 0
+    examined = 0
+    explicit = bool(argv[1:])
     for arg in args:
         d = Path(arg)
         skill = d / "SKILL.md"
         if not skill.is_file():
+            # Skipping a path the caller NAMED, and then counting it in the summary, certified a
+            # scope this tool never looked at: one real island plus one typo reported "over 2
+            # island(s)" and exited 0. A default sweep may pass over a non-island directory; an
+            # explicit target that is not one is the caller being wrong.
+            if explicit:
+                print(f"closed-stream-check: not an island (no SKILL.md): {d}", file=sys.stderr)
+                return 2
             continue
+        examined += 1
         for block in vp.blocks(skill.read_text(encoding="utf-8")):
             for cmd, expected, setup, _gapped in vp.commands(block):
                 if expected is None or not vp.is_runnable(cmd):
                     continue
-                if vp.PLACEHOLDER.search(cmd) or vp.FORBIDDEN.search(cmd):
+                if vp.PLACEHOLDER.search(cmd):
                     continue
                 # A command that already closes a stream on purpose is the island's own
                 # probe of this very defect; re-closing it would test the harness, not it.
                 if ">&-" in cmd or "$?" in cmd:
                     continue
                 script = "; ".join(setup + [cmd]) if setup else cmd
+                # The refusal has to cover the whole script that will actually run. Testing only
+                # the annotated command left a forbidden primitive in a replayed SETUP line free
+                # to execute — twice, once per stream — while verify-proofs.py, reading the same
+                # blocks, refused that very script. Two tools disagreeing about what is too
+                # dangerous to run is worse than either answer alone.
+                if vp.FORBIDDEN.search(script):
+                    refused += 1
+                    continue
                 for stream in (1, 2):
                     probed += 1
                     rc = probe(script, d, stream)
-                    if rc in LEAKED:
+                    if rc not in DOCUMENTED:
                         leaks.append((d.name, "stdout" if stream == 1 else "stderr", rc, cmd))
     for name, which, rc, cmd in leaks:
         print(f"LEAK {name}: exit {rc} with {which} closed — no island names that code")
         print(f"      {cmd}")
-    print(f"\n{probed} closed-stream probes over {len(args)} island(s), {len(leaks)} leak(s)")
+    tail = f", {refused} refused" if refused else ""
+    print(f"\n{probed} closed-stream probes over {examined} island(s), {len(leaks)} leak(s){tail}")
     if leaks:
         return 1
     if probed == 0:

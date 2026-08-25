@@ -1,0 +1,4 @@
+an out-of-tree look destination that is not as out-of-tree as it looks: index.html beside
+this file is a symlink pointing back into scripts/fixtures/obstructed. the link dangles on
+purpose - a renderer writing index.html here would CREATE the file it points at, inside the
+very tree the look was kept out of.

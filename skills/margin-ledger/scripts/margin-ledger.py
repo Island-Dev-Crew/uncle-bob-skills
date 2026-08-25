@@ -43,6 +43,21 @@ def die(msg: str, code: int = 2) -> None:
     sys.exit(code)
 
 
+class _Parser(argparse.ArgumentParser):
+    """Every parser failure exits 3, never argparse's own 2.
+
+    argparse exits 2 on an unknown option, a missing flag value or an invalid
+    --floor, and 2 here is the fail-closed CONTENT verdict. A mistyped command
+    would reach the caller wearing the code of a real ledger reading — the exact
+    confusion the 2/3 split exists to prevent. `--help` is not a failure and
+    still exits 0.
+    """
+
+    def error(self, message: str) -> None:
+        self.print_usage(sys.stderr)
+        die(message, code=3)
+
+
 def parse_rows(lines):
     rows = []
     for n, raw in enumerate(lines, 1):
@@ -80,7 +95,7 @@ def parse_rows(lines):
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = _Parser(description=__doc__)
     ap.add_argument("ledger", nargs="?", help="TSV file (default: stdin)")
     ap.add_argument("--floor", type=float, default=1.0,
                     help="margin below this loses the game (default 1.0)")
@@ -117,7 +132,16 @@ def main() -> int:
         breach = breach or m < args.floor
         print(f"{b:<8} {m:6.2f}x  gated={gated:g}m  human={human:g}m  {story}")
 
-    agg = sum(h for _, _, h in rows) / sum(g for _, g, _ in rows)
+    # The SUMS are checked before the division, not the quotient after it. A gated column
+    # summing past float range becomes inf, and a finite human total over inf is 0.00x —
+    # finite, so a check on the quotient waves it through and the gate prints LOST at exit
+    # 1 over rows that each scored in band. A breach manufactured by overflow is not a
+    # verdict this tool ever reached.
+    total_human = sum(h for _, _, h in rows)
+    total_gated = sum(g for _, g, _ in rows)
+    if not (math.isfinite(total_human) and math.isfinite(total_gated)):
+        die("aggregate minutes overflow — the ledger's minutes are out of range")
+    agg = total_human / total_gated
     if not math.isfinite(agg):
         die("aggregate margin overflows — the ledger's minutes are out of range")
     agg_band = band(agg, args.floor)

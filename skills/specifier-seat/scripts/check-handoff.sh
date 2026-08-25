@@ -4,6 +4,11 @@
 # Exit 0 iff every check passes; each check can go red (a gate that cannot
 # fail is not a gate). Judgment calls (concreteness, declarativeness,
 # behavior coverage) stay advisory in SKILL.md — this script never claims them.
+# A dead stdout must not become the verdict. `gate.sh … | head` closes the pipe early, the next
+# write takes SIGPIPE, and the shell dies at 128+13 = 141 — a code this script's table does not
+# name, arriving after the work was already done correctly. Handling the signal turns that into
+# the usage/IO code 2, the one that means "no verdict here".
+trap 'exit 2' PIPE
 set -u
 
 feature="${1:-}"

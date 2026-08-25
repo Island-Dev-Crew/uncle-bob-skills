@@ -22,8 +22,11 @@ Checks four things per declared gate, and only these four:
      Shell comments are stripped before the scan, so a flag parked behind '#'
      does not count as present.
   4. the command runs a lockfile-backed local binary, not a fetch-and-run
-     launcher (`npx`, `pnpm dlx`, `bunx`, `uvx`, `npm exec`, `pipx run`) that
-     resolves an unpinned package off a registry and executes it. An explicit
+     launcher (`npx`, `pnpm`/`yarn dlx`, `bunx`, `uvx`, `npm exec`, `pipx run`)
+     that resolves an unpinned package off a registry and executes it. The
+     launcher is compared by basename, so `/usr/bin/npx` is the same refusal as
+     `npx`, and the long spellings of the same launchers (`bun x`,
+     `uv tool run`, `npm x`) are refused with their aliases. An explicit
      `--no-install`/`--offline` pin clears the rule.
 
 Quoting has one model, POSIX shell's, applied twice over the same rules:
@@ -86,9 +89,13 @@ DENY_SCOPE = {"--all", "--full", "--everything", "--whole-repo", "--all-files",
 # Fetch-and-run launchers: forms that resolve a package off a registry and
 # execute it when it is not already installed. A gate command must run the
 # binary the lockfile pins, not whatever the network answers with today.
+# Each candidate word is compared by basename, because a path spelling changes
+# nothing about what the row would fetch and run.
 REMOTE_RUNNERS = {"npx", "pnpx", "bunx", "uvx", "dlx"}
-REMOTE_PAIRS = {("npm", "exec"), ("pipx", "run")}
+REMOTE_PHRASES = {("npm", "exec"), ("npm", "x"), ("pipx", "run"),
+                  ("bun", "x"), ("uv", "tool", "run")}
 LOCAL_PIN = {"--no-install", "--offline"}
+EXE_SUFFIX = {"exe", "cmd", "bat", "ps1"}    # the shims these launchers install on Windows
 FALSEY = {"false", "0", "no", "off", "none", ""}
 FLAG_RE = re.compile(r"^--?[A-Za-z0-9][A-Za-z0-9._-]*(=.*)?$")
 SQUASH_RE = re.compile(r"[^a-z0-9]+")
@@ -122,6 +129,17 @@ def _peel(token: str) -> str:
     head cannot hide inside an empty quote pair.
     """
     return token.replace('"', "").replace("'", "")
+
+
+def _basename(word: str) -> str:
+    """The name the shell would actually execute, path and Windows shim dropped.
+
+    `/usr/bin/npx` and `npx` are one supply-chain decision spelled two ways, so
+    the launcher rule compares what runs rather than how the row wrote it down.
+    """
+    name = word.rsplit("/", 1)[-1]
+    stem, dot, ext = name.rpartition(".")
+    return stem if dot and ext in EXE_SUFFIX else name
 
 
 def parse_rows(src):
@@ -304,6 +322,9 @@ def remote_runner(tokens: list) -> str:
     `npx stryker`, `pnpm dlx`, `bunx`, `uvx`, `npm exec` and `pipx run` all
     resolve a package off a registry and execute it when it is not already
     installed, so following the row can run code the lockfile never pinned.
+    Candidates are compared by basename, so `/usr/bin/npx` is refused exactly as
+    `npx` is, and the long spelling of a listed launcher (`bun x`,
+    `uv tool run`, `npm x`) is refused with the alias it expands.
     A repository-local binary (`./node_modules/.bin/stryker`) names no launcher
     and passes. An explicit `--no-install`/`--offline` pin also passes: the pin
     is read as present in the command, not as bound to the launcher (advisory).
@@ -314,11 +335,14 @@ def remote_runner(tokens: list) -> str:
         words.extend(w.lower() for w in token.split() if w)
     if any(w.split("=", 1)[0] in LOCAL_PIN for w in words):
         return ""
-    for i, word in enumerate(words):
-        if word in REMOTE_RUNNERS:
-            return word
-        if i + 1 < len(words) and (word, words[i + 1]) in REMOTE_PAIRS:
-            return f"{word} {words[i + 1]}"
+    # A flag keeps its own spelling: `--in-diff=build/npx` declares a path, not a launcher.
+    names = [w if w.startswith("-") else _basename(w) for w in words]
+    for i, name in enumerate(names):
+        if name in REMOTE_RUNNERS:
+            return words[i]
+        for phrase in REMOTE_PHRASES:
+            if tuple(names[i:i + len(phrase)]) == phrase:
+                return " ".join(words[i:i + len(phrase)])
     return ""
 
 

@@ -106,8 +106,15 @@ def validate(d: Path, results) -> None:
                 # it, and it would litter the island being validated with
                 # scripts/__pycache__/ that the fleet installer then copies to every
                 # seat. compile() checks syntax with zero filesystem writes.
+                #
+                # It is handed BYTES, never decoded text. Forcing utf-8 here made F11
+                # reject a valid module carrying a PEP 263 coding cookie — the very
+                # file `python3 -m py_compile` accepts — so the check was not the one
+                # this docstring names. compile() on bytes applies the cookie and the
+                # UTF-8 BOM exactly as py_compile's own reader does, and still raises
+                # on undeclared non-UTF-8 source, an unknown encoding, and a NUL byte.
                 try:
-                    compile(f.read_text(encoding="utf-8"), str(f), "exec")
+                    compile(f.read_bytes(), str(f), "exec")
                 except (SyntaxError, ValueError) as e:
                     script_ok = False
                     details.append(f"{f.name}: syntax error: {str(e)[:120]}")
@@ -157,7 +164,7 @@ if __name__ == "__main__":
         _code = 2
     except BaseException as _exc:              # an exception is not a verdict
         try:
-            print(f"error: internal failure: {{type(_exc).__name__}}: {{_exc}}", file=sys.stderr)
+            print(f"error: internal failure: {type(_exc).__name__}: {_exc}", file=sys.stderr)
         except BaseException:
             pass
         _code = 2

@@ -12,6 +12,22 @@ The grammar is now one definition in the docstring — candidate, proof, allowli
 
 Two more, fixed by hand earlier in the same pass: exit 3 when nothing was executed at all (a verifier that ran nothing has verified nothing), and `margin-ledger` no longer reading a `#123` story id as a comment.
 
+### Fixed — round 2: the tools that certify everything else could not fail
+
+Two independent OpenAI Codex seats reviewed `0eb75eb..5ddf557` and both returned CHANGES REQUIRED; a five-lens adversarial cross-check ran alongside them. The most serious findings were in the two tools this pack points at as evidence, and one of them was introduced by the round-1 fix.
+
+**`closed-stream-check.py` was blind to exactly the death it was built to catch.** A child killed by a signal reaches Python as the *negative* signal number, while a shell reports the same death as 128+n. The harness compared the raw value against `{120, 141}`, so SIGPIPE never matched: `bash -c '<one command>'` exec-optimises, the shell process *is* the gate, and its death arrived as `-13` while the table looked for `141`. **Fourteen real SIGPIPE deaths across ten islands were reported as "0 leak(s)"** — by the gate whose whole purpose is catching gates that cannot fail. It now names a signal death the way a shell does, and the hard-coded pair of examples is replaced by a rule: every exit code any island documents is 0–4 (measured, not assumed), and anything else — a signal, a `TIMEOUT`, an invented code — is a leak. Five shell gates gained the `PIPE` trap the other six got in round 1.
+
+Two more in the same tool: `FORBIDDEN` guarded only the annotated command while the *replayed setup* was executed unchecked — twice per probe — so this harness ran scripts `verify-proofs.py` refuses; and an explicitly named path with no `SKILL.md` was skipped yet still counted, so one real island plus one typo reported "over 2 island(s)" and exited 0.
+
+**`verify-proofs.py` was executing truncated commands and calling them verified.** It stripped comments by cutting each line at its first hash. A hash inside a quoted argument — `printf "#9001 900\n" | gate.py` — truncated the command to `bash -c 'printf "`, and that fragment was executed. An unterminated quote makes bash exit 2; the block documents exit 2; so **the fragment matched and was counted as a verified proof while running nothing at all.** Fifteen documented lines in this pack carry a hash inside quotes. Comment splitting is now quote-aware, and the annotation is read from the comment rather than from the whole line. `lane-check.py` had the same naive strip and is fixed with it — no breach was hiding behind one today, but a scanner that reads less than it claims is the same defect.
+
+**The UNSEQUENCED class was mostly a false positive.** `echo` is off the run allowlist, so every `$ echo $? # → N` report line counted as an unreplayable step and demoted every later proof in its block. Report lines are annotations now, not steps. Two more corrections in the same pass: a usage *template* (`cp <prompt.md> <prompt.before.md>`) no longer gaps a block, and `export VAR=value` is replayed as setup rather than skipped — one island sets a strict-decode locale that way, and the proof below it was not testing what it claimed. Meanwhile a genuinely dropped step — a bare `cd scripts`, silently discarded before — now marks its block. Net: **363 verified, 18 unsequenced**, where 351 + 19 was claimed.
+
+`verify-proofs.py --bogus skills/crap-gate` exited 0, because an unknown flag fell through as an island path and was skipped. It is exit 2 now.
+
+Every fix here was watched failing first, and both tools were mutation-tested afterwards: removing one `PIPE` trap takes the harness to exit 1 with two named leaks, and re-introducing the naive comment strip brings the truncated fragment straight back.
+
 ### Fixed — the new harness modified the tree it was checking
 
 `closed-stream-check.py` loads `verify-proofs.py` by path to reuse its grammar, and that import compiled a byte-cache into `scripts/__pycache__/`. Gitignored, never shipped, and therefore exactly the kind of thing that goes unnoticed — it is also the same defect this pack caught in v1.0, when a syntax check wrote `__pycache__` into every island it validated. The loader now sets `sys.dont_write_bytecode`, and a full run leaves the tree byte-identical.

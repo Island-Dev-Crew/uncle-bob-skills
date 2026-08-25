@@ -1,10 +1,18 @@
 # remote-runner fixture: fetch-and-run launchers, red. Every row below is mapped,
 # named and diff-scoped, so the only thing under test is how the command reaches its
-# binary. Rows 1 and 5 must pass (repo-local path; an explicit --no-install pin), so
-# the rule discriminates rather than rejecting every JS command.
+# binary. The launcher is compared by basename, so path-qualifying it buys nothing, and
+# a long spelling is refused with the alias it expands. Rows 1, 5 and 6 must pass (two
+# repo-local paths, one an absolute CI checkout; an explicit --no-install pin), so the
+# rule discriminates rather than rejecting every path or every JS command.
 # language<TAB>gate<TAB>tool<TAB>scope_arg<TAB>command
 typescript	mutation	stryker	--incremental	./node_modules/.bin/stryker run --incremental
 typescript	mutation	stryker	--incremental	npx stryker run --incremental
 typescript	mutation	stryker	--incremental	pnpm dlx stryker run --incremental
 python	mutation	mutmut	--incremental	pipx run mutmut run --incremental
 typescript	mutation	stryker	--incremental	npx --no-install stryker run --incremental
+typescript	mutation	stryker	--incremental	/opt/ci/node_modules/.bin/stryker run --incremental
+typescript	mutation	stryker	--incremental	/usr/bin/npx stryker run --incremental
+typescript	mutation	stryker	--incremental	C:/tools/npx.cmd stryker run --incremental
+python	mutation	mutmut	--incremental	/usr/local/bin/uvx mutmut run --incremental
+typescript	mutation	stryker	--incremental	bun x stryker run --incremental
+python	mutation	mutmut	--incremental	uv tool run mutmut run --incremental

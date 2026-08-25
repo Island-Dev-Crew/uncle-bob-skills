@@ -8,10 +8,13 @@ Output: one scored row per function, breaches marked, then a summary line.
 Exit:   0 when every function scores <= threshold, 1 on any breach,
         2 on every non-verdict, and those three are the whole set. Exit 2 covers
         malformed or empty input, a non-finite or overflowing complexity, coverage,
-        threshold or score, an input this tool cannot read or decode, and an output
-        stream it cannot write. In particular a dead output pipe exits 2 rather than
-        leaking CPython's shutdown code 120, because a report nobody received is not
-        a verdict about the code.
+        threshold or score, an input this tool cannot read or decode, an output
+        stream it cannot write, and any unexpected internal fault — a closed stdin,
+        an interrupt, a function name a stream's encoding cannot carry. In particular
+        no failure leaves wearing exit 1, CPython's default for an escaping exception
+        and this tool's BREACH, and a dead output pipe exits 2 rather than leaking
+        CPython's shutdown code 120, because a report nobody received is not a
+        verdict about the code.
 
 Usage:
   crap-score.py [--threshold N] [file.tsv]
@@ -133,34 +136,40 @@ def main() -> int:
     return report(rows, args.threshold)
 
 
-def quiet_stdio() -> None:
-    """Point the standard streams at the null device.
-
-    Without this, the interpreter's own shutdown flush hits the dead pipe after main()
-    has returned and CPython replaces our exit status with 120 — a code this tool does
-    not document and a caller cannot read.
-    """
-    try:
-        null = os.open(os.devnull, os.O_WRONLY)
-    except OSError:
-        return
-    for stream in (sys.stdout, sys.stderr):
-        try:
-            os.dup2(null, stream.fileno())
-        except (OSError, ValueError, AttributeError):
-            continue
-
-
 if __name__ == "__main__":
+    # THE SEAL. Two ways out of this script were open, and each handed a caller a code
+    # the table above does not mean. CPython exits 1 on an escaping exception, and 1 is
+    # this gate's BREACH: a closed stdin (AttributeError at sys.stdin.buffer) and an
+    # ASCII-only stdout meeting a non-ASCII function name (UnicodeEncodeError) both left
+    # that way, reaching the fix-until-green loop looking like a real breach, and the
+    # agent would start rewriting code the gate never scored. CPython also flushes both
+    # streams AGAIN at interpreter shutdown, after this module is done; when that flush
+    # raises — `--help` into a dead pipe, a hung-up stderr — it REPLACES the status with
+    # 120. So every exception is caught here except argparse's own SystemExit, and both
+    # streams are flushed while a status can still be chosen, each failing fd pointed at
+    # the null device so the shutdown flush cannot fail a second time.
     try:
         code = main()
-        if sys.stdout is not None:
-            sys.stdout.flush()
-    except BrokenPipeError:
-        quiet_stdio()
+    except SystemExit as exc:  # argparse's --help and usage errors pick their own status
+        code = exc.code if isinstance(exc.code, int) else (0 if exc.code is None else 1)
+    except BrokenPipeError:  # the ordinary `| head` idiom: IO, never a verdict
         code = NON_VERDICT
-    except OSError as exc:
-        quiet_stdio()
-        print(f"crap-score: output failed: {exc}", file=sys.stderr)
+    except BaseException as exc:  # no unexpected fault may wear a verdict's code
+        try:
+            print(f"crap-score: no verdict computed — {type(exc).__name__}: {exc}",
+                  file=sys.stderr)
+        except BaseException:  # a stream too broken to carry the reason still gets the code
+            pass
         code = NON_VERDICT
+    for stream, fd in ((sys.stdout, 1), (sys.stderr, 2)):
+        try:
+            if stream is not None:
+                stream.flush()
+        except BaseException:  # closed, detached, or hung up
+            if code in (0, 1):  # a report nobody received is not a verdict
+                code = NON_VERDICT
+            try:
+                os.dup2(os.open(os.devnull, os.O_WRONLY), fd)
+            except BaseException:
+                pass
     sys.exit(code)

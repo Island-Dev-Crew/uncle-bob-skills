@@ -5,6 +5,11 @@
 # so they are captured here as runs instead of as trees. Each probe asserts the gate
 # leaves through 2 - never through 0 or 1, which are verdicts this run never computed.
 # Exits 0 when every probe held, 1 when one did not, 2 on probe-harness trouble.
+# A dead stdout must not become the verdict. `gate.sh … | head` closes the pipe early, the next
+# write takes SIGPIPE, and the shell dies at 128+13 = 141 — a code this script's table does not
+# name, arriving after the work was already done correctly. Handling the signal turns that into
+# the usage/IO code 2, the one that means "no verdict here".
+trap 'exit 2' PIPE
 set -u
 here="$(cd "$(dirname "$0")/.." && pwd)"
 gate="$here/scripts/plan-decay.py"

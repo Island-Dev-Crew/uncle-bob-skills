@@ -12,8 +12,12 @@ error path never borrows the verdict's code. Each check prints OK/FAIL and can g
      an 'instrument' destination resolves strictly INSIDE it, never the root itself.
      Symlinks are resolved first, so a link out of the tree does not launder the lane.
   D3 collision: the destination holds no existing lens artifact (graph.json, graph.js,
-     index.html, extract.*) unless --overwrite is passed. A destination that exists and
-     is not a directory is a breach too. Non-lens files in the destination are ignored.
+     index.html, extract.*) unless --overwrite is passed. A reserved name worn by anything
+     other than a regular file - a directory, or a symlink live or dangling - is a breach
+     --overwrite does NOT clear: the renderer cannot create its artifact over it, and
+     clearing it means deleting a subtree this gate never looked into or writing through a
+     link to a path that may sit outside the destination entirely. A destination that
+     exists and is not a directory is a breach too. Other names are ignored.
 
 What it does NOT do, stated rather than implied: it never creates, writes, or deletes
 anything, and it cannot tell whether the human authorized the mode it was handed - the
@@ -33,14 +37,28 @@ def check(cid: str, ok: bool, detail: str) -> bool:
 
 
 def occupants(dest: Path):
-    """Existing lens artifacts directly inside dest, sorted by name."""
-    found = []
+    """Entries directly inside dest wearing a reserved lens name, split by what they are.
+
+    A regular file is a lens artifact and --overwrite can authorize replacing it. Anything
+    else wearing one of those names is an OBSTRUCTION, and the two need different answers.
+    A renderer cannot create graph.json over a directory called graph.json, and over a
+    symlink it does not create a file at all - it writes THROUGH the link to wherever that
+    link points, which is how a look reaches back inside the tree D2 just kept it out of.
+    is_symlink() is asked first because a link to a directory answers yes to both questions.
+    """
+    files, obstructions = [], []
     for entry in sorted(dest.iterdir()):
-        if not entry.is_file():
+        if entry.name not in LENS_FILES and entry.stem != LENS_STEM:
             continue
-        if entry.name in LENS_FILES or entry.stem == LENS_STEM:
-            found.append(entry.name)
-    return found
+        if entry.is_symlink():
+            obstructions.append(f"{entry.name} (symlink)")
+        elif entry.is_dir():
+            obstructions.append(f"{entry.name} (directory)")
+        elif entry.is_file():
+            files.append(entry.name)
+        else:
+            obstructions.append(f"{entry.name} (not a regular file)")
+    return files, obstructions
 
 
 def main() -> int:
@@ -81,11 +99,17 @@ def main() -> int:
         ok &= check("D3", True, "destination does not exist yet; nothing to overwrite")
     else:
         try:
-            held = occupants(dest)
+            held, blocked = occupants(dest)
         except OSError as e:
             print(f"check-destination: cannot read destination: {e}", file=sys.stderr)
             return 2
-        if held and not overwrite:
+        if blocked:
+            detail = "reserved lens name the renderer cannot write: " + ", ".join(blocked)
+            if held:
+                detail += "; alongside lens file(s): " + ", ".join(held)
+            ok &= check("D3", False, detail + " - clear it by hand; --overwrite authorizes"
+                        " replacing a lens, not deleting a subtree or writing through a link")
+        elif held and not overwrite:
             ok &= check("D3", False,
                         "destination already holds a lens: " + ", ".join(held)
                         + " - pass --overwrite only when the human authorized replacing it")

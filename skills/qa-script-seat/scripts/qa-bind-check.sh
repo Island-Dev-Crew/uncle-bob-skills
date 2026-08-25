@@ -5,6 +5,11 @@
 # Exit 0 iff the generated script names a story id, names the QA doc, carries the
 # QA doc's CURRENT sha256, and is syntax-clean — so an unbound or stale script
 # cannot pose as the story's gate.
+# A dead stdout must not become the verdict. `gate.sh … | head` closes the pipe early, the next
+# write takes SIGPIPE, and the shell dies at 128+13 = 141 — a code this script's table does not
+# name, arriving after the work was already done correctly. Handling the signal turns that into
+# the usage/IO code 2, the one that means "no verdict here".
+trap 'exit 2' PIPE
 set -euo pipefail
 
 script="${1:?usage: qa-bind-check.sh <generated-script> <qa-doc>}"

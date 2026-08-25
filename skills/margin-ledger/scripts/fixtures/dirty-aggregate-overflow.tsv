@@ -1,0 +1,4 @@
+# DIRTY: each row scores finite on its own; the gated column sums past float range,
+# and a finite human total over that inf is 0.00x — a LOST verdict made by overflow.
+overflow-a	1e308	1
+overflow-b	1e308	1

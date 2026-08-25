@@ -137,7 +137,7 @@ def reported_code(rest):
                 if tail:
                     return int(tail.group(1))
             return None
-        if m or is_runnable(body) or ASSIGN.match(body.split("#")[0]):
+        if m or is_runnable(body) or ASSIGN.match(split_comment(body)[0]) or command_shaped(body):
             return None
     return None
 
@@ -161,6 +161,42 @@ def replayable(cmd):
     return True
 
 
+def split_comment(line):
+    """Split a fenced line into (command, trailing comment), respecting quotes.
+
+    Cutting a line at its first hash looked like comment-stripping and was not. A hash inside a
+    quoted argument — `printf "#9001 900\\n" | gate.py` — truncated the command to
+    `bash -c 'printf "`, and that FRAGMENT was then executed and its exit code compared against
+    the documented one. An unterminated quote makes bash exit 2, and the block in question
+    documents exit 2, so the truncated command MATCHED and was counted as a verified proof while
+    running nothing at all. Fifteen documented lines in this pack carry a hash inside quotes.
+
+    A hash only opens a shell comment at the start of a word, so one welded to a previous
+    character stays part of the command, as does every hash inside a quote.
+    """
+    out = []
+    quote = None
+    i = 0
+    while i < len(line):
+        ch = line[i]
+        if quote:
+            out.append(ch)
+            if ch == "\\" and quote == '"' and i + 1 < len(line):
+                i += 1
+                out.append(line[i])
+            elif ch == quote:
+                quote = None
+        elif ch in "\"'":
+            quote = ch
+            out.append(ch)
+        elif ch == "#" and (not out or out[-1].isspace()):
+            return "".join(out), line[i:]
+        else:
+            out.append(ch)
+        i += 1
+    return "".join(out), ""
+
+
 def blocks(text):
     """Yield the contents of each ```bash fenced block."""
     for m in re.finditer(r"```(?:bash|sh)\n(.*?)```", text, re.DOTALL):
@@ -169,6 +205,48 @@ def blocks(text):
 
 ASSIGN = re.compile(r"^\s*\$?\s*([A-Za-z_][A-Za-z0-9_]*)=(\S.*?)\s*$")
 PLACEHOLDER = re.compile(r"<[a-z][a-z0-9._-]*>", re.IGNORECASE)
+# `export NAME=value` sets the environment and runs nothing, so it is replayed verbatim rather
+# than treated as a step this tool had to skip.
+EXPORT = re.compile(r"^\s*export\s+([A-Za-z_][A-Za-z0-9_]*)=(\S.*?)\s*$")
+
+# Words that make a line a COMMAND even though its leading token is off the run allowlist.
+# Two different bugs needed this. A report line's lookahead walked straight PAST `node setup.js`
+# and attached the `echo $?` below it to the command ABOVE — a code borrowed from a different
+# run. And a bare `cd scripts` was dropped so quietly that the next command counted as verified
+# with its working directory never replayed. Deliberately a small, named list rather than a
+# shape test: output lines look command-shaped too (`LOST 0.10x gated=10m ...`), and treating
+# those as boundaries would strand real proofs as PENDING.
+SHELL_WORDS = frozenset("""
+cd pushd popd export set unset source exec eval trap umask shift read wait
+echo printf cat head tail sed awk grep rg find sort uniq cut tr tee xargs
+mkdir rmdir touch cp mv ln chmod chown rm true false test exit return
+git node npm npx yarn pnpm bunx uvx pipx go cargo make docker
+""".split())
+
+
+def command_shaped(body):
+    """Is this line a command, even if this tool would not run it?
+
+    A usage TEMPLATE is not one. `cp <prompt.md> <prompt.before.md>` is prose showing the reader
+    a shape; nobody ever runs it, and treating it as an unreplayable step demoted every real
+    proof below it in the block. An `export VAR=value` is not one either — it is handled as
+    replayable setup, because it changes only the environment and the proof below it can depend
+    on exactly that (one island sets a strict-decode locale this way).
+    """
+    body = body.strip()
+    if not body or body.startswith("#"):
+        return False
+    if PLACEHOLDER.search(body):
+        return False
+    if EXPORT.match(body):
+        return False
+    if body.startswith("(") or body.startswith("{"):     # a subshell or group
+        return True
+    head = body.split()[0].split("=")[0]
+    return head in SHELL_WORDS
+
+
+
 
 
 def commands(block):
@@ -206,30 +284,46 @@ def commands(block):
         # A bare line that states an exit code is a candidate even when its leading token is
         # off the allowlist — main reports it SKIPPED. Dropping it here is how a documented
         # proof stops being checked with nothing in the output to say so.
-        claims = ANNOT.search(raw) and not raw.startswith(" ")
+        claims = ANNOT.search(split_comment(raw)[1]) and not raw.startswith(" ")
         cmd = m.group(1) if m else (
-            raw if runnable or claims or ASSIGN.match(bare.split("#")[0]) else None)
+            raw if runnable or claims or ASSIGN.match(split_comment(bare)[0]) else None)
         if not cmd or not cmd.strip():
+            # Dropping a line here used to be silent, so a bare `cd scripts` — a real step, with
+            # no annotation and an unlisted leading token — left no trace, and the command after
+            # it was reported as a verified proof although its working directory was never
+            # replayed. That is the exact false green the UNSEQUENCED class exists to prevent.
+            if command_shaped(bare):
+                gapped = True
             i += 1
             continue
         # Join backslash continuations.
         while CONT.search(cmd) and i + 1 < len(lines):
             i += 1
             cmd = CONT.sub(" ", cmd) + lines[i].strip()
-        # An `rc=$?` line only re-states the previous command's code; skip it as a
-        # command but let its annotation attach to what came before.
-        if re.match(r"^\s*rc=\$\?", cmd):
+        # A report line (`rc=$?`, `echo $?`, `echo "EXIT=$rc"`) only re-states the previous
+        # command's code. Skip it as a command and let its annotation attach to what came
+        # before — and, critically, do NOT let it mark the block gapped. `echo` is off the run
+        # allowlist, so every `$ echo $? # → N` report was being counted as an unreplayable
+        # step, and every later proof in that block was demoted to UNSEQUENCED. All nineteen
+        # UNSEQUENCED results in this pack were that false positive, not a real gap.
+        if REPORT.match(cmd.strip()) or re.match(r"^\s*rc=\$\?", cmd):
             i += 1
             continue
         # A bare assignment is context for what follows, not a command to check.
-        assigned = ASSIGN.match(cmd.split("#")[0])
-        if assigned and not cmd.split("#")[0].strip().startswith(("python3", "bash", "./")):
+        exported = EXPORT.match(split_comment(cmd)[0])
+        if exported:
+            yield f"export {exported.group(1)}={exported.group(2)}", None, list(setup), gapped
+            setup.append(f"export {exported.group(1)}={exported.group(2)}")
+            i += 1
+            continue
+        assigned = ASSIGN.match(split_comment(cmd)[0])
+        if assigned and not split_comment(cmd)[0].strip().startswith(("python3", "bash", "./")):
             setup.append(f"{assigned.group(1)}={assigned.group(2)}")
             i += 1
             continue
-        found = ANNOT.search(cmd)
+        found = ANNOT.search(split_comment(cmd)[1])
         expected = int(found.group(1)) if found else None
-        cmd = cmd.split("#")[0].strip()
+        cmd = split_comment(cmd)[0].strip()
         # No inline annotation: the code may be stated by a report line below the output.
         if expected is None:
             expected = reported_code(lines[i + 1:])
@@ -242,7 +336,7 @@ def commands(block):
                     setup.append(cmd)
                 else:
                     gapped = True
-            elif not is_runnable(cmd):
+            elif not is_runnable(cmd) and command_shaped(cmd):
                 gapped = True
         i += 1
 
@@ -250,6 +344,14 @@ def commands(block):
 def main() -> int:
     args = [a for a in sys.argv[1:] if a != "--strict"]
     strict = "--strict" in sys.argv[1:]
+    # An unrecognised flag used to fall through as an island path, get skipped for having no
+    # SKILL.md, and leave the run reporting success over whatever else was named:
+    # `verify-proofs.py --bogus skills/crap-gate` exited 0. A misspelt flag is the caller being
+    # wrong, and this tool reserves 2 for that.
+    unknown = [a for a in args if a.startswith("-")]
+    if unknown:
+        print(f"verify-proofs: unknown option(s): {' '.join(unknown)}", file=sys.stderr)
+        return 2
     args = args or sorted(str(p) for p in Path("skills").glob("*/"))
     total = ran = mismatched = pending = refused = template = skipped = 0
     unsequenced = 0

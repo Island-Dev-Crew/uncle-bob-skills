@@ -5,6 +5,11 @@
 # Usage: prove-gate.sh <bad-fixture> <good-fixture> -- <gate-command> [args...]
 # The gate command is run twice, with each fixture path appended as its final
 # argument. Exit 0 iff gate(bad) is non-zero AND gate(good) is zero.
+# A dead stdout must not become the verdict. `gate.sh … | head` closes the pipe early, the next
+# write takes SIGPIPE, and the shell dies at 128+13 = 141 — a code this script's table does not
+# name, arriving after the work was already done correctly. Handling the signal turns that into
+# the usage/IO code 2, the one that means "no verdict here".
+trap 'exit 2' PIPE
 set -u
 
 usage() { sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
