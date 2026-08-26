@@ -1,0 +1,7 @@
+# Uncle Bob Skills - committed content manifest
+# Generated from HEAD by: python3 scripts/verify-release.py --write
+# Covers every tracked entry except this file. Commit and tree identity
+# are intentionally out of band; use a signed tag or authenticated release asset.
+format: uncle-bob-skills-release-digest-v1
+files: 650
+manifest-sha256: 593f2ebfaf0630d001f756d95991a263680b46c646398fcc5570299119f54075
