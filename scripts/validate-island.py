@@ -13,7 +13,11 @@ Enforced checks (each can go red — a gate that cannot fail is not a gate):
   F6  description length 60..1024 chars
   F7  agents/openai.yaml exists, parses, has interface.display_name + interface.short_description
   F8  body cites the concept ledger (>=1 match of C1..C28)
-  F9  body states the evidence discipline: contains both 'enforced' and 'advisory'
+  F9  body states the evidence discipline: contains both 'enforced' and 'advisory'.
+      A PRESENCE test, not a truth test — it cannot tell a real enforced/advisory split
+      from an island that merely spells both words. Whether a label is honest is a
+      judgement no substring check makes; that is what the human review and the other
+      gates (which run the scripts behind the labels) are for.
   F10 body <=250 lines (one-concern proxy)
   F11 scripts/*.sh pass bash -n; scripts/*.py pass py_compile
 Advisory (warn only): W1 references/*.md linking to sibling .md files (one-level rule).
@@ -86,7 +90,9 @@ def validate(d: Path, results) -> None:
 
     check(results, island, "F8", bool(C_CITE.search(body)), "body cites ledger (C1..C28)")
     low = body.lower()
-    check(results, island, "F9", "enforced" in low and "advisory" in low, "body states enforced vs advisory")
+    # Presence, not truth (see the docstring): a substring test cannot audit whether the
+    # labels are earned — only that the vocabulary is on the page for a human to check.
+    check(results, island, "F9", "enforced" in low and "advisory" in low, "body names enforced vs advisory (presence only)")
     nlines = body.count("\n") + 1
     check(results, island, "F10", nlines <= 250, f"body {nlines} lines <=250")
 

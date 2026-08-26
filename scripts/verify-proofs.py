@@ -255,13 +255,20 @@ def command_shaped(body):
     body = body.strip()
     if not body or body.startswith("#"):
         return False
-    if PLACEHOLDER.search(body):
+    # Judge the command, not its trailing comment. `PLACEHOLDER.search(body)` over the whole
+    # line let a single `<word>` in a comment — `cd scripts   # then run <gate.py>` — read as a
+    # template and cancel the gap, so the `cd` was dropped and the proof below it counted as
+    # verified in the wrong directory: round 2's headline gap fix, defeated by one token.
+    code = split_comment(body)[0].strip()
+    if not code:
         return False
-    if EXPORT.match(body):
+    if PLACEHOLDER.search(code):
         return False
-    if body.startswith("(") or body.startswith("{"):     # a subshell or group
+    if EXPORT.match(code):
+        return False
+    if code.startswith("(") or code.startswith("{"):     # a subshell or group
         return True
-    head = body.split()[0].split("=")[0]
+    head = code.split()[0].split("=")[0]
     return head in SHELL_WORDS
 
 
