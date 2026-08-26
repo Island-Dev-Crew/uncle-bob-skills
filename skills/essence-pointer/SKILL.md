@@ -12,7 +12,7 @@ Bob's rule for his own gate tools (the crap tool, the mutation tester, the agent
 | Exemplar | What it demonstrates | Ground |
 |---|---|---|
 | `github.com/unclebob/swarm-forge` | the tmux multi-agent harness | [martin-canon](../../research/martin-canon.md) |
-| `github.com/unclebob/crap4java` · `crap4go` · `crap4clj` | per-function CRAP gates over real coverage artifacts | actively updated Aug 2026, verified via GitHub API ([crap-metric](../../research/crap-metric.md)) |
+| `github.com/unclebob/crap4java` · `crap4go` · `crap4clj` | per-function CRAP gates over real coverage artifacts | public implementations; latest default-branch commits at the 2026-08-26 check were dated Mar 13, May 21, and Aug 4 respectively ([crap-metric](../../research/crap-metric.md)) |
 | this repo's own islands | skill shape and the evidence discipline | the tree you are standing in |
 
 Any working tool you respect qualifies. These three are the ones Bob explicitly points people at (C23).

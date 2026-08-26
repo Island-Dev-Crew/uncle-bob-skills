@@ -98,7 +98,7 @@ python3 $G STORY-42 $F/checkout.feature            $F/dirty-tail-sha.tsv        
 python3 $G STORY-46 $F/limit-bidi-head.feature     $F/limit-bidi-head.tsv          # exit 0 — LIMIT: the U+202A head is dropped, "1 scenarios"
 python3 $G STORY-42 $F/undecodable.feature         $F/clean-red-then-green.tsv     # exit 2 — "input-error: cannot read feature file"
 python3 $G STORY-42 $F/checkout.feature $F/clean-red-then-green.tsv 1>&-           # exit 2 — "stdout is closed"
-bash -c 'python3 '"$G"' STORY-42 '"$F"'/checkout.feature '"$F"'/clean-red-then-green.tsv | true; echo ${PIPESTATUS[0]}'  # 2 — was 120
+bash -c 'python3 scripts/gherkin-gate.py STORY-42 scripts/fixtures/checkout.feature scripts/fixtures/clean-red-then-green.tsv | true; echo ${PIPESTATUS[0]}'  # 2 — was 120
 # the three dead-STDERR forms, each 120 until the tail flushed both streams. rc printed by the probe itself:
 python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);print(subprocess.run([sys.executable,"'"$G"'","--nope"],stderr=w,stdout=subprocess.DEVNULL).returncode)'                                    # 2 — usage error, hung-up stderr
 python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);print(subprocess.run([sys.executable,"'"$G"'","STORY-42","'"$F"'/undecodable.feature","'"$F"'/clean-red-then-green.tsv"],stderr=w,stdout=subprocess.DEVNULL).returncode)'  # 2 — die() into a hung-up stderr

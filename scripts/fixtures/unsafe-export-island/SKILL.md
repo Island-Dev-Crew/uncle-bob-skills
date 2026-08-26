@@ -26,6 +26,6 @@ path, while replaying it disables lookup. It is refused and the later proof is g
 [`refusal-with-eligible/`](refusal-with-eligible/SKILL.md) proves an independent eligible probe
 cannot launder that refusal into a green closed-stream harness result.
 
-[`setup-state/`](setup-state/SKILL.md) captures the sibling command-shadowing class: an
-unannotated function definition or Bash `printf` assignment must not rewrite the shell state
-that resolves a later allowlisted proof.
+[`setup-state/`](setup-state/SKILL.md) captures the sibling command-shadowing class: `name ()` and
+`function name` definitions—including one inside an annotated compound—and Bash `printf`
+assignments must not rewrite the shell state that resolves an allowlisted proof.

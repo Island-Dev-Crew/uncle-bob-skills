@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -68,6 +69,39 @@ def main(argv: list[str]) -> int:
     report_observed = {line: module.is_report(line) for line in report_shapes}
     if report_observed != report_shapes:
         print(f"FAIL report shapes={report_observed!r}", file=sys.stderr)
+        return 1
+
+    provenance_cases = {
+        r'''bash '/dev/std?n' ''': ("/dev/std?n", False),
+        r'''bash /dev/std\?n ''': ("/dev/std?n", False),
+        r'''bash "\\?" ''': (r"\?", False),
+        r'''bash "\$SOURCE" ''': ("$SOURCE", False),
+        r'''bash "$SOURCE" ''': ("$SOURCE", True),
+        r'''bash "$(printf /dev/stdin)" ''': ("$(printf /dev/stdin)", True),
+    }
+    provenance_observed = {}
+    for source in provenance_cases:
+        argv = module.shell_segment_argv(source)
+        provenance_observed[source] = (
+            str(argv[1]) if len(argv) > 1 else None,
+            getattr(argv[1], "dynamic", None) if len(argv) > 1 else None,
+        )
+    if provenance_observed != provenance_cases:
+        print(f"FAIL shell word provenance={provenance_observed!r}", file=sys.stderr)
+        return 1
+
+    literal_pua = "".join(map(chr, (0xE011, 0xE012, 0xE018, 0xE019)))
+    literal_pua_source = "bash -c " + shlex.quote(
+        f"true{literal_pua[:2]} {literal_pua[2]} :; {literal_pua[3]}; true"
+    )
+    pua_argv = module.shell_segment_argv(literal_pua_source)
+    if (len(pua_argv) < 3
+            or str(pua_argv[2]) != shlex.split(literal_pua_source)[2]
+            or module.shell_function_definition(literal_pua_source)):
+        print(
+            f"FAIL literal private-use data collided with provenance markers={pua_argv!r}",
+            file=sys.stderr,
+        )
         return 1
 
     encoded = (
@@ -164,6 +198,374 @@ def main(argv: list[str]) -> int:
         ),
         "function-annotated": (
             'python3 () { return 0; } # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-unannotated": (
+            'function python3 { return 7; }\n'
+            'python3 -c "raise SystemExit(7)" # exit 7\n'
+        ),
+        "function-keyword-annotated": (
+            'function python3 { return 0; } # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-annotated-compound": (
+            'printf x >/dev/null; function python3 { return 0; }; '
+            'python3 -c "raise SystemExit(1)" # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-parenthesized": (
+            'printf x >/dev/null; function python3 () { return 0; }; '
+            'python3 -c "raise SystemExit(1)" # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-conditional": (
+            'printf x >/dev/null; if true; then function python3 { return 0; }; fi; '
+            'python3 -c "raise SystemExit(1)" # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-case-branch": (
+            'printf x >/dev/null; case x in x) function python3 { return 0; };; esac; '
+            'python3 -c "raise SystemExit(1)" # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-negated": (
+            'printf x >/dev/null; ! function python3 { return 0; }; '
+            'python3 -c "raise SystemExit(1)" # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-timed": (
+            'printf x >/dev/null; time function python3 { return 0; }; '
+            'python3 -c "raise SystemExit(1)" # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-posix-timed": (
+            'printf x >/dev/null; time -p function python3 { return 0; }; '
+            'python3 -c "raise SystemExit(1)" # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-if-condition": (
+            'printf x >/dev/null; if function python3 { return 0; }; then '
+            'python3 -c "raise SystemExit(1)"; fi # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-elif-condition": (
+            'printf x >/dev/null; if false; then :; elif function python3 { return 0; }; '
+            'then python3 -c "raise SystemExit(1)"; fi # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-while-condition": (
+            'printf x >/dev/null; while function python3 { return 0; }; do break; done; '
+            'python3 -c "raise SystemExit(1)" # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-until-condition": (
+            'printf x >/dev/null; until function python3 { return 0; }; do :; done; '
+            'python3 -c "raise SystemExit(1)" # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-classic-tight-subshell": (
+            'printf x >/dev/null; (python3 () { return 0; }; '
+            'python3 -c "raise SystemExit(1)") # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-classic-tight-case": (
+            'printf x >/dev/null; case x in x)python3 () { return 0; }; '
+            'python3 -c "raise SystemExit(1)";; esac # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-quoted-name": (
+            "printf x >/dev/null; function 'python3' { return 0; }; "
+            'python3 -c "raise SystemExit(1)" # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-command-substitution": (
+            'printf x >/dev/null; X=$(function python3 { return 0; }; '
+            'python3 -c "raise SystemExit(1)") # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-classic-command-substitution": (
+            'printf x >/dev/null; X=$(python3 () { return 0; }; '
+            'python3 -c "raise SystemExit(1)") # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-backtick-substitution": (
+            'printf x >/dev/null; X=`function python3 { return 0; }; '
+            'python3 -c "raise SystemExit(1)"` # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-nested-substitution": (
+            'printf x >/dev/null; X=$(printf "%s" "$(function python3 { return 0; }; '
+            'python3 -c \'raise SystemExit(1)\')") # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-deep-substitution": (
+            'printf x >/dev/null; X=$(X=$(X=$(X=$(X=$(X=$(X=$(X=$(X=$('
+            'function python3 { return 0; }; python3 -c \'raise SystemExit(1)\''
+            '))))))))) # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-bash-c": (
+            'bash -c \'function bash { return 0; }; bash -c "exit 1"\' # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-classic-bash-c": (
+            'bash -c \'bash () { return 0; }; bash -c "exit 1"\' # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-sh-c": (
+            'sh -c \'function sh { return 0; }; sh -c "exit 1"\' # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-eval": (
+            "printf x >/dev/null; eval 'function python3 { return 0; }'; "
+            'python3 -c "raise SystemExit(1)" # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-classic-builtin-eval": (
+            "printf x >/dev/null; builtin eval 'python3 () { return 0; }'; "
+            'python3 -c "raise SystemExit(1)" # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-bash-c-in-substitution": (
+            "python3 -c 'import sys; raise SystemExit(int(sys.argv[1]))' "
+            '"$(bash -c \'function printf { builtin printf 0; }; printf 1\')" # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-eval-in-substitution": (
+            "python3 -c 'import sys; raise SystemExit(int(sys.argv[1]))' "
+            '"$(eval \'function printf { builtin printf 0; }; printf 1\')" # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-nested-backticks": (
+            "python3 -c 'import sys; raise SystemExit(int(sys.argv[1]))' "
+            '"`echo \\`function printf { builtin printf 0; }; printf 1\\``" # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-newline-bash-c": (
+            "bash -c $'function python3\\n{ return 0; }; "
+            "python3 -c \\\"raise SystemExit(1)\\\"' # exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-comment-before-body": (
+            "bash -c $'function bash # note\\n{ return 0; }; "
+            "bash -c \\\"exit 1\\\"' # exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-locale-c-source": (
+            "LC_ALL=C bash -c $\"function bash { return 0; }; bash -c 'exit 1'\" "
+            "# exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-locale-program-word": (
+            "LC_ALL=C $\"bash\" -c \"function bash { return 0; }; "
+            "bash -c 'exit 1'\" # exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-plus-n-shell-option": (
+            "bash +n -c 'function bash { return 0; }; bash -c \"exit 1\"' "
+            "# exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-disable-then-enable-noexec": (
+            "bash -n +n -c 'function bash { return 0; }; bash -c \"exit 1\"' "
+            "# exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-normalized-dev-stdin": (
+            "bash /dev/./stdin <<< 'function bash { return 0; }; "
+            "bash -c \"exit 1\"' # exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-pattern-dev-stdin": (
+            "bash /dev/std?n <<< 'function bash { return 0; }; "
+            "bash -c \"exit 1\"' # exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-pattern-dev-prefix": (
+            "bash /d?v/stdin <<< 'function bash { return 0; }; "
+            "bash -c \"exit 1\"' # exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-brace-dev-prefix": (
+            "bash /{dev,tmp}/stdin <<< 'function bash { return 0; }; "
+            "bash -c \"exit 1\"' # exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-substituted-script-path": (
+            "bash \"$(printf /dev/stdin)\" <<< 'function bash { return 0; }; "
+            "bash -c \"exit 1\"' # exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-process-substitution-script": (
+            "bash <(printf '%s\\n' 'function bash { return 0; }' "
+            "'bash -c \"exit 1\"') # exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-line-continuation": (
+            "bash -c $'functio\\\\\\nn bash { return 0; }; "
+            "bash -c \\\"exit 1\\\"' # exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-commented-substitution-paren": (
+            "bash -c $'printf \\'%s\\\\n\\' \"$( # ) inert comment\\n"
+            "function bash { return 0; }\\nbash -c \\'exit 1\\'\\n)\"' # exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-ansi-adjacent-hash-substitution": (
+            "printf '%s' \"$(printf %s $'x'#notcomment; "
+            "function bash { return 0; }; bash -c 'exit 1')\" # exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-locale-adjacent-hash-substitution": (
+            "LC_ALL=C printf '%s' \"$(printf %s $\"x\"#notcomment; "
+            "function bash { return 0; }; bash -c 'exit 1')\" # exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-nested-substitution-adjacent-hash": (
+            "printf '%s' \"$(printf %s x$(printf y)#notcomment; "
+            "function bash { return 0; }; bash -c 'exit 1')\" # exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-spaced-fd-dup-eval": (
+            "2>& 1 eval 'function bash { return 0; }'\n"
+            'bash -c "exit 1" # exit 0\n'
+        ),
+        "literal-child-heredoc-unsupported": (
+            "bash -c $'cat >/dev/null <<EOF\\nordinary data\\nEOF\\nexit 0' # exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "literal-child-split-heredoc-unsupported": (
+            "bash -c $'cat >/dev/null <\\\\\\n<EOF\\nordinary data\\nEOF\\nexit 0' "
+            "# exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-leading-redirection-eval": (
+            "printf x >/dev/null; >/dev/null eval 'function python3 { return 0; }'; "
+            'python3 -c "raise SystemExit(1)" # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-leading-redirection-bash-c": (
+            "printf x >/dev/null; >/dev/null bash -c "
+            "'function python3 { return 0; }; python3 -c \\\"raise SystemExit(1)\\\"' "
+            "# exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-bash-plus-O": (
+            "bash +O extglob -c 'function python3 { return 0; }; "
+            "python3 -c \\\"raise SystemExit(1)\\\"' # exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-classic-bash-o": (
+            "bash -o posix -c 'python3 () { return 0; }; "
+            "python3 -c \\\"raise SystemExit(1)\\\"' # exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-deep-command-wrapper": (
+            "printf x >/dev/null; " + ("command " * 17)
+            + "bash -c 'function bash { return 0; }; bash -c \\\"exit 1\\\"' "
+            "# exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-nice-wrapper": (
+            "printf x >/dev/null; nice -n 5 bash -c "
+            "'function bash { return 0; }; bash -c \\\"exit 1\\\"' # exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-env-s-wrapper": (
+            "printf x >/dev/null; env -S "
+            "\"bash -c 'function bash { return 0; }; bash -c \\\\\\\"exit 1\\\\\\\"'\" "
+            "# exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-interspersed-redirection-bash-c": (
+            "bash >/dev/null -c 'function bash { return 0; }; bash -c \\\"exit 1\\\"' "
+            "# exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-post-c-redirection-bash-c": (
+            "bash -c >/dev/null 'function bash { return 0; }; bash -c \\\"exit 1\\\"' "
+            "# exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-here-string-shell-source": (
+            "printf x >/dev/null; bash -s <<< "
+            "'function bash { return 0; }; bash -c \\\"exit 1\\\"' # exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-piped-shell-source": (
+            "printf '%s\\n' 'function bash { return 0; }' 'bash -c \\\"exit 1\\\"' "
+            "| bash # exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-imported-environment": (
+            "printf x >/dev/null; env 'BASH_FUNC_bash%%=() { return 0; }' "
+            "bash -c 'bash -c \\\"exit 1\\\"' # exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-debug-trap": (
+            "printf x >/dev/null; trap 'function python3 { return 0; }' DEBUG; "
+            'python3 -c "raise SystemExit(1)" # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-builtin-debug-trap": (
+            "printf x >/dev/null; builtin builtin trap "
+            "'function python3 { return 0; }' DEBUG; "
+            'python3 -c "raise SystemExit(1)" # exit 0\n'
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-after-conditional-data-word": (
+            "printf x [[ >/dev/null; function python3 { return 0; }; "
+            "python3 -c 'raise SystemExit(1)'; printf ]] >/dev/null # exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-dev-stdin-source": (
+            "bash /dev/stdin <<< 'function bash { return 0; }; bash -c \\\"exit 1\\\"' "
+            "# exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-dev-fd-source": (
+            "bash /dev/fd/0 <<< 'function bash { return 0; }; bash -c \\\"exit 1\\\"' "
+            "# exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-classic-proc-fd-source": (
+            "sh /proc/self/fd/0 <<< 'sh () { return 0; }; sh -c \\\"exit 1\\\"' "
+            "# exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-dash-stdin-source": (
+            "bash - <<< 'function bash { return 0; }; bash -c \\\"exit 1\\\"' "
+            "# exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-dev-fd3-source": (
+            "bash /dev/fd/3 3<<< 'function bash { return 0; }; bash -c \\\"exit 1\\\"' "
+            "# exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-dev-fd9-source": (
+            "bash /dev/fd/9 9<<< 'function bash { return 0; }; bash -c \\\"exit 1\\\"' "
+            "# exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-stdbuf-imported-environment": (
+            "stdbuf -o0 env 'BASH_FUNC_bash%%=() { return 0; }' "
+            "bash -c 'bash -c \\\"exit 1\\\"' # exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-nested-imported-environment": (
+            "env command env 'BASH_FUNC_bash%%=() { return 0; }' "
+            "bash -c 'bash -c \\\"exit 1\\\"' # exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-env-s-escaped-split": (
+            "env -S \"bash\\_-c\\_'function bash { return 0; }; "
+            "bash -c \\\"exit 1\\\"'\" # exit 0\n"
+            'python3 -c "raise SystemExit(0)" # exit 0\n'
+        ),
+        "function-keyword-noclobber-redirection": (
+            ">| /dev/null bash -c 'function bash { return 0; }; bash -c \\\"exit 1\\\"' "
+            "# exit 0\n"
             'python3 -c "raise SystemExit(0)" # exit 0\n'
         ),
         "printf-v": (
@@ -290,6 +692,104 @@ def main(argv: list[str]) -> int:
     if module.unsafe_setup_state(ansi_function_data):
         print("FAIL ANSI-C quoted function-shaped data was refused", file=sys.stderr)
         return 1
+    keyword_function_data = "printf '%s' 'function python3 { return 0; }' >/dev/null"
+    if module.unsafe_setup_state(keyword_function_data):
+        print("FAIL quoted function-keyword data was refused", file=sys.stderr)
+        return 1
+    substitution_function_data = (
+        "printf '%s' '$(function python3 { return 0; }; python3 -c false)' >/dev/null"
+    )
+    if module.shell_function_definition(substitution_function_data):
+        print("FAIL single-quoted substitution-shaped data was refused", file=sys.stderr)
+        return 1
+    for marker in ("!", "time", "then", "if", "while", "until"):
+        function_argument_data = f"printf '%s\\n' {marker} function python3 {{"
+        if module.shell_function_definition(function_argument_data):
+            print(
+                f"FAIL unquoted function-keyword argument data was refused: {marker}",
+                file=sys.stderr,
+            )
+            return 1
+    function_data_controls = {
+        "raw-brace-argument": "printf '%s\\n' { function python3 {",
+        "welded-brace-argument": "printf '%s\\n' abc{ function python3 {",
+        "array-data": "printf x >/dev/null; ARGS=(function python3 {)",
+        "array-modifier-data": "printf x >/dev/null; ARGS=(! time function python3 {)",
+        "conditional-regex-data": "printf x >/dev/null; [[ foo =~ python3() ]]",
+        "shell-source-argv-data": "printf '%s' bash -c 'function bash { return 0; }'",
+        "eval-source-argv-data": "printf '%s' eval 'function bash { return 0; }'",
+        "python-source-data": "python3 -c 'print(\"function bash { return 0; }\")'",
+        "quoted-redirection-command-data": (
+            "'>/dev/null' eval 'function bash { return 0; }'"
+        ),
+        "bash-noexec-source": (
+            "bash -n -c 'function bash { return 0; }; bash -c \\\"exit 1\\\"'"
+        ),
+        "bash-combined-noexec-source": (
+            "bash -nc 'function bash { return 0; }; bash -c \\\"exit 1\\\"'"
+        ),
+        "bash-help-source": (
+            "bash --help -c 'function bash { return 0; }; bash -c \\\"exit 1\\\"'"
+        ),
+        "bash-version-source": (
+            "bash --version -c 'function bash { return 0; }; bash -c \\\"exit 1\\\"'"
+        ),
+        "bash-dump-keeps-noexec-after-plus-n": (
+            "bash -D +n -c 'function bash { return 0; }; bash -c \\\"exit 1\\\"'"
+        ),
+        "bash-plus-D-is-dump-noexec": (
+            "bash +D -c 'function bash { return 0; }; bash -c \\\"exit 1\\\"'"
+        ),
+        "bash-noexec-keeps-noexec-after-plus-D": (
+            "bash -n +D -c 'function bash { return 0; }; bash -c \\\"exit 1\\\"'"
+        ),
+        "bash-interactive-combined-noexec": (
+            "bash -in -c 'function bash { return 0; }; bash -c \\\"exit 1\\\"'"
+        ),
+        "bash-interactive-split-noexec": (
+            "bash -n -i -c 'function bash { return 0; }; bash -c \\\"exit 1\\\"'"
+        ),
+        "bash-interactive-dump-noexec": (
+            "bash -iD -c 'function bash { return 0; }; bash -c \\\"exit 1\\\"'"
+        ),
+        "bash-plus-D-interactive-noexec": (
+            "bash +D -i -c 'function bash { return 0; }; bash -c \\\"exit 1\\\"'"
+        ),
+        "quoted-pattern-device-path": (
+            "bash '/dev/std?n' <<< 'function bash { return 0; }'"
+        ),
+        "escaped-pattern-device-path": (
+            "bash /dev/std\\?n <<< 'function bash { return 0; }'"
+        ),
+        "quoted-variable-device-path": (
+            "bash '/dev/$NAME' <<< 'function bash { return 0; }'"
+        ),
+        "bash-extglob-pattern-data": (
+            "bash -O extglob -c 'printf %s @(python3())'"
+        ),
+        "quoted-redirection-pipe-data": (
+            "printf '%s' '>|' bash -c 'function bash { return 0; }'"
+        ),
+        "child-shell-whole-line-comment": (
+            "bash -c '# note; function bash { return 0; }; bash -c \\\"exit 1\\\"'"
+        ),
+        "child-shell-trailing-comment": (
+            "bash -c 'printf x >/dev/null; # note; function bash { return 0; }'"
+        ),
+        "multiline-quoted-eval-data": (
+            "printf '%s' \"first\\neval 'function bash { return 0; }'\\nlast\""
+        ),
+        "legacy-arithmetic-heredoc-data": "printf '%s\\n' $[1<<2]",
+        "arithmetic-heredoc-data": "printf '%s\\n' $((1<<2))",
+        "parameter-expansion-heredoc-data": "printf '%s\\n' ${x:-a<<b}",
+    }
+    refused_controls = [
+        label for label, source in function_data_controls.items()
+        if module.shell_function_definition(source)
+    ]
+    if refused_controls:
+        print(f"FAIL function-shaped data was refused={refused_controls!r}", file=sys.stderr)
+        return 1
 
     mixed_assignment_rows = list(module.commands(
         'VALUE=ok; hash -p /bin/true python3\n'
@@ -355,8 +855,8 @@ def main(argv: list[str]) -> int:
         capture_output=True,
         check=False,
     )
-    if (verifier.returncode != 1 or "3 refused" not in verifier.stdout
-            or "3 unsequenced" not in verifier.stdout
+    if (verifier.returncode != 1 or "4 refused" not in verifier.stdout
+            or "4 unsequenced" not in verifier.stdout
             or "2 proofs run" not in verifier.stdout):
         print(
             "FAIL unsafe setup integration "
@@ -373,8 +873,8 @@ def main(argv: list[str]) -> int:
         check=False,
     )
     if (closed.returncode != 2 or "4 closed-stream probes" not in closed.stdout
-            or "3 refused" not in closed.stdout
-            or "3 refusal-gapped" not in closed.stdout):
+            or "4 refused" not in closed.stdout
+            or "4 refusal-gapped" not in closed.stdout):
         print(
             "FAIL unsafe setup closed-stream inheritance "
             f"rc={closed.returncode} stdout={closed.stdout!r} stderr={closed.stderr!r}",

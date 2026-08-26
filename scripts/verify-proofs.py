@@ -85,11 +85,20 @@ deliberately outside this small grammar because both can assign another shell va
 effect; an unbraced value expansion such as `$OTHER` is accepted. Assignments that redirect
 command lookup or inject interpreter startup (`PATH`,
 `*PATH`, loader variables, and the named shell/interpreter hooks below) are refused whether or
-not the author wrote `export`. A function definition masquerading as an allowlisted invocation is
-refused whether or not it carries an exit annotation. Direct, literal Bash `printf -v` and `%n`
-setup forms are refused because they write shell variables by a second grammar. Accepted
-assignments and allowlisted locale/encoding exports remain in the proof shell; an assignment
-mixed with another command is gapped rather than executed as setup.
+not the author wrote `export`. A function definition (`name ()` or `function name`) masquerading
+as an allowlisted invocation is refused whether or not it carries an exit annotation, including
+inside executable substitutions and literal Bash/sh `-c` source. Actual command-position
+`eval`, `source`, `.`, state-setting `trap`, imported `BASH_FUNC_*%%` environment entries, and
+Bash/sh invocations that read their program from stdin are refused too: runtime-provided source
+can establish the same state, so a literal-only scan could not certify them. Those words remain
+ordinary data when they are arguments to another command, and no-exec/immediate-exit shell
+options do not pretend to execute their `-c` operands. Literal child-shell source containing an
+active heredoc is refused as unsupported: the payload is data, but this deliberately small static
+reader cannot promise to separate every delimiter form from later commands. Here strings, quoted
+`<<` text, arithmetic shifts, and conditional operands are not caught by that rule. Direct,
+literal Bash `printf -v` and `%n` setup forms are refused because they write shell variables by a
+second grammar. Accepted assignments and allowlisted locale/encoding exports remain in the proof
+shell; an assignment mixed with another command is gapped rather than executed as setup.
 Earlier runnable fixture builders run in child shells: their filesystem effects persist, but
 their functions, command hash, traps, options, and other shell state cannot replace the later
 proof command. Thus `D=$(mktemp -d)` is re-evaluated, a child builds fixtures inside that
@@ -227,7 +236,14 @@ def decode_ansi_c_content(text):
 
 
 def normalize_ansi_c_quotes(text):
-    """Turn each static Bash ``$'...'`` word into an equivalent ordinary shell literal."""
+    """Turn static Bash ANSI-C/locale words into equivalent ordinary shell literals.
+
+    ``shlex`` understands neither Bash's ``$'...'`` nor ``$"..."`` prefixes. Leaving the
+    locale prefix in place changes an executable or ``-c`` operand from ``bash``/``function``
+    to ``$bash``/``$function`` in the static argv and can hide the command being inspected.
+    Locale quotes otherwise follow double-quote parsing, so dropping only their leading dollar
+    preserves the relevant word boundary and source bytes.
+    """
     out = []
     quote = None
     i = 0
@@ -245,6 +261,11 @@ def normalize_ansi_c_quotes(text):
             continue
         if char == "\\" and i + 1 < len(text):
             out.append(text[i:i + 2])
+            i += 2
+            continue
+        if text.startswith('$"', i):
+            out.append('"')
+            quote = '"'
             i += 2
             continue
         if char in "'\"":
@@ -309,11 +330,19 @@ def shell_words(script, depth=0):
 
 def matching_substitution_paren(text, opening):
     """Index of the parenthesis closing a command/process substitution, or None."""
-    depth = 0
+    word_closers = []
     quote = None
+    in_comment = False
+    at_word_start = True
     i = opening
     while i < len(text):
         ch = text[i]
+        if in_comment:
+            if ch == "\n":
+                in_comment = False
+                at_word_start = True
+            i += 1
+            continue
         if quote:
             if ch == "\\" and quote in ('"', "locale", "ansi", "backtick"):
                 i += 2
@@ -326,28 +355,40 @@ def matching_substitution_paren(text, opening):
             i += 1
             continue
         if ch == "\\":
+            at_word_start = False
             i += 2
             continue
         if text.startswith("$'", i):
             quote = "ansi"
+            at_word_start = False
             i += 2
             continue
         if text.startswith('$"', i):
             quote = "locale"
+            at_word_start = False
             i += 2
             continue
         if ch == "'":
             quote = "single"
+            at_word_start = False
         elif ch == '"':
             quote = '"'
+            at_word_start = False
         elif ch == "`":
             quote = "backtick"
+            at_word_start = False
+        elif ch == "#" and at_word_start:
+            in_comment = True
         elif ch == "(":
-            depth += 1
+            word_closers.append(i > 0 and text[i - 1] in "$<>?*+@!")
+            at_word_start = True
         elif ch == ")":
-            depth -= 1
-            if depth == 0:
+            word_closer = word_closers.pop() if word_closers else False
+            if not word_closers:
                 return i
+            at_word_start = not word_closer
+        else:
+            at_word_start = ch.isspace() or ch in ";|&<>\n"
         i += 1
     return None
 
@@ -363,6 +404,11 @@ def matching_backtick(text, opening):
             return i
         i += 1
     return None
+
+
+def nested_backtick_source(body):
+    """Expose legacy backticks escaped only to survive an enclosing backtick pair."""
+    return body.replace(r"\`", "`")
 
 
 def executable_substitutions(text):
@@ -389,6 +435,12 @@ def executable_substitutions(text):
             if ch == "\\":
                 i += 2
                 continue
+            if text.startswith("$((", i):
+                end = matching_substitution_paren(text, i + 1)
+                if end is not None:
+                    yield from executable_substitutions(text[i + 3:end - 1])
+                    i = end + 1
+                    continue
             if text.startswith("$(", i):
                 end = matching_substitution_paren(text, i + 1)
                 if end is not None:
@@ -398,7 +450,7 @@ def executable_substitutions(text):
             if ch == "`":
                 end = matching_backtick(text, i)
                 if end is not None:
-                    yield text[i + 1:end]
+                    yield nested_backtick_source(text[i + 1:end])
                     i = end + 1
                     continue
             if ch == '"':
@@ -424,6 +476,12 @@ def executable_substitutions(text):
             quote = '"'
             i += 1
             continue
+        if text.startswith("$((", i):
+            end = matching_substitution_paren(text, i + 1)
+            if end is not None:
+                yield from executable_substitutions(text[i + 3:end - 1])
+                i = end + 1
+                continue
         if text.startswith("$(", i):
             end = matching_substitution_paren(text, i + 1)
             if end is not None:
@@ -439,7 +497,7 @@ def executable_substitutions(text):
         if ch == "`":
             end = matching_backtick(text, i)
             if end is not None:
-                yield text[i + 1:end]
+                yield nested_backtick_source(text[i + 1:end])
                 i = end + 1
                 continue
         i += 1
@@ -609,6 +667,172 @@ def split_comment(line):
     return "".join(out), ""
 
 
+def mask_shell_comments(text):
+    """Blank active shell comments without changing source offsets or newlines.
+
+    Recursive ``bash -c`` and substitution bodies are shell source again. Feeding their
+    comment bytes to the function/evaluator scanners made data after ``#`` look executable;
+    deleting the comment outright, on the other hand, would join tokens across a newline and
+    miss a definition whose body begins on the next row. Keep every byte position stable and
+    preserve newlines while applying the same word-boundary and quoting rules as
+    ``split_comment``.
+    """
+    out = list(text)
+    quote = None
+    at_word_start = True
+    in_comment = False
+    word_closers = []
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if in_comment:
+            if char == "\n":
+                in_comment = False
+                at_word_start = True
+            else:
+                out[index] = " "
+            index += 1
+            continue
+        if quote:
+            if (char == "\\" and quote in ('"', "locale", "ansi", "backtick")
+                    and index + 1 < len(text)):
+                index += 2
+                continue
+            if ((quote == "single" and char == "'")
+                    or (quote in ('"', "locale") and char == '"')
+                    or (quote == "ansi" and char == "'")
+                    or (quote == "backtick" and char == "`")):
+                quote = None
+            index += 1
+            continue
+        if char == "\\" and index + 1 < len(text):
+            at_word_start = False
+            index += 2
+            continue
+        if text.startswith("$'", index):
+            quote = "ansi"
+            at_word_start = False
+            index += 2
+            continue
+        if text.startswith('$"', index):
+            quote = "locale"
+            at_word_start = False
+            index += 2
+            continue
+        if char == "'":
+            quote = "single"
+            at_word_start = False
+        elif char == '"':
+            quote = '"'
+            at_word_start = False
+        elif char == "`":
+            quote = "backtick"
+            at_word_start = False
+        elif char == "(":
+            word_closers.append(index > 0 and text[index - 1] in "$<>?*+@!")
+            at_word_start = True
+        elif char == ")":
+            word_closer = word_closers.pop() if word_closers else False
+            at_word_start = not word_closer
+        elif char == "#" and at_word_start:
+            out[index] = " "
+            in_comment = True
+        else:
+            at_word_start = char.isspace() or char in ";|&()<>\n"
+        index += 1
+    return "".join(out)
+
+
+def remove_shell_line_continuations(text):
+    """Apply Bash's unquoted backslash-newline removal to recursive source.
+
+    Fence extraction already joins physical continuation rows, but a literal ``bash -c``
+    operand can introduce new shell source through ANSI-C decoding. Bash removes a
+    backslash-newline pair before tokenization outside single/ANSI-C quotes (and inside double,
+    locale, and backtick quotes). A pair inside an active comment is inert and remains until the
+    comment masker handles it.
+    """
+    out = []
+    quote = None
+    in_comment = False
+    at_word_start = True
+    word_closers = []
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if in_comment:
+            out.append(char)
+            if char == "\n":
+                in_comment = False
+                at_word_start = True
+            index += 1
+            continue
+        if quote:
+            if (char == "\\" and index + 1 < len(text)
+                    and text[index + 1] == "\n"
+                    and quote in ('"', "locale", "backtick")):
+                index += 2
+                continue
+            out.append(char)
+            if (char == "\\" and quote in ('"', "locale", "ansi", "backtick")
+                    and index + 1 < len(text)):
+                out.append(text[index + 1])
+                index += 2
+                continue
+            if ((quote == "single" and char == "'")
+                    or (quote in ('"', "locale") and char == '"')
+                    or (quote == "ansi" and char == "'")
+                    or (quote == "backtick" and char == "`")):
+                quote = None
+            index += 1
+            continue
+        if char == "#" and at_word_start:
+            out.append(char)
+            in_comment = True
+            index += 1
+            continue
+        if char == "\\" and index + 1 < len(text):
+            if text[index + 1] == "\n":
+                index += 2
+                continue
+            out.extend(text[index:index + 2])
+            at_word_start = False
+            index += 2
+            continue
+        if text.startswith("$'", index):
+            out.extend("$'")
+            quote = "ansi"
+            at_word_start = False
+            index += 2
+            continue
+        if text.startswith('$"', index):
+            out.extend('$"')
+            quote = "locale"
+            at_word_start = False
+            index += 2
+            continue
+        out.append(char)
+        if char == "'":
+            quote = "single"
+            at_word_start = False
+        elif char == '"':
+            quote = '"'
+            at_word_start = False
+        elif char == "`":
+            quote = "backtick"
+            at_word_start = False
+        elif char == "(":
+            word_closers.append(index > 0 and text[index - 1] in "$<>?*+@!")
+            at_word_start = True
+        elif char == ")":
+            word_closer = word_closers.pop() if word_closers else False
+            at_word_start = not word_closer
+        else:
+            at_word_start = char.isspace() or char in ";|&()<>\n"
+        index += 1
+    return "".join(out)
+
+
 def line_continues(line):
     """Whether Bash removes this physical row's final backslash-newline.
 
@@ -702,7 +926,26 @@ UNSAFE_ASSIGNMENT_PREFIXES = ("LD_", "DYLD_")
 # mutate the current shell rather than merely write fixture bytes. A function definition can
 # replace the later allowlisted command itself; `printf -v` and `%n` can reach the same unsafe
 # lookup/startup variables as a bare assignment.
-FUNCTION_SETUP = re.compile(r"(?:^|[\s;{}&|])[^\s(){};&|=]+\s*\(\s*\)")
+FUNCTION_COMMAND_PREFIX = (
+    r"(?:(?:(?:if|elif|while|until|then|else|do)|!|time(?:[ \t]+-p)?|\{)[ \t]+)*"
+)
+COMMAND_POSITION = re.compile(
+    r"(?:^|[;\n()&|])[ \t]*" + FUNCTION_COMMAND_PREFIX + r"$"
+)
+FOR_ARITHMETIC_POSITION = re.compile(r"(?:^|[;\n()&|])[ \t]*for[ \t]*$")
+FUNCTION_SETUP = re.compile(
+    r"(?:^|[;\n()&|])[ \t]*" + FUNCTION_COMMAND_PREFIX
+    + r"[^\s(){};&|=]+[ \t]*\([ \t]*\)"
+)
+FUNCTION_KEYWORD_SETUP = re.compile(
+    r"(?:^|[;\n()&|])[ \t]*" + FUNCTION_COMMAND_PREFIX
+    + r"function[ \t]+[^\s(){};&|=]+(?:[ \t]*\([ \t]*\))?[ \t]*"
+    + r"(?:\s*\{|\s*[(]|\s*\[\[|\s*if\b|\s*while\b|\s*until\b|\s*for\b|"
+    + r"\s*select\b|\s*case\b)"
+)
+ARRAY_ASSIGNMENT = re.compile(
+    r"(?:[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\n]*\])?)(?:\+?=)[ \t]*\("
+)
 PRINTF_FLAGS = frozenset("-+ #0'")
 PRINTF_LENGTH_MODIFIERS = frozenset("hlLjzt")
 PRINTF_CONVERSIONS = frozenset("diouxXfFeEgGaAcsbqTn")
@@ -771,12 +1014,13 @@ def shell_syntax_view(text):
 
     Bash permits quoted and escaped function names, so their ordinary characters stay visible;
     parentheses and command separators inside a quoted Python/string payload do not. Command,
-    process, and backtick substitutions run in a child context and are masked wholesale.
+    process, and backtick substitutions run in child contexts, so this outer view masks them;
+    ``shell_function_definition`` inspects their executable bodies separately and recursively.
     """
     out = []
     quote = None
     i = 0
-    syntax = frozenset("(){};&|")
+    syntax = frozenset("(){};&|[]<>\n")
     while i < len(text):
         if quote == "backtick":
             if text[i] == "\\" and i + 1 < len(text):
@@ -844,6 +1088,654 @@ def shell_syntax_view(text):
     return "".join(out)
 
 
+def mask_span(chars, start, end):
+    """Blank one non-command grammar region without moving later source offsets."""
+    for index in range(start, end):
+        if chars[index] != "\n":
+            chars[index] = " "
+
+
+def matching_data_paren(text, opening):
+    """Closing parenthesis for an already identified array/arithmetic data context."""
+    depth = 0
+    for index in range(opening, len(text)):
+        if text[index] == "(":
+            depth += 1
+        elif text[index] == ")":
+            depth -= 1
+            if depth == 0:
+                return index
+    return None
+
+
+def matching_data_delimiter(text, opening, opener, closer):
+    """Closing delimiter for a parameter/legacy-arithmetic data expansion."""
+    depth = 0
+    for index in range(opening, len(text)):
+        if text[index] == opener:
+            depth += 1
+        elif text[index] == closer:
+            depth -= 1
+            if depth == 0:
+                return index
+    return None
+
+
+def mask_noncommand_contexts(syntax):
+    """Mask Bash regions whose punctuation is data, not a command boundary.
+
+    ``shell_syntax_view`` has already hidden quotes and executable substitutions. Arrays,
+    arithmetic commands, and ``[[ ... ]]`` regex/conditional operands are the remaining places
+    where an unquoted ``(``, ``)``, or function-shaped word is data rather than shell command
+    grammar. Keeping this distinction here prevents safe argv and array fixtures from being
+    refused while leaving subshell and case-branch boundaries visible.
+    """
+    chars = list(syntax)
+    index = 0
+    while index < len(chars):
+        current = "".join(chars)
+        if current.startswith("${", index):
+            end = matching_data_delimiter(current, index + 1, "{", "}")
+            if end is not None:
+                mask_span(chars, index, end + 1)
+                index = end + 1
+                continue
+        if current.startswith("$[", index):
+            end = matching_data_delimiter(current, index + 1, "[", "]")
+            if end is not None:
+                mask_span(chars, index, end + 1)
+                index = end + 1
+                continue
+        if (index + 1 < len(chars) and current[index] in "?*+@!"
+                and current[index + 1] == "("):
+            end = matching_data_paren(current, index + 1)
+            if end is not None:
+                mask_span(chars, index, end + 1)
+                index = end + 1
+                continue
+        command_position = bool(COMMAND_POSITION.search(current[:index]))
+        if current.startswith("[[", index) and command_position:
+            end = current.find("]]", index + 2)
+            if end >= 0:
+                mask_span(chars, index, end + 2)
+                index = end + 2
+                continue
+        if (current.startswith("((", index)
+                and (command_position or FOR_ARITHMETIC_POSITION.search(current[:index]))):
+            end = matching_data_paren(current, index)
+            if end is not None:
+                mask_span(chars, index, end + 1)
+                index = end + 1
+                continue
+        index += 1
+
+    # An array assignment may occur after a declaration option as well as at the beginning of a
+    # command. Its parentheses never open a subshell, so mask the complete balanced value.
+    while True:
+        current = "".join(chars)
+        match = ARRAY_ASSIGNMENT.search(current)
+        if match is None:
+            break
+        opening = match.end() - 1
+        end = matching_data_paren(current, opening)
+        if end is None:
+            break
+        mask_span(chars, opening, end + 1)
+    return "".join(chars)
+
+
+def has_active_heredoc(text):
+    """Whether source contains a real heredoc operator outside inert shell data.
+
+    A literal child program can carry arbitrarily shaped heredoc payload rows. This verifier
+    intentionally refuses that grammar instead of scanning payload bytes as commands. Here
+    strings (``<<<``), quoted text, arithmetic shifts, and conditional operands are not
+    heredocs and remain admissible.
+    """
+    source = mask_shell_comments(remove_shell_line_continuations(text))
+    syntax = mask_noncommand_contexts(shell_syntax_view(source))
+    return re.search(r"(?<!<)<<-?(?!<)", syntax) is not None
+
+
+def shell_command_segments(text):
+    """Yield outer simple-command source spans while preserving quoted argv bytes."""
+    syntax = mask_noncommand_contexts(shell_syntax_view(text))
+    start = 0
+    index = 0
+    while index < len(syntax):
+        char = syntax[index]
+        separator = char in ";|()\n"
+        if char == "|" and index > 0 and syntax[index - 1] == ">":
+            separator = False
+        if char == "&":
+            separator = not (
+                (index > 0 and syntax[index - 1] in "<>")
+                or (index + 1 < len(syntax) and syntax[index + 1] == ">")
+            )
+        if separator:
+            if start < index:
+                yield text[start:index]
+            start = index + 1
+        index += 1
+    if start < len(text):
+        yield text[start:]
+
+
+COMMAND_PREFIX_WORDS = frozenset({
+    "{", "if", "elif", "while", "until", "then", "else", "do", "!", "coproc",
+})
+DYNAMIC_SHELL_CHARS = frozenset("$`*?[]{}~()")
+
+
+class ShellWord(str):
+    """A resolved static argv word that remembers whether Bash expands its source spelling."""
+
+    def __new__(cls, value, *, dynamic=False):
+        instance = super().__new__(cls, value)
+        instance.dynamic = dynamic
+        return instance
+
+
+def allocate_shell_markers(text, count):
+    """Return tokenization sentinels absent from the source being represented."""
+    markers = []
+    # BMP and supplementary private-use planes are ordinary Unicode data to shlex. Choosing
+    # per source, after ANSI-C normalization, prevents a literal private-use character in a
+    # proof from ever colliding with an internal provenance marker.
+    for start, stop in ((0xE000, 0xF900), (0xF0000, 0xFFFFE), (0x100000, 0x10FFFE)):
+        for codepoint in range(start, stop):
+            marker = chr(codepoint)
+            if marker not in text:
+                markers.append(marker)
+                if len(markers) == count:
+                    return markers
+    raise ValueError("cannot allocate shell-token provenance markers")
+
+
+def protect_quoted_redirections(text, protected_redirections):
+    """Keep quoted/escaped ``<`` and ``>`` distinguishable from redirection operators."""
+    syntax = shell_syntax_view(text)
+    out = list(text)
+    for index, char in enumerate(out):
+        if syntax[index] != " ":
+            continue
+        if char in protected_redirections:
+            out[index] = protected_redirections[char]
+    return "".join(out)
+
+
+def protect_inert_shell_expansions(text, protected_dynamic):
+    """Hide quoted/escaped expansion punctuation while leaving active spelling visible.
+
+    ``shlex`` returns the correct resolved characters but discards the very quote and escape
+    provenance needed to distinguish a literal ``'/dev/std?n'`` from the glob ``/dev/std?n``.
+    Private-use sentinels preserve that one bit through tokenization. ANSI-C words have already
+    been normalized to static single-quoted text; locale words have become double-quoted text,
+    whose dollar and backtick expansions correctly remain active.
+    """
+    out = []
+    quote = None
+    index = 0
+    double_inert = DYNAMIC_SHELL_CHARS - frozenset("$`")
+    while index < len(text):
+        char = text[index]
+        if quote == "single":
+            if char == "'":
+                quote = None
+                out.append(char)
+            else:
+                out.append(protected_dynamic.get(char, char))
+            index += 1
+            continue
+        if quote == "double":
+            if char == '"':
+                quote = None
+                out.append(char)
+                index += 1
+                continue
+            if char == "\\" and index + 1 < len(text):
+                escaped = text[index + 1]
+                if escaped in "$`":
+                    out.append(protected_dynamic[escaped])
+                    index += 2
+                    continue
+                if escaped in double_inert:
+                    # In double quotes Bash preserves this backslash as data. Protect the
+                    # following punctuation without changing the resolved word itself.
+                    out.extend((char, protected_dynamic[escaped]))
+                    index += 2
+                    continue
+                out.extend((char, escaped))
+                index += 2
+                continue
+            out.append(protected_dynamic[char] if char in double_inert else char)
+            index += 1
+            continue
+        if char == "\\" and index + 1 < len(text):
+            escaped = text[index + 1]
+            if escaped in DYNAMIC_SHELL_CHARS:
+                out.append(protected_dynamic[escaped])
+            else:
+                out.extend((char, escaped))
+            index += 2
+            continue
+        if char == "'":
+            quote = "single"
+        elif char == '"':
+            quote = "double"
+        out.append(char)
+        index += 1
+    return "".join(out)
+
+
+def restore_shell_word(word, restored_markers):
+    """Restore protected data and retain whether the source word expands at runtime."""
+    dynamic = any(char in DYNAMIC_SHELL_CHARS for char in word)
+    restored = word
+    for protected, char in restored_markers.items():
+        restored = restored.replace(protected, char)
+    return ShellWord(restored, dynamic=dynamic)
+
+
+def skip_leading_redirection(words, index):
+    """Index after one command-prefix redirection, or the unchanged index."""
+    if index >= len(words):
+        return index
+    operators = {"<", ">", "|"}
+    if (words[index] == "&" and index + 1 < len(words)
+            and set(words[index + 1]) <= operators
+            and any(char in "<>" for char in words[index + 1])):
+        index += 1
+    if (index + 1 < len(words)
+            and (words[index].isdigit() or re.fullmatch(r"\{[A-Za-z_][A-Za-z0-9_]*\}", words[index]))
+            and words[index + 1] and set(words[index + 1]) <= operators
+            and any(char in "<>" for char in words[index + 1])):
+        index += 1
+    if (index >= len(words) or not words[index]
+            or not set(words[index]) <= operators
+            or not any(char in "<>" for char in words[index])):
+        return index
+    if (words[index] in {"<", ">"} and index + 1 < len(words)
+            and words[index + 1] == "&"):
+        return min(len(words), index + 3)
+    # Every redirection operator here consumes one following word: path, descriptor, delimiter,
+    # or here-string payload. Malformed source with none cannot execute a hidden command either.
+    return min(len(words), index + 2)
+
+
+def without_shell_redirections(words):
+    """Remove syntax redirections and their operands wherever Bash permits them in argv."""
+    out = []
+    index = 0
+    while index < len(words):
+        redirected = skip_leading_redirection(words, index)
+        if redirected != index:
+            index = redirected
+            continue
+        out.append(words[index])
+        index += 1
+    return out
+
+
+def shell_segment_argv(segment):
+    """The executable-position argv in one outer shell segment, or an empty list."""
+    try:
+        normalized = normalize_ansi_c_quotes(segment)
+        marker_values = allocate_shell_markers(normalized, 3 + len(DYNAMIC_SHELL_CHARS))
+        protected_redirections = dict(zip("<>|", marker_values[:3]))
+        protected_dynamic = dict(zip(sorted(DYNAMIC_SHELL_CHARS), marker_values[3:]))
+        restored_markers = {
+            protected: char
+            for char, protected in (protected_redirections | protected_dynamic).items()
+        }
+        protected = protect_inert_shell_expansions(
+            protect_quoted_redirections(normalized, protected_redirections),
+            protected_dynamic,
+        )
+        lexer = shlex.shlex(
+            protected,
+            posix=True,
+            punctuation_chars="<>|",
+        )
+        lexer.whitespace_split = True
+        lexer.commenters = ""
+        words = list(lexer)
+    except ValueError:
+        return []
+    index = 0
+    while index < len(words):
+        word = words[index]
+        if ASSIGN.fullmatch(word):
+            index += 1
+            continue
+        if word in COMMAND_PREFIX_WORDS:
+            index += 1
+            continue
+        if word == "time":
+            index += 1
+            if index < len(words) and words[index] == "-p":
+                index += 1
+            continue
+        redirected = skip_leading_redirection(words, index)
+        if redirected != index:
+            index = redirected
+            continue
+        break
+    argv = without_shell_redirections(words[index:])
+    return [restore_shell_word(word, restored_markers) for word in argv]
+
+
+def unwrap_shell_command(argv, shell_context=True):
+    """Remove literal wrappers that preserve the command they are handed."""
+    argv = list(argv)
+    while True:
+        while shell_context and argv and ASSIGN.fullmatch(argv[0]):
+            argv.pop(0)
+        if not argv:
+            return [], shell_context
+        program = os.path.basename(argv[0])
+        if program == "builtin" and shell_context:
+            nested = argv[1:]
+            if nested[:1] == ["--"]:
+                nested = nested[1:]
+            if not nested or nested[0] not in {
+                "builtin", "command", "eval", "exec", "source", ".", "trap",
+            }:
+                return [], shell_context
+            argv = nested
+            continue
+        if program == "command":
+            index = 1
+            while index < len(argv) and argv[index].startswith("-") and argv[index] != "-":
+                if "v" in argv[index][1:] or "V" in argv[index][1:]:
+                    return [], shell_context
+                index += 1
+            argv = argv[index:]
+            shell_context = True
+            continue
+        if program == "exec" and shell_context:
+            index = 1
+            while index < len(argv) and argv[index].startswith("-") and argv[index] != "-":
+                if argv[index] == "-a":
+                    index += 2
+                else:
+                    index += 1
+            argv = argv[index:]
+            continue
+        if program == "env":
+            index = 1
+            while index < len(argv):
+                word = argv[index]
+                if word == "--":
+                    index += 1
+                    break
+                split_source = None
+                split_consumed = 0
+                if word in {"-S", "--split-string"} and index + 1 < len(argv):
+                    split_source = argv[index + 1]
+                    split_consumed = 2
+                elif word.startswith("--split-string="):
+                    split_source = word.split("=", 1)[1]
+                    split_consumed = 1
+                elif word.startswith("-S") and word != "-S":
+                    split_source = word[2:]
+                    split_consumed = 1
+                if split_source is not None:
+                    try:
+                        split_words = shlex.split(split_source)
+                    except ValueError:
+                        return [], shell_context
+                    argv[index:index + split_consumed] = split_words
+                    continue
+                if word.startswith("-") and word != "-":
+                    # Values for these options are not commands.
+                    index += 2 if word in {"-u", "--unset", "-C", "--chdir", "-P"} else 1
+                    continue
+                if ASSIGN.fullmatch(word):
+                    index += 1
+                    continue
+                break
+            argv = argv[index:]
+            shell_context = False
+            continue
+        if program == "nice":
+            index = 1
+            while index < len(argv) and argv[index].startswith("-") and argv[index] != "-":
+                word = argv[index]
+                index += 2 if word in {"-n", "--adjustment"} else 1
+            argv = argv[index:]
+            shell_context = False
+            continue
+        if program == "stdbuf":
+            index = 1
+            while index < len(argv) and argv[index].startswith("-") and argv[index] != "-":
+                word = argv[index]
+                index += 2 if word in {"-i", "--input", "-o", "--output", "-e", "--error"} else 1
+            argv = argv[index:]
+            shell_context = False
+            continue
+        if program == "nohup":
+            if any(word in {"--help", "--version"} for word in argv[1:]):
+                return [], shell_context
+            argv = argv[2:] if len(argv) > 1 and argv[1] == "--" else argv[1:]
+            shell_context = False
+            continue
+        break
+    return argv, shell_context
+
+
+def literal_c_operand(argv):
+    """Literal Bash/sh ``-c`` operand when invocation options actually execute it."""
+    index = 1
+    noexec_n = False
+    noexec_dump = False
+    while index < len(argv):
+        option = argv[index]
+        if option in {"+O", "+o"}:
+            index += 2
+            continue
+        if option.startswith("+") and option != "+":
+            flags = option[1:]
+            if "n" in flags:
+                noexec_n = False
+            noexec_dump = noexec_dump or "D" in flags
+            index += 1
+            continue
+        if option == "--" or option == "-" or not option.startswith("-"):
+            return None
+        if option in {"--help", "--version"}:
+            return None
+        if option in {"--dump-strings", "--dump-po-strings"}:
+            noexec_dump = True
+            index += 1
+            continue
+        if option.startswith("--"):
+            index += 2 if option in {"--rcfile", "--init-file"} else 1
+            continue
+        flags = option[1:]
+        noexec_n = noexec_n or "n" in flags
+        noexec_dump = noexec_dump or "D" in flags
+        if "c" in flags:
+            return (argv[index + 1]
+                    if (index + 1 < len(argv)
+                        and not getattr(argv[index + 1], "dynamic", False)
+                        and not (noexec_n or noexec_dump)) else None)
+        index += 2 if option in {"-O", "-o"} else 1
+    return None
+
+
+def literal_shell_sources(text):
+    """Yield literal source that an actual command-position Bash/sh ``-c`` executes."""
+    for segment in shell_command_segments(text):
+        argv, _shell_context = unwrap_shell_command(shell_segment_argv(segment))
+        if argv and os.path.basename(argv[0]) in SHELL_INTERPRETERS:
+            source = literal_c_operand(argv)
+            if source is not None:
+                yield source
+
+
+IMPORTED_FUNCTION_ENV = re.compile(
+    r"^(?:BASH_FUNC_[^=]+%%|[A-Za-z_][A-Za-z0-9_]*)=\(\)[ \t]*\{"
+)
+
+
+def unsafe_env_command(argv):
+    """Whether actual env syntax imports function state or uses dynamic split-string argv."""
+    argv = list(argv)
+    while argv:
+        program = os.path.basename(argv[0])
+        if program == "command":
+            index = 1
+            while index < len(argv) and argv[index].startswith("-") and argv[index] != "-":
+                if "v" in argv[index][1:] or "V" in argv[index][1:]:
+                    return False
+                index += 1
+            argv = argv[index:]
+            continue
+        if program == "exec":
+            index = 1
+            while index < len(argv) and argv[index].startswith("-") and argv[index] != "-":
+                index += 2 if argv[index] == "-a" else 1
+            argv = argv[index:]
+            continue
+        if program in {"nice", "stdbuf"}:
+            index = 1
+            value_options = ({"-n", "--adjustment"} if program == "nice" else
+                             {"-i", "--input", "-o", "--output", "-e", "--error"})
+            while index < len(argv) and argv[index].startswith("-") and argv[index] != "-":
+                index += 2 if argv[index] in value_options else 1
+            argv = argv[index:]
+            continue
+        if program == "nohup":
+            argv = argv[2:] if len(argv) > 1 and argv[1] == "--" else argv[1:]
+            continue
+        if program != "env":
+            return False
+        index = 1
+        while index < len(argv):
+            word = argv[index]
+            if word == "--":
+                index += 1
+                break
+            split_source = None
+            consumed = 0
+            if word in {"-S", "--split-string"} and index + 1 < len(argv):
+                split_source, consumed = argv[index + 1], 2
+            elif word.startswith("--split-string="):
+                split_source, consumed = word.split("=", 1)[1], 1
+            elif word.startswith("-S") and word != "-S":
+                split_source, consumed = word[2:], 1
+            if split_source is not None:
+                # BSD/GNU env -S has its own escape and substitution grammar (`\_`, `\c`,
+                # `${VAR}`, ...), distinct from Bash and shlex. Refuse the command position
+                # instead of claiming a partial decoder knows which executable it constructs.
+                return True
+            if word.startswith("-") and word != "-":
+                index += 2 if word in {"-u", "--unset", "-C", "--chdir", "-P"} else 1
+                continue
+            break
+        while index < len(argv):
+            word = argv[index]
+            if IMPORTED_FUNCTION_ENV.match(word):
+                return True
+            if ASSIGN.fullmatch(word):
+                index += 1
+                continue
+            break
+        argv = argv[index:]
+    return False
+
+
+def shell_reads_stdin_source(argv):
+    """Whether Bash/sh takes runtime source from stdin or a computed script operand."""
+    index = 1
+    forced_stdin = False
+    noexec_n = False
+    noexec_dump = False
+
+    def executable():
+        return not (noexec_n or noexec_dump)
+
+    def stdin_path(word):
+        if getattr(word, "dynamic", False):
+            return True
+        normalized = os.path.normpath(word)
+        return bool(
+            normalized == "/dev/stdin"
+            or re.fullmatch(r"/dev/fd/[^/]+", normalized)
+            or re.fullmatch(r"/proc/[^/]+/fd/[^/]+", normalized)
+        )
+
+    while index < len(argv):
+        option = argv[index]
+        if option in {"+O", "+o"}:
+            index += 2
+            continue
+        if option.startswith("+") and option != "+":
+            flags = option[1:]
+            if "n" in flags:
+                noexec_n = False
+            noexec_dump = noexec_dump or "D" in flags
+            if "s" in flags:
+                forced_stdin = False
+            index += 1
+            continue
+        if option == "--":
+            if index + 1 >= len(argv):
+                return executable()
+            return executable() and (forced_stdin or stdin_path(argv[index + 1]))
+        if option == "-":
+            return executable()
+        if not option.startswith("-"):
+            return executable() and (forced_stdin or stdin_path(option))
+        if option in {"--help", "--version"}:
+            return False
+        if option in {"--dump-strings", "--dump-po-strings"}:
+            noexec_dump = True
+            index += 1
+            continue
+        if option.startswith("--"):
+            index += 2 if option in {"--rcfile", "--init-file"} else 1
+            continue
+        flags = option[1:]
+        noexec_n = noexec_n or "n" in flags
+        noexec_dump = noexec_dump or "D" in flags
+        if "c" in flags:
+            return bool(
+                executable()
+                and index + 1 < len(argv)
+                and getattr(argv[index + 1], "dynamic", False)
+            )
+        forced_stdin = forced_stdin or "s" in flags
+        index += 2 if option in {"-O", "-o"} else 1
+    return executable()
+
+
+def has_dynamic_shell_state_evaluator(text):
+    """Whether an actual command position evaluates source in the current shell.
+
+    Eval/source/trap, imported Bash functions, and shell programs supplied over stdin or a
+    runtime-computed script operand can define or import a function from runtime-built text.
+    There is no static reading that proves such state harmless, so the proof grammar refuses
+    these command positions rather than pretending a literal-only scan covers them.
+    """
+    for segment in shell_command_segments(text):
+        raw_argv = shell_segment_argv(segment)
+        if unsafe_env_command(raw_argv):
+            return True
+        argv, shell_context = unwrap_shell_command(raw_argv)
+        if not argv:
+            continue
+        if shell_context and argv[0] in {"eval", "source", "."}:
+            return True
+        if shell_context and argv[0] == "trap" and argv[1:2] not in ([], ["-p"], ["-l"]):
+            return True
+        if (os.path.basename(argv[0]) in SHELL_INTERPRETERS
+                and shell_reads_stdin_source(argv)):
+            return True
+    return False
+
+
 def unsafe_setup_state(cmd):
     """Whether replaying this unannotated runnable would persist unsafe Bash state."""
     if shell_function_definition(cmd):
@@ -879,9 +1771,22 @@ def unsafe_setup_state(cmd):
     return True in roles
 
 
-def shell_function_definition(cmd):
-    """Whether shell syntax defines a function instead of invoking the apparent command."""
-    return bool(FUNCTION_SETUP.search(shell_syntax_view(cmd)))
+def shell_function_definition(cmd, seen=None):
+    """Whether this source can establish function state before an apparent proof command."""
+    seen = set() if seen is None else seen
+    if cmd in seen:
+        return False
+    seen.add(cmd)
+    source = mask_shell_comments(remove_shell_line_continuations(cmd))
+    if has_active_heredoc(source):
+        return True
+    syntax = mask_noncommand_contexts(shell_syntax_view(source))
+    if FUNCTION_SETUP.search(syntax) or FUNCTION_KEYWORD_SETUP.search(syntax):
+        return True
+    if has_dynamic_shell_state_evaluator(source):
+        return True
+    children = list(executable_substitutions(source)) + list(literal_shell_sources(source))
+    return any(shell_function_definition(body, seen) for body in children)
 
 
 def proof_script(setup, cmd):
