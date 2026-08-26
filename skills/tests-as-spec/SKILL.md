@@ -75,8 +75,7 @@ python3 scripts/test-name-lint.py --against scripts/fixtures/module-under-test.p
     scripts/fixtures/global-suite.py     # exit 1 — 3 names seen, 2 violations
 python3 scripts/test-name-lint.py --against scripts/fixtures/module-under-test.py \
     scripts/fixtures/clean-suite.py      # exit 0 — 4 test name(s), 0 violation(s)
-PYTHONIOENCODING=ascii python3 scripts/test-name-lint.py \
-    scripts/fixtures/accented-suite.py   # exit 2 — verdict computed, cannot be encoded
+bash -c 'PYTHONIOENCODING=ascii python3 scripts/test-name-lint.py scripts/fixtures/accented-suite.py'  # exit 2 — verdict computed, cannot be encoded
 python3 scripts/test-name-lint.py scripts/fixtures/bom-suite.py      # exit 1 — a BOM is a verdict, not a parse error
 python3 scripts/test-name-lint.py scripts/fixtures/deleted-suite.py  # exit 1 — NO-TESTS
 python3 scripts/test-name-lint.py scripts/fixtures/binary-suite.py   # exit 2 — cannot decode input

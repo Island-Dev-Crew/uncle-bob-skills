@@ -98,7 +98,7 @@ python3 scripts/toolchain-check.py scripts/fixtures/remote-runner.tsv         # 
 python3 scripts/toolchain-check.py scripts/fixtures/tab-hidden-row.tsv        # exit 2 — malformed: line 5: empty field
 python3 scripts/toolchain-check.py scripts/fixtures/undecodable-bytes.tsv     # exit 2 — input error: 'utf-8' codec can't decode byte 0xff …
 python3 scripts/toolchain-check.py 0<&-                                       # exit 2 — input error: stdin is closed
-PYTHONIOENCODING=ascii python3 scripts/toolchain-check.py scripts/fixtures/clean-diff-scoped.tsv  # exit 0 — text degrades, verdict stands
+bash -c 'PYTHONIOENCODING=ascii python3 scripts/toolchain-check.py scripts/fixtures/clean-diff-scoped.tsv'  # exit 0 — text degrades, verdict stands
 python3 scripts/toolchain-check.py scripts/fixtures/clean-diff-scoped.tsv >&-  # exit 2 — input error: stdout is closed, never a verdict
 # the two paths that used to exit 120, plus the interrupt — returncode captured, not piped:
 python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);print(subprocess.run([sys.executable,"scripts/toolchain-check.py","--nope"],stderr=w,stdout=subprocess.DEVNULL).returncode)'    # 2 — usage error onto a dead stderr, not 120

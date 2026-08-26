@@ -14,9 +14,10 @@ into a checked claim. Four lanes, each a refusal:
                         literal programs supplied by shell `-c`, direct shell stdin, or a
                         recognised byte-preserving cat/tee pipeline are unwrapped, while ordinary
                         arguments named `curl` remain data
-  L2  no arbitrary execution — no os.system/os.popen, Python exec()/eval(), or shell eval
-                        (ast.literal_eval is explicitly allowed: it evaluates literals only),
-                        and no call passing a
+  L2  no arbitrary execution — no os.system/os.popen, subprocess.getoutput/
+                        getstatusoutput, asyncio.create_subprocess_shell, Python exec()/eval(),
+                        or shell eval (ast.literal_eval is explicitly allowed: it evaluates
+                        literals only), and no call passing a
                         TRUTHY LITERAL `shell=`, since `shell=1` starts the same shell that
                         `shell=True` does. A `shell=` whose value is a variable is not read.
                         Import aliases are resolved first, so `import os as _o` then
@@ -95,7 +96,6 @@ SHELL_TEXT_LAUNCHERS = ({"os.system", "os.popen"} | SUBPROCESS_SHELL_LAUNCHERS |
 LAUNCHERS = (SUBPROCESS_LAUNCHERS | SHELL_TEXT_LAUNCHERS | EXECV_LAUNCHERS |
              EXECL_LAUNCHERS | SPAWNV_LAUNCHERS | SPAWNL_LAUNCHERS |
              POSIX_SPAWN_LAUNCHERS | ASYNC_EXEC_LAUNCHERS)
-SHELL_EXEC = {"os.system", "os.popen"} | ASYNC_SHELL_LAUNCHERS
 # The Python spelling of a recursive delete. `os.remove`/`unlink` are deliberately absent: they
 # remove one named file and cannot recurse, which is the plain `rm` this lane already permits.
 RECURSIVE_DELETE = {"shutil.rmtree"}
@@ -1352,7 +1352,10 @@ def check_python(path, src):
                 if target is not None and unscoped(target):
                     out.append(f"L3 {called} on unscoped target {spelled(target)!r} "
                                f"(line {node.lineno})")
-            if called in SHELL_EXEC:
+            # Every API whose payload is shell text crosses L2 by construction, even when the
+            # literal happens to contain no second hazard. Reuse the launcher classification
+            # directly so this enforcement set cannot drift from the parser set again.
+            if called in SHELL_TEXT_LAUNCHERS:
                 out.append(f"L2 {called} (line {node.lineno})")
             if called in ("exec", "eval", "builtins.exec", "builtins.eval"):
                 out.append(f"L2 {called}() (line {node.lineno})")

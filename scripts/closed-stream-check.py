@@ -482,7 +482,7 @@ def main(argv):
                     # verify-proofs does not count a matching gapped command as verified. This
                     # harness cannot make a stronger claim by probing the command with the
                     # missing/refused setup silently removed. Cause metadata distinguishes the
-                    # pack's disclosed ordinary gaps from a refused environment mutation: both
+                    # pack's disclosed ordinary gaps from refused setup state: both
                     # are excluded, but only refusal makes the whole harness a non-verdict.
                     if "refused" in gapped:
                         refusal_gapped += 1
@@ -492,11 +492,11 @@ def main(argv):
                 # A command that already closes a stream on purpose is the island's own
                 # probe of this very defect; re-closing it would test the harness, not it.
                 # Counted and printed, not pruned in silence — a quiet prune is the same
-                # false green this pack names elsewhere, and 19 candidates land here today.
+                # false green this pack names elsewhere, and 16 candidates land here today.
                 if self_probe(cmd):
                     own_probes += 1
                     continue
-                script = "; ".join(setup + [cmd]) if setup else cmd
+                script = vp.proof_script(setup, cmd)
                 # The refusal has to cover the whole script that will actually run. Testing only
                 # the annotated command left a forbidden primitive in a replayed SETUP line free
                 # to execute — twice, once per stream — while verify-proofs.py, reading the same

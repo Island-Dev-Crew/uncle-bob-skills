@@ -76,17 +76,31 @@ widened when the grammar was written down — it now admits a bare island-relati
 `printf` stdin pipe — so it constrains the first token only, never the rest of the line.
 
 KNOWN LIMITS, stated rather than discovered. Each annotated command runs from the island's
-directory, preceded by the steps of its own block that this tool can replay verbatim: ordinary
-block-local variable assignments, and the earlier unannotated commands that build the block's
-fixtures. Assignments that redirect command lookup or inject interpreter startup (`PATH`,
+directory, preceded by the steps of its own block that this tool can replay verbatim: the
+supported block-local variable assignments, and the earlier unannotated commands that build the
+block's fixtures. A supported assignment is `NAME=one-shell-word`; quoted spaces and command or
+process substitutions inside that word are accepted, as are semicolon-separated rows of the same
+shape. Braced parameter (`${...}`) and arithmetic (`$((...))` / `$[...]`) expansions are
+deliberately outside this small grammar because both can assign another shell variable as a side
+effect; an unbraced value expansion such as `$OTHER` is accepted. Assignments that redirect
+command lookup or inject interpreter startup (`PATH`,
 `*PATH`, loader variables, and the named shell/interpreter hooks below) are refused whether or
-not the author wrote `export`. The whole accepted prefix runs in one shell with the command, so
-`D=$(mktemp -d)` is re-evaluated and the fixtures are rebuilt inside the directory it just made.
+not the author wrote `export`. A function definition masquerading as an allowlisted invocation is
+refused whether or not it carries an exit annotation. Direct, literal Bash `printf -v` and `%n`
+setup forms are refused because they write shell variables by a second grammar. Accepted
+assignments and allowlisted locale/encoding exports remain in the proof shell; an assignment
+mixed with another command is gapped rather than executed as setup.
+Earlier runnable fixture builders run in child shells: their filesystem effects persist, but
+their functions, command hash, traps, options, and other shell state cannot replace the later
+proof command. Thus `D=$(mktemp -d)` is re-evaluated, a child builds fixtures inside that
+directory, and the annotated command sees the same `D` without inheriting the builder's shell.
 
-Two shapes still cannot be replayed, and both are handled by saying so rather than by
+Three shapes still cannot be replayed, and all are handled by saying so rather than by
 guessing:
   - a heredoc (`python3 - <<'EOF'`), whose body is not captured with its first line
   - a step whose leading token is off the allowlist (a `cd`, a `(subshell)`)
+  - an assignment outside the grammar above (`ARGS=(one two)`, any braced parameter/arithmetic
+    expansion, or an assignment mixed with a command)
 When one of those precedes a command, that command's block is GAPPED: it still runs, a
 mismatch is still reported, but a MATCH is reported as UNSEQUENCED and NOT counted as a
 verified proof — the scenario it was pointed at may never have been built. Counting a pass
@@ -684,6 +698,14 @@ UNSAFE_ASSIGNMENT_NAMES = frozenset({
     "PERL5OPT", "PYTHONHOME", "RUBYOPT",
 })
 UNSAFE_ASSIGNMENT_PREFIXES = ("LD_", "DYLD_")
+# These are the two Bash-only spellings, admitted by the `printf` leading-token rule, that can
+# mutate the current shell rather than merely write fixture bytes. A function definition can
+# replace the later allowlisted command itself; `printf -v` and `%n` can reach the same unsafe
+# lookup/startup variables as a bare assignment.
+FUNCTION_SETUP = re.compile(r"(?:^|[\s;{}&|])[^\s(){};&|=]+\s*\(\s*\)")
+PRINTF_FLAGS = frozenset("-+ #0'")
+PRINTF_LENGTH_MODIFIERS = frozenset("hlLjzt")
+PRINTF_CONVERSIONS = frozenset("diouxXfFeEgGaAcsbqTn")
 
 
 def safe_export(name, value):
@@ -699,6 +721,268 @@ def unsafe_assignment(name):
         or name in UNSAFE_ASSIGNMENT_NAMES
         or name.startswith(UNSAFE_ASSIGNMENT_PREFIXES)
     )
+
+
+def printf_argument_roles(format_text):
+    """Return one bool per argument consumed by a literal Bash printf format.
+
+    True is a `%n` target; False is an ordinary value (including `*` width/precision). The
+    caller only needs to know whether any variable-writing role exists.
+    """
+    roles = []
+    i = 0
+    while i < len(format_text):
+        if format_text[i] != "%":
+            i += 1
+            continue
+        if i + 1 < len(format_text) and format_text[i + 1] == "%":
+            i += 2
+            continue
+        j = i + 1
+        while j < len(format_text) and format_text[j] in PRINTF_FLAGS:
+            j += 1
+        if j < len(format_text) and format_text[j] == "*":
+            roles.append(False)
+            j += 1
+        else:
+            while j < len(format_text) and format_text[j].isdigit():
+                j += 1
+        if j < len(format_text) and format_text[j] == ".":
+            j += 1
+            if j < len(format_text) and format_text[j] == "*":
+                roles.append(False)
+                j += 1
+            else:
+                while j < len(format_text) and format_text[j].isdigit():
+                    j += 1
+        while j < len(format_text) and format_text[j] in PRINTF_LENGTH_MODIFIERS:
+            j += 1
+        if j < len(format_text) and format_text[j] in PRINTF_CONVERSIONS:
+            roles.append(format_text[j] == "n")
+            i = j + 1
+        else:
+            # Malformed/extended syntax cannot establish a target in this small static reading.
+            i += 1
+    return roles
+
+
+def shell_syntax_view(text):
+    """Keep shell syntax outside quotes while masking syntax-shaped quoted data.
+
+    Bash permits quoted and escaped function names, so their ordinary characters stay visible;
+    parentheses and command separators inside a quoted Python/string payload do not. Command,
+    process, and backtick substitutions run in a child context and are masked wholesale.
+    """
+    out = []
+    quote = None
+    i = 0
+    syntax = frozenset("(){};&|")
+    while i < len(text):
+        if quote == "backtick":
+            if text[i] == "\\" and i + 1 < len(text):
+                out.extend("  ")
+                i += 2
+            elif text[i] == "`":
+                out.append(" ")
+                quote = None
+                i += 1
+            else:
+                out.append(" ")
+                i += 1
+            continue
+        if quote:
+            ch = text[i]
+            closing = "'" if quote in ("single", "ansi") else '"'
+            if ch == "\\" and quote == "ansi" and i + 1 < len(text):
+                out.extend("  ")
+                i += 2
+            elif ch == closing:
+                out.append(ch)
+                quote = None
+                i += 1
+            elif ch == "\\" and quote not in ("single", "ansi") and i + 1 < len(text):
+                out.append(" ")
+                out.append(" " if text[i + 1] in syntax else text[i + 1])
+                i += 2
+            else:
+                out.append(" " if ch in syntax else ch)
+                i += 1
+            continue
+        if text.startswith(("$(", "<(", ">("), i):
+            end = matching_substitution_paren(text, i + 1)
+            if end is not None:
+                out.extend(" " * (end + 1 - i))
+                i = end + 1
+                continue
+        if text.startswith("$'", i):
+            out.extend("$'")
+            quote = "ansi"
+            i += 2
+            continue
+        if text.startswith('$"', i):
+            out.extend('$"')
+            quote = "locale"
+            i += 2
+            continue
+        if text[i] == "'":
+            out.append(text[i])
+            quote = "single"
+        elif text[i] == '"':
+            out.append(text[i])
+            quote = "double"
+        elif text[i] == "`":
+            out.append(" ")
+            quote = "backtick"
+        elif text[i] == "\\" and i + 1 < len(text):
+            out.append(text[i])
+            out.append(" " if text[i + 1] in syntax else text[i + 1])
+            i += 2
+            continue
+        else:
+            out.append(text[i])
+        i += 1
+    return "".join(out)
+
+
+def unsafe_setup_state(cmd):
+    """Whether replaying this unannotated runnable would persist unsafe Bash state."""
+    if shell_function_definition(cmd):
+        return True
+    try:
+        words = shlex.split(normalize_ansi_c_quotes(cmd))
+    except ValueError:
+        return False
+    if not words or words[0] != "printf" or len(words) < 2:
+        return False
+    format_index = 1
+    target = None
+    if words[1] == "--":
+        format_index = 2
+    elif words[1] == "-v":
+        if len(words) < 3:
+            return True
+        target = words[2]
+        format_index = 3
+    elif words[1].startswith("-v"):
+        target = words[1][2:]
+        format_index = 2
+    if target is not None:
+        # Even a nominally ordinary target can be paired with another `%n` target later in the
+        # same format. More importantly, a runnable setup step is isolated below, so promising
+        # that any `printf -v` assignment persists would be false. Plain NAME=value is the one
+        # supported persistent-variable grammar.
+        return True
+    if len(words) <= format_index:
+        return False
+    format_text = words[format_index]
+    roles = printf_argument_roles(format_text)
+    return True in roles
+
+
+def shell_function_definition(cmd):
+    """Whether shell syntax defines a function instead of invoking the apparent command."""
+    return bool(FUNCTION_SETUP.search(shell_syntax_view(cmd)))
+
+
+def proof_script(setup, cmd):
+    """Compose one proof without inheriting shell state from runnable setup commands."""
+    # The setup text is data in the generated outer script. Interpolating it between raw
+    # parentheses lets an unmatched `)` close our subshell and resume in the proof shell. Quote
+    # it as eval's operand instead: eval parses inside the already-created child, where even
+    # malformed/compound syntax cannot escape to mutate the parent.
+    prefix = [f"( builtin eval {shlex.quote(step)} )" if is_runnable(step) else step
+              for step in setup]
+    return "; ".join(prefix + [cmd]) if prefix else cmd
+
+
+def assignment_value_is_one_word(value):
+    """Whether an assignment value is one shell word, allowing quoted/substitution spaces."""
+    quote = None
+    i = 0
+    while i < len(value):
+        if quote:
+            if quote in ("double", "locale"):
+                if value.startswith(("${", "$((", "$["), i):
+                    # Parameter assignment and arithmetic assignment still execute inside
+                    # double/locale quotes. Treating the quoted spelling as inert let
+                    # `SAFE="$((PATH=0))"` poison command lookup in the proof shell.
+                    return False
+                if value.startswith("$(", i):
+                    end = matching_substitution_paren(value, i + 1)
+                    if end is None:
+                        return False
+                    i = end + 1
+                    continue
+                if value[i] == "`":
+                    end = matching_backtick(value, i)
+                    if end is None:
+                        return False
+                    i = end + 1
+                    continue
+            if value[i] == "\\" and quote != "single" and i + 1 < len(value):
+                i += 2
+                continue
+            closing = "'" if quote in ("single", "ansi") else ('`' if quote == "backtick" else '"')
+            if value[i] == closing:
+                quote = None
+            i += 1
+            continue
+        if value.startswith(("${", "$((", "$["), i):
+            # `${name:=value}` and `$((name=value))` can mutate another variable in this shell;
+            # `$[...]` is Bash's legacy spelling of the same arithmetic expansion. Gap all three
+            # rather than trying to prove a side-effect-free expression grammar.
+            return False
+        if value.startswith(("$(", "<(", ">("), i):
+            end = matching_substitution_paren(value, i + 1)
+            if end is None:
+                return False
+            i = end + 1
+            continue
+        if value.startswith("$'", i):
+            quote = "ansi"
+            i += 2
+            continue
+        if value.startswith('$"', i):
+            quote = "locale"
+            i += 2
+            continue
+        if value[i] == "'":
+            quote = "single"
+        elif value[i] == '"':
+            quote = "double"
+        elif value[i] == "`":
+            quote = "backtick"
+        elif value[i] == "\\" and i + 1 < len(value):
+            i += 2
+            continue
+        elif value[i].isspace() or value[i] in "&|<>":
+            return False
+        i += 1
+    return quote is None
+
+
+def assignment_sequence(code):
+    """Return bindings in the documented one-word assignment grammar, else None."""
+    view = shell_syntax_view(code)
+    parts = []
+    start = 0
+    for index, ch in enumerate(view):
+        if ch == ";":
+            parts.append(code[start:index].strip())
+            start = index + 1
+    parts.append(code[start:].strip())
+    if len(parts) > 1 and not parts[-1]:
+        parts.pop()
+    if not parts or any(not part for part in parts):
+        return None
+    bindings = []
+    for part in parts:
+        matched = ASSIGN.fullmatch(part)
+        if not matched or not assignment_value_is_one_word(matched.group(2)):
+            return None
+        bindings.append((matched.group(1), matched.group(2)))
+    return bindings
+
 
 def command_shaped(body):
     """Is this line a command, even if this tool would not run it?
@@ -749,12 +1033,13 @@ def commands(block):
     gate met an empty directory and returned a code the block never claimed - a mismatch the
     island did not earn, and, in the other direction, a proof that could pass while its
     scenario was never built. Earlier unannotated steps now join the prefix, so the whole
-    prefix and the command run in one shell: the substitution is re-evaluated, and the
-    fixtures are rebuilt inside the directory it just made.
+    assignment context and command run in one shell: the substitution is re-evaluated, and
+    runnable fixture builders run in child shells that inherit `D` while their filesystem
+    effects persist. Shell state created by a runnable builder cannot replace the later proof command.
 
     Each candidate carries an immutable set of gap causes. It is false when empty, preserving
     the original truth test, while distinguishing an ordinary unreplayable step from a refused
-    environment binding. A match after either gap is reported but never counted as a verified
+    setup state. A match after either gap is reported but never counted as a verified
     proof; downstream harnesses may additionally treat refusal as a non-verdict.
     """
     lines = block.splitlines()
@@ -818,16 +1103,15 @@ def commands(block):
             i += 1
             continue
         assignment_code = split_comment(cmd)[0].strip()
-        assigned = ASSIGN.match(assignment_code)
+        assigned = assignment_sequence(assignment_code) if ASSIGN.match(assignment_code) else None
         # `rc=$?; echo ...` is assignment-prefixed, but only the exact pure-report form above is
         # a report. A semicolon tail after that prefix is an independent compound command; do not
         # replay it as a block-local assignment or hide its annotation from SKIPPED accounting.
         if assigned and assignment_code.startswith("rc=$?;"):
             assigned = None
-        if assigned and not split_comment(cmd)[0].strip().startswith(("python3", "bash", "./")):
-            name, value = assigned.group(1), assigned.group(2)
-            step = f"{name}={value}"
-            if unsafe_assignment(name):
+        if assigned:
+            step = "; ".join(f"{name}={value}" for name, value in assigned)
+            if any(unsafe_assignment(name) for name, _value in assigned):
                 # As with a refused export, the binding is not replayed and later commands are
                 # gapped. `PATH` is inherited-exported in ordinary invocations, so its bare form
                 # is the same command-forgery primitive as `export PATH=...`.
@@ -848,16 +1132,30 @@ def commands(block):
         if expected is None:
             expected = reported_code(lines[i + 1:])
         if cmd:
-            yield cmd, expected, list(setup), frozenset(gap_causes)
+            # A row beginning `python3 ()` is a Bash function definition, not an invocation of
+            # the allowlisted Python executable. Even with an exit annotation, counting it as a
+            # proof would make "ran nothing" pass. Refuse it independently of setup status.
+            if shell_function_definition(cmd):
+                yield cmd, REFUSE, list(setup), frozenset(gap_causes)
+                gap_causes.add("refused")
+                i += 1
+                continue
             # An unannotated step states no code, so it verifies nothing - but the block
             # needs it to build what the next command is pointed at.
             if expected is None and is_runnable(cmd) and not PLACEHOLDER.search(cmd):
-                if replayable(cmd):
+                if unsafe_setup_state(cmd):
+                    yield cmd, REFUSE, list(setup), frozenset(gap_causes)
+                    gap_causes.add("refused")
+                elif replayable(cmd):
+                    yield cmd, expected, list(setup), frozenset(gap_causes)
                     setup.append(cmd)
                 else:
+                    yield cmd, expected, list(setup), frozenset(gap_causes)
                     gap_causes.add("unreplayable")
-            elif not is_runnable(cmd) and command_shaped(cmd):
-                gap_causes.add("unreplayable")
+            else:
+                yield cmd, expected, list(setup), frozenset(gap_causes)
+                if not is_runnable(cmd) and command_shaped(cmd):
+                    gap_causes.add("unreplayable")
         i += 1
 
 
@@ -900,7 +1198,7 @@ def main() -> int:
             for cmd, expected, setup, gapped in commands(block):
                 if expected == REFUSE:
                     refused += 1
-                    print(f"REFUSED {d.name}: unsafe environment binding, not replayed")
+                    print(f"REFUSED {d.name}: unsafe setup state, not replayed")
                     print(f"         {cmd}")
                     continue
                 if not is_runnable(cmd):
@@ -920,7 +1218,7 @@ def main() -> int:
                     print(f"PENDING {d.name}: candidate with no documented exit code")
                     print(f"         {cmd}")
                     continue
-                script = "; ".join(setup + [cmd]) if setup else cmd
+                script = proof_script(setup, cmd)
                 bad = forbidden_primitive(script)
                 if bad:
                     refused += 1

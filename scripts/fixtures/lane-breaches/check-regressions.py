@@ -43,6 +43,7 @@ EXPECTED = {
     "exec-shell-int.py": ["L2"],
     "exec-shell-eval.sh": ["L2", "L1"] * 3,
     "exec-shell-truthy.py": ["L2"] * 6,
+    "exec-subprocess-shell-apis.py": ["L2", "L2"],
     "exec.py": ["L2"],
     "meaningful-exit-equals.sh": [],
     "meaningful-exits-status.sh": [],
