@@ -85,6 +85,25 @@ def manifest(root: Path):
     return out
 
 
+def make_sandbox_writable(root: Path) -> None:
+    """Make only the disposable copy owner-writable, never following a symlink.
+
+    `copytree` preserves source modes. That is normally useful, but a release-review clone is
+    deliberately read-only, so its copied fixture root and files also became read-only. The red
+    controls then failed before mutating anything and proved no detection path. This sandbox is
+    scratch space created for those commands; normalising it before the baseline fingerprint
+    lets every watched-red mutation execute without touching or weakening the source tree.
+    """
+    for path in (root, *walk(root)):
+        info = path.lstat()
+        if stat.S_ISLNK(info.st_mode):
+            continue
+        mode = stat.S_IMODE(info.st_mode) | stat.S_IWUSR
+        if stat.S_ISDIR(info.st_mode):
+            mode |= stat.S_IXUSR
+        path.chmod(mode)
+
+
 def main() -> int:
     red = None
     for arg in sys.argv[1:]:
@@ -102,6 +121,7 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="steering-audit-probe-") as tmp:
         sandbox = Path(tmp) / "fixtures"
         shutil.copytree(FIXTURES, sandbox)
+        make_sandbox_writable(sandbox)
         if red is not None:
             if not STUB.is_file():
                 print(f"readonly-probe: missing red fixture {STUB}", file=sys.stderr)

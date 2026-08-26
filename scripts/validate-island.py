@@ -29,7 +29,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-import yaml
+try:
+    import yaml
+except BaseException as _yaml_import_exception:
+    yaml = None
+    _yaml_import_error = _yaml_import_exception
+else:
+    _yaml_import_error = None
 
 C_CITE = re.compile(r"\bC(?:[1-9]|1[0-9]|2[0-8])\b")
 NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -170,6 +176,22 @@ def validate(d: Path, results) -> None:
 
 
 def main() -> int:
+    if yaml is None:
+        if isinstance(_yaml_import_error, ModuleNotFoundError) and getattr(
+            _yaml_import_error, "name", None
+        ) == "yaml":
+            detail = "missing PyYAML"
+        else:
+            detail = (
+                "could not initialize PyYAML: "
+                f"{type(_yaml_import_error).__name__}: {_yaml_import_error}"
+            )
+        print(
+            f"validate-island: {detail}; install the pinned gate dependency "
+            "with `python3 -m pip install -r requirements.txt`",
+            file=sys.stderr,
+        )
+        return 2
     if len(sys.argv) < 2:
         print(__doc__)
         return 2

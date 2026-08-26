@@ -60,7 +60,7 @@ Auto-caption garbles are corrected once, in the ledger, and never re-introduced:
 
 ## Boundaries
 
-This pack was built under the IDC Forge methodology and deliberately refuses concerns the Forge already owns. Those refusals are recorded in [COMPANION.md](COMPANION.md) — twenty-two named boundaries, each saying what the pack does *not* do and who does. **Every local gate, fixture and validator here runs from a fresh clone without another repository**, using Python 3, Bash, Git, standard POSIX utilities, and UTF-8-capable output. That is the whole of the standalone claim: it covers the tools, not every step of every protocol. Most of the twenty-two are boundary statements — the concern is somebody else's and this pack keeps its hands off it. A named few are workflow hand-offs, where an island's own protocol routes a required step to an island this repository does not ship. COMPANION.md marks which is which.
+This pack was built under the IDC Forge methodology and deliberately refuses concerns the Forge already owns. Those refusals are recorded in [COMPANION.md](COMPANION.md) — twenty-two named boundaries, each saying what the pack does *not* do and who does. **Every local gate, fixture and validator here runs from a fresh clone without another repository**, using Python 3.10+ with the pinned gate dependencies in [`requirements.txt`](requirements.txt), Bash, Git, standard POSIX utilities, and UTF-8-capable output. That is the whole of the standalone claim: it covers the tools, not every step of every protocol. Most of the twenty-two are boundary statements — the concern is somebody else's and this pack keeps its hands off it. A named few are workflow hand-offs, where an island's own protocol routes a required step to an island this repository does not ship. COMPANION.md marks which is which.
 
 ## Verification
 
@@ -83,6 +83,6 @@ These six run over the pack as a whole. The first five check content; the sixth 
 PYTHONIOENCODING=ascii python3 scripts/verify-proofs.py   # expected: nonzero; an ASCII-only verdict surface is unsupported
 ```
 
-It fails **closed** — the sampled families died at 2 rather than impersonating a clean 0, so no red became green — but a run that produces no verdict is an outage, not a pass. Treat a UTF-8-capable stdout as a runtime prerequisite beside Python 3, Bash, Git, and the standard POSIX utilities used by the shell gates, and read a `2` from any gate as *the gate did not answer*. This is a stated assumption, `advisory`: no island preflights its stream, and until one does, an exit-code claim read off a non-UTF-8 stream is `unverified`.
+It fails **closed** — the sampled families died at 2 rather than impersonating a clean 0, so no red became green — but a run that produces no verdict is an outage, not a pass. Treat a UTF-8-capable stdout as a runtime prerequisite beside Python 3.10+, the pinned Python gate dependencies, Bash, Git, and the standard POSIX utilities used by the shell gates, and read a `2` from any gate as *the gate did not answer*. This is a stated assumption, `advisory`: no island preflights its stream, and until one does, an exit-code claim read off a non-UTF-8 stream is `unverified`.
 
 Roll Tide · Island Development Crew · Huntsville, AL

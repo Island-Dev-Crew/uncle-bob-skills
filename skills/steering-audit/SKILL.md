@@ -82,6 +82,7 @@ python3 scripts/readonly-probe.py --red                                         
 python3 scripts/readonly-probe.py --red=mkdir                                                         # exit 1  (created empty directory caught)
 python3 scripts/readonly-probe.py --red=chmod                                                         # exit 1  (permission-bit change caught)
 python3 scripts/readonly-probe.py --red=symlink                                                       # exit 1  (dangling symlink caught)
+python3 scripts/self-test-readonly-probe.py                                                           # exit 0  (all five verdicts survive a read-only source tree)
 ```
 
 ## Done when

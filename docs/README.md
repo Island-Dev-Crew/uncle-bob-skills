@@ -4,7 +4,7 @@
 
 The public front door stays task-oriented. This page routes readers who want the contracts, provenance, research, and construction history behind it.
 
-> **Release history:** `v2.0.0` has an independent **CHANGES REQUIRED** receipt. The `v2.1.0` line records its corrective content; exact-head receipt and tag or release evidence—not a mutable status sentence here—establish acceptance and publication.
+> **Release history:** `v2.0.0` was later rejected by an independent exact-head review. The [changelog](../CHANGELOG.md) records that correction and the `v2.1.0` corrective line; an exact-head receipt plus signed-tag or authenticated-release evidence—not a mutable status sentence here—establishes acceptance and publication for any successor.
 
 ## Use the pack
 
@@ -37,7 +37,7 @@ These records are kept public for inspection. They explain how the pack was plan
 | [Wave 1 gauntlet](04-WAVE1-GAUNTLET.md) | Closed construction record. |
 | [Wave 2 gauntlet](05-WAVE2-GAUNTLET.md) | Closed construction record. |
 | [Wave 3 gauntlet](06-WAVE3-GAUNTLET.md) | Closed construction record. |
-| [2.0 hardening plan](07-HARDENING-PLAN-2.0.md) | Threat model, review history, current limits, and release-integrity work. |
+| [2.0 hardening plan](07-HARDENING-PLAN-2.0.md) | Threat model, review history, limits known on the 2.0 line, and release-integrity work. |
 
 ## What belongs where
 

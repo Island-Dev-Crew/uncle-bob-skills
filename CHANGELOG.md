@@ -2,7 +2,7 @@
 
 ## v2.1.0 — 2026-08-26
 
-**Corrective successor to `v2.0.0`.** The independent Seat 3 review of `v2.0.0` returned **CHANGES REQUIRED** at commit `7956a2a` / tree `a37578f7`. This entry records the successor's content; its acceptance and publication are established outside this file by an exact-head receipt and a human-created tag or release bound to that same head.
+**Corrective successor to `v2.0.0`.** The independent Seat 3 review of `v2.0.0` returned **CHANGES REQUIRED** at commit `7956a2a` / tree `a37578f7`. This entry records the successor's content; its acceptance and publication are established outside this file by an exact-head receipt and either a signed tag or a human-authorized authenticated release bound to that same head.
 
 ### Public surface
 
@@ -15,7 +15,8 @@
 
 - Pinned checkout bytes with `.gitattributes`, closed certifier false-greens across lane scanning, proof replay, closed-stream behavior, relative links, metadata typing, numerical boundaries, and CRLF handling, and added watched-red fixtures for each repaired class.
 - Corrected installation, standalone-tooling, Forge hand-off, source-provenance, and current-release claims. The pack supports four harnesses by file format; only the documented Claude Code install path is claimed as an installation recipe here.
-- Added certifier self-tests for command-position scanning and release integrity. These tests are part of the release checklist because the five content gates do not certify their own implementations.
+- Declared and pinned the Python gate dependencies instead of inheriting them invisibly from the author's user site: PyYAML for structural validation and markdown-it-py for rendered CommonMark link discovery. A missing dependency exits 2 with an install instruction rather than borrowing a gate verdict.
+- Added certifier self-tests for command-position scanning, CommonMark link parsing, and release integrity. These tests are part of the release checklist because the five content gates do not certify their own implementations.
 
 ### Release integrity
 
@@ -48,7 +49,7 @@ Before handing the frozen head to a third independent seat, five read-only lense
 
 **`closed-stream-check.py` never compared against the documented code**, despite its docstring saying so — a gate documenting exit 1 that returned a clean 0 on a dead pipe passed, because 0 was in the pack-wide union it actually tested, and that union's "measured rather than assumed" justification was false (three islands document 130). The leak test now compares each probe against the command's own documented code, accepting only that verdict or an explicit fail-closed non-verdict. `scripts/fixtures/verdict-flip-island` ships a gate that answers 1 when watched and a genuine 0 when not — the old rule waves it through, the new one names it. The 19 candidates the harness deliberately does not re-probe (they close a stream themselves) are now counted on the summary line instead of pruned in silence.
 
-**Numbers with no instrument behind them.** "765 committed relative links, 0 dead" had no checker in the tree; `scripts/link-check.py` is that instrument now, reading the committed tree rather than the worktree, watched failing on a planted dead link, and reporting 767 at this head. The README's "442 distinct relative targets" could not be reproduced by any counting method and is retired for two numbers a command produces (64 outside-island targets; the 42-islands figure reproduced exactly). The round-1 "702 probes, 0 leaks" entry below stays as written but now carries its correction inline, because rewriting an old entry to be right in hindsight is the same laundering this pack refuses elsewhere.
+**Numbers with no instrument behind them.** "765 committed relative links, 0 dead" had no checker in the tree; `scripts/link-check.py` is that instrument now, reading the committed tree rather than the worktree, watched failing on a planted dead link, and reporting 767 at commit `aedc4f0` (the later `v2.0.0` release head reports 770). The README's "442 distinct relative targets" could not be reproduced by any counting method and is retired for two numbers a command produces (64 outside-island targets; the 42-islands figure reproduced exactly). The round-1 "702 probes, 0 leaks" entry below stays as written but now carries its correction inline, because rewriting an old entry to be right in hindsight is the same laundering this pack refuses elsewhere.
 
 Two disclosures were also corrected to what the code measurably does: `gate-toolchain` claimed Ctrl-C was "caught only to re-signal it, so a kill reads as a kill" while it converts the signal to a normal exit 130 — the very signal-vs-128+n confusion that blinded round 2's harness, recurring as prose; and `acceptance-surface-review` now states the hard-link limit its two sibling scanners already disclose, after the bypass was reproduced (hard link in: exit 0; symlink twin: refused at 2).
 
@@ -120,7 +121,7 @@ The README said islands 21–50 were unbuilt, counted 21 companion boundaries wh
 
 ### Fixed — install topology, said out loud
 
-The README offered `cp -R skills/crap-gate ~/.claude/skills/`. All fifty islands link outside their own directory (442 distinct relative targets; 42 cite the pack validator or `prove-gate.sh` as the sole evidence for their only `enforced` claim), so that copy severs the evidence graph and keeps only the prose. Full-pack install is now the documented topology and single-island copying is named as a reading copy.
+The README offered `cp -R skills/crap-gate ~/.claude/skills/`. It justified the warning with “442 distinct relative targets,” a count later found unreproducible and retired; the durable fact is that every island has at least one link outside its own directory, so that copy severs the evidence graph and keeps only the prose. Full-pack install is now the documented topology and single-island copying is named as a reading copy.
 
 ### Fixed — provenance that contradicted itself
 

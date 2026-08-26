@@ -87,11 +87,17 @@ Done means, in REPAIR: every mutant in scope is killed, excused-with-justificati
 Red/green proof. The gate's own known-dirty/known-clean pair sits beside it in [`scripts/fixtures/`](scripts/fixtures/mkrepo.sh): a shared `base/`, two heads. These two commands, run from this island's directory, gave these exit codes:
 
 ```bash
-scripts/diff-scope.sh HEAD~1 HEAD "$(scripts/fixtures/mkrepo.sh dirty)"   # exit 1 — deletions-only diff, empty scope (RED)
-scripts/diff-scope.sh HEAD~1 HEAD "$(scripts/fixtures/mkrepo.sh clean)"   # exit 0 — emits pricing.js:3-3 and pricing.js:6-8 (GREEN)
+bash -c 'repo=$(scripts/fixtures/mkrepo.sh dirty) || exit 2; scripts/diff-scope.sh HEAD~1 HEAD "$repo"'   # exit 1 — deletions-only diff, empty scope (RED)
+bash -c 'repo=$(scripts/fixtures/mkrepo.sh clean) || exit 2; scripts/diff-scope.sh HEAD~1 HEAD "$repo"'   # exit 0 — emits pricing.js:3-3 and pricing.js:6-8 (GREEN)
+python3 scripts/fixtures/check-readonly.py                                # exit 0 — the same pair built from frozen source bytes
 ```
 
-The same pair run through [`known-dirty-fixture`](../known-dirty-fixture/SKILL.md)'s `prove-gate.sh` printed `ACCEPTED` at exit 0. Bad-ref input exits 2. Re-run the pair on every change to the script.
+The assignment before each gate is load-bearing: if fixture construction fails, `|| exit 2`
+returns a non-verdict instead of letting an empty argument fall through to the current repository.
+`check-readonly.py` freezes a copied fixture source before building both histories, capturing the
+same mode boundary as an exact-head review clone. The pair also runs through
+[`known-dirty-fixture`](../known-dirty-fixture/SKILL.md)'s `prove-gate.sh` at `ACCEPTED`, exit 0.
+Bad-ref input exits 2. Re-run all three commands on every change to the script.
 
 - `enforced` for island structure: `scripts/validate-island.py` gates this file's frontmatter, sidecar, ledger citations, and line budget at exit 0.
 - `advisory` at v0 for the mutation run, the zero-survivor requirement, and the budget cap: no per-language runner ships here yet. Run the language-native tool ([`gate-toolchain`](../gate-toolchain/SKILL.md) owns picking it and checking it is scoped to the diff) and treat *its* exit code as the gate. A verdict claimed without a tool report is `unverified`. A later wave may add a runner harness that promotes these three to enforced; until it ships, this island says advisory and means it.

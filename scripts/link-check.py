@@ -17,25 +17,18 @@ concern. A target resolves when it is a tracked file, or a tracked directory (a 
 tracked path). Fragments are stripped — anchor validity is a different check with different
 rules (GitHub's slugger), and claiming it here would overstate.
 
-BOTH markdown link forms are resolved, and the summary line breaks the count down by form so
-the number says what it covers. Until v2.0.1 only the inline `[text](target)` form was matched,
-so a whole class — `[text][label]`, `[text][]`, `[label]`, each resolved through a
-`[label]: target` definition — was never checked while the tool's own docstring presented it as
-the instrument behind the pack's "N links, 0 dead". Reference usage is matched CommonMark's way:
-a `[label]` only counts when a definition for it exists, which is also what keeps prose brackets
-and `- [ ]` checkboxes out of the count.
+Rendered CommonMark is the boundary. A pinned `markdown-it-py` parser resolves inline and
+full/collapsed/shortcut reference links, nested/escaped/multiline link text, code spans and raw
+HTML inside link text, balanced destinations, and images. The checker walks the parser's actual
+`link_open` and `image` tokens, so an inert outer bracket cannot hide the inner link that a reader
+receives, and examples inside fenced code are not invented as live links. Relative `href`, `src`,
+and `srcset` targets in rendered raw HTML are checked too. `srcset` candidates follow the WHATWG
+tokenization boundary rather than a comma split (commas can be part of URLs); parse errors fail the
+gate closed. That keeps a picture-based README hero inside the same evidence boundary as ordinary
+Markdown assets.
 
-Two limits, stated rather than papered over. Definitions are read in their common one-line form
-(`[label]: dest "title"`, dest optionally in <angle brackets>); a destination carried on the line
-BELOW its label is not parsed, and its usages are then treated as undefined text, not as dead.
-Definitions are read only OUTSIDE fenced code blocks, because a definition inside a fence is an
-example of the syntax rather than a link the rendered page has — counting one made this tool
-report a dead link on a page that contains none. Reference USAGES and inline links are still
-matched everywhere, including inside fences, which can inflate the checked count but cannot hide
-a dead target: a usage whose label has no definition outside a fence is simply not a link.
-
-Exit 0 when every relative link resolves AND at least one was checked; 1 when any is dead,
-listing each; 2 on usage or a git error; 3 when zero links were found — a checker that
+Exit 0 when every relative link resolves AND at least one was checked; 1 when any is dead or a
+`srcset` is malformed, listing each; 2 on usage or a git error; 3 when zero links were found — a checker that
 checked nothing has verified nothing, and this pack does not report that as a pass.
 """
 import os
@@ -43,75 +36,189 @@ import posixpath
 import re
 import subprocess
 import sys
+from html.parser import HTMLParser
+from urllib.parse import unquote, urlsplit
 
-LINK = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
-# `[label]: dest` at the head of a line, up to CommonMark's three-space indent.
-REF_DEF = re.compile(r"(?m)^ {0,3}\[([^\]\n]+)\]:[ \t]*(<[^>\n]*>|\S+)")
-FENCE = re.compile(r"(?m)^ {0,3}(`{3,}|~{3,})[^\n]*$")
+try:
+    from markdown_it import MarkdownIt
+except BaseException as _markdown_import_exception:
+    MarkdownIt = None
+    _markdown_import_error = _markdown_import_exception
+else:
+    _markdown_import_error = None
 
 
-def outside_fences(body):
-    """`body` with fenced code blocks blanked out, line count preserved.
+ASCII_WHITESPACE = "\t\n\f\r "
+FLOATING_POINT = re.compile(
+    r"-?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?\Z"
+)
 
-    Only DEFINITIONS are read through this. A reference definition inside a ``` block is an
-    example of the syntax, not a definition the rendered page honours — CommonMark does not read
-    it, and neither may this tool. Reading them made a page whose only reference syntax sat inside
-    one fenced example report a DEAD link that does not exist on it, which is a gate manufacturing
-    evidence. The nearest live example was this repository's own CHANGELOG: an entry documenting
-    reference-link support, quoting the syntax in a fence, turned the release gate red.
 
-    Lines are blanked rather than removed so the reported line numbers keep matching the file.
+def _valid_srcset_descriptors(descriptors: list[str]) -> tuple[bool, bool]:
+    """Return (candidate-valid, parse-error) for WHATWG srcset descriptors."""
+    width = False
+    density = False
+    future_h = False
+    error = False
+    parse_error = False
+    for descriptor in descriptors:
+        number, suffix = descriptor[:-1], descriptor[-1:]  # empty stays invalid below
+        if suffix == "w" and number.isascii() and number.isdigit():
+            if width or density:
+                error = True
+            if int(number) == 0:
+                error = True
+            width = True
+        elif suffix == "x" and FLOATING_POINT.fullmatch(number):
+            if width or density or future_h:
+                error = True
+            if float(number) < 0:
+                error = True
+            density = True
+        elif suffix == "h" and number.isascii() and number.isdigit():
+            # WHATWG retains this future-compatible descriptor but marks it a parse error.
+            parse_error = True
+            if future_h or density or int(number) == 0:
+                error = True
+            future_h = True
+        else:
+            error = True
+    if future_h and not width:
+        error = True
+    return not error, parse_error or error
+
+
+def parse_srcset(value: str) -> tuple[list[str], bool]:
+    """Extract candidate URLs using WHATWG's srcset splitting/tokenizer states.
+
+    Browsers recover from malformed candidates. A release gate must not turn that
+    recovery into a green proof, so the returned flag records every parse error.
     """
-    out = []
-    fence = None
-    for line in body.split("\n"):
-        m = FENCE.match(line)
-        if fence is None and m:
-            fence = m.group(1)[0]
-            out.append("")
-            continue
-        if fence is not None:
-            out.append("")
-            if m and m.group(1)[0] == fence:
-                fence = None
-            continue
-        out.append(line)
-    return "\n".join(out)
-# Full `[text][label]` and collapsed `[text][]` — one pattern, blank label means collapsed.
-REF_USE = re.compile(r"\[([^\]\n]*)\]\[([^\]\n]*)\]")
-# Shortcut `[label]`. The lookahead is what separates it from an inline link, a full
-# reference, and a definition line; overlap with the two patterns above is filtered by span.
-REF_SHORT = re.compile(r"\[([^\]\n]+)\](?![\[\(:])")
+    candidates = []
+    malformed = False
+    position = 0
+    length = len(value)
+    while True:
+        # WHATWG splitting loop: commas here are parse errors, not URL separators.
+        while position < length and (
+            value[position] in ASCII_WHITESPACE or value[position] == ","
+        ):
+            malformed = malformed or value[position] == ","
+            position += 1
+        if position >= length:
+            return candidates, malformed
+
+        start = position
+        while position < length and value[position] not in ASCII_WHITESPACE:
+            position += 1
+        url = value[start:position]
+        descriptors = []
+
+        if url.endswith(","):
+            stripped = url.rstrip(",")
+            if len(url) - len(stripped) > 1:
+                malformed = True
+            url = stripped
+        else:
+            while position < length and value[position] in ASCII_WHITESPACE:
+                position += 1
+            current = ""
+            state = "descriptor"
+            while True:
+                char = value[position] if position < length else None
+                if state == "descriptor":
+                    if char is None:
+                        if current:
+                            descriptors.append(current)
+                        break
+                    if char in ASCII_WHITESPACE:
+                        if current:
+                            descriptors.append(current)
+                            current = ""
+                        state = "after"
+                        position += 1
+                    elif char == ",":
+                        position += 1
+                        if current:
+                            descriptors.append(current)
+                        break
+                    elif char == "(":
+                        current += char
+                        state = "parens"
+                        position += 1
+                    else:
+                        current += char
+                        position += 1
+                elif state == "parens":
+                    if char is None:
+                        descriptors.append(current)
+                        break
+                    current += char
+                    position += 1
+                    if char == ")":
+                        state = "descriptor"
+                else:  # after descriptor
+                    if char is None:
+                        break
+                    if char in ASCII_WHITESPACE:
+                        position += 1
+                    else:
+                        state = "descriptor"
+
+        valid, descriptor_error = _valid_srcset_descriptors(descriptors)
+        malformed = malformed or descriptor_error or not url
+        if valid and url:
+            candidates.append(url)
 
 
-def norm_label(label: str) -> str:
-    """CommonMark link-label matching: case-folded, with internal whitespace collapsed."""
-    return " ".join(label.split()).casefold()
+class HtmlTargets(HTMLParser):
+    """Collect navigation and asset targets from rendered raw HTML fragments."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.targets = []
+
+    def handle_starttag(self, _tag, attrs):
+        for name, value in attrs:
+            if value is None:
+                continue
+            if name == "href":
+                self.targets.append(("link", value))
+            elif name == "src":
+                self.targets.append(("image", value))
+            elif name == "srcset":
+                candidates, malformed = parse_srcset(value)
+                self.targets.extend(("image", candidate) for candidate in candidates)
+                if malformed:
+                    self.targets.append(("malformed-srcset", value))
+
+    handle_startendtag = handle_starttag
 
 
-def reference_targets(body):
-    """Yield (label, target) once per reference-style USAGE in `body`.
+def html_targets(fragment: str):
+    parser = HtmlTargets()
+    parser.feed(fragment)
+    parser.close()
+    yield from parser.targets
 
-    Per usage, not per definition: a definition nobody links through is not a link, and
-    counting it would put a number in the summary that no reader could point at on a page.
-    """
-    defs = {}
-    for label, dest in REF_DEF.findall(outside_fences(body)):
-        defs.setdefault(norm_label(label), dest.strip("<>"))
-    if not defs:
-        return
-    taken = [m.span() for m in LINK.finditer(body)]
-    for m in REF_USE.finditer(body):
-        taken.append(m.span())
-        label = norm_label(m.group(2) or m.group(1))
-        if label in defs:
-            yield label, defs[label]
-    for m in REF_SHORT.finditer(body):
-        if any(start <= m.start() < end for start, end in taken):
-            continue
-        label = norm_label(m.group(1))
-        if label in defs:
-            yield label, defs[label]
+
+def rendered_targets(body: str):
+    """Yield (`link`|`image`, destination) from CommonMark's rendered token tree."""
+    parser = MarkdownIt("commonmark")
+    for block in parser.parse(body):
+        if block.type == "html_block":
+            yield from html_targets(block.content)
+        for token in block.children or ():
+            if token.type == "link_open":
+                target = token.attrGet("href")
+                if target is not None:
+                    yield "link", target
+            elif token.type == "image":
+                target = token.attrGet("src")
+                if target is not None:
+                    yield "image", target
+            elif token.type == "html_inline":
+                yield from html_targets(token.content)
 
 
 def git(args, rev_ok=False):
@@ -122,6 +229,22 @@ def git(args, rev_ok=False):
 
 
 def main() -> int:
+    if MarkdownIt is None:
+        if isinstance(_markdown_import_error, ModuleNotFoundError) and getattr(
+            _markdown_import_error, "name", None
+        ) == "markdown_it":
+            detail = "missing markdown-it-py"
+        else:
+            detail = (
+                "could not initialize markdown-it-py: "
+                f"{type(_markdown_import_error).__name__}: {_markdown_import_error}"
+            )
+        print(
+            f"link-check: {detail}; install the pinned gate dependencies "
+            "with `python3 -m pip install -r requirements.txt`",
+            file=sys.stderr,
+        )
+        return 2
     argv = sys.argv[1:]
     if len(argv) > 1 or (argv and argv[0].startswith("-")):
         print(__doc__, file=sys.stderr)
@@ -132,16 +255,19 @@ def main() -> int:
     except RuntimeError as exc:
         print(f"link-check: {exc}", file=sys.stderr)
         return 2
-    counts = {"inline": 0, "reference": 0}
+    counts = {"link": 0, "image": 0}
     dead = []
+    malformed = []
     for f in sorted(t for t in tracked if t.endswith(".md")):
         body = git(["show", f"{rev}:{f}"])
-        links = [("inline", None, t) for t in LINK.findall(body)]
-        links += [("reference", label, t) for label, t in reference_targets(body)]
-        for form, label, target in links:
-            if target.startswith(("http://", "https://", "mailto:", "#")):
+        for form, target in rendered_targets(body):
+            if form == "malformed-srcset":
+                malformed.append((f, target))
                 continue
-            path = target.split("#")[0].split("?")[0]
+            parsed = urlsplit(target)
+            if parsed.scheme or parsed.netloc or target.startswith("#"):
+                continue
+            path = unquote(parsed.path)
             if not path:
                 continue
             counts[form] += 1
@@ -150,13 +276,16 @@ def main() -> int:
                 continue
             if any(t.startswith(resolved.rstrip("/") + "/") for t in tracked):
                 continue                       # a directory link
-            dead.append((f, target if label is None else f"{target} (reference [{label}])"))
-    checked = counts["inline"] + counts["reference"]
+            dead.append((f, target))
+    checked = counts["link"] + counts["image"]
     for f, target in dead:
         print(f"DEAD {f} -> {target}")
-    print(f"\n{checked} relative links checked at {rev} "
-          f"({counts['inline']} inline, {counts['reference']} reference-style), {len(dead)} dead")
-    if dead:
+    for f, target in malformed:
+        print(f"MALFORMED {f} -> srcset: {target}")
+    print(f"\n{checked} relative targets checked at {rev} "
+          f"({counts['link']} links, {counts['image']} images), {len(dead)} dead, "
+          f"{len(malformed)} malformed srcset")
+    if dead or malformed:
         return 1
     if checked == 0:
         print("NOTHING CHECKED - no relative links found; this is not a pass", file=sys.stderr)

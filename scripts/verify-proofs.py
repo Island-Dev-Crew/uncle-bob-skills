@@ -17,7 +17,7 @@ inline or on the exit-report line that follows its output:
     python3 scripts/x.py fixture   # → EXIT=1        inline
     scripts/x.sh fixture           # exit 1          inline, bare island-relative script
     $ python3 scripts/x.py fixture                   report line, below the output:
-      ...output...
+    | ...output...
     $ rc=$?; echo "EXIT=$rc"       # → EXIT=1
     $ echo $?                      # → 1
 
@@ -27,6 +27,11 @@ and ends `.sh`/`.py` (`scripts/probe.sh`; a script in the island root needs its 
 A candidate whose arguments contain a `<placeholder>` is a usage
 template, reported as TEMPLATE and not run. A fenced command whose leading token is off
 the allowlist is reported as SKIPPED rather than silently dropped.
+
+An exit-report line is exactly `echo $?` or `rc=$?; echo "EXIT=$rc"` before its trailing
+annotation. That whole-line rule is load-bearing: a pipe, a second semicolon command, or an extra
+operand makes the row an independent command boundary, never a report that can annotate the row
+above it.
 
 Exit 0 iff at least one proof ran AND every one reproduced its documented code. Exit 1 on
 a mismatch or a refusal, 2 on usage or IO, and 3 when nothing was executed at all - a
@@ -41,6 +46,16 @@ direction of every ambiguity here: an output line that could pass for a command 
 search for a report line, which leaves a proof unverified rather than pairing a command
 with a code that is not its own.
 
+That boundary is lexical and host-independent. An unprompted output row and an off-allowlist
+command can be identical shell text; the verifier does not use the host's `PATH` to guess which
+one the author meant. Every nonempty unmarked non-comment row terminates report search and is
+classified independently, including a row with malformed quotes or escapes. `| ` is the grammar's
+explicit output prefix and is the one exception. If unmarked proof output precedes a separate
+`echo $?`, the proof is conservatively `PENDING` and the ambiguous row may be `SKIPPED`; mark
+output with `| ` or put the exit annotation inline on the proof command. A code is never borrowed
+across a row merely because its apparent executable is absent from this machine or cannot be
+tokenized.
+
 TRUST BOUNDARY, stated rather than implied. This tool RUNS commands taken out of the
 repository it is checking. That is inherent to re-running a documented proof, not an
 oversight — a proof block that is never executed is a claim again. So it is only safe to
@@ -50,8 +65,10 @@ for that sentence: the leading token must be on the allowlist above, and a comma
 a network, privilege-escalation, or device-destructive primitive is REFUSED rather than run,
 by the name the KERNEL would resolve rather than the characters on the page - `/usr/bin/curl`
 and `../../sbin/dd` are refused with the bare words, and so are the spellings only a shell
-resolves (`cur\\l`, `'cur'l`, `c''url`, `CURL`), because the line is parsed into words the way
-bash parses it before those words are judged. What a word parse does NOT reach is a name assembled
+resolves (`cur\\l`, `'cur'l`, `c''url`, `CURL`, `$'cur\\x6c'`), because ANSI-C words are decoded
+and the line is parsed into words the way Bash parses it before those words are judged. Executable
+source inside `$()`, `<()`, `>()`, and backticks is inspected recursively without being run. What
+this static walk does NOT reach is a name assembled
 at run time: `C=cur\\l; bash -c '$C x'` carries no forbidden word in any word it has, and is run.
 That is the trust sentence above, restated about one narrower case rather than argued away. The
 allowlist
@@ -59,10 +76,12 @@ widened when the grammar was written down — it now admits a bare island-relati
 `printf` stdin pipe — so it constrains the first token only, never the rest of the line.
 
 KNOWN LIMITS, stated rather than discovered. Each annotated command runs from the island's
-directory, preceded by the steps of its own block that this tool can replay verbatim: the
-variable assignments, and the earlier unannotated commands that build the block's fixtures.
-The whole prefix runs in one shell with the command, so `D=$(mktemp -d)` is re-evaluated
-and the fixtures are rebuilt inside the directory it just made.
+directory, preceded by the steps of its own block that this tool can replay verbatim: ordinary
+block-local variable assignments, and the earlier unannotated commands that build the block's
+fixtures. Assignments that redirect command lookup or inject interpreter startup (`PATH`,
+`*PATH`, loader variables, and the named shell/interpreter hooks below) are refused whether or
+not the author wrote `export`. The whole accepted prefix runs in one shell with the command, so
+`D=$(mktemp -d)` is re-evaluated and the fixtures are rebuilt inside the directory it just made.
 
 Two shapes still cannot be replayed, and both are handled by saying so rather than by
 guessing:
@@ -110,9 +129,6 @@ SHELL_INTERPRETERS = frozenset({"bash", "sh"})
 # `# exit N`, `# -> EXIT=N`, `# → EXIT=N`, tolerating surrounding prose in the comment.
 ANNOT = re.compile(r"#.*?(?:exit\s*=?\s*|EXIT=)(\d+)", re.IGNORECASE)
 PROMPT = re.compile(r"^\s*\$\s+(.*)$")
-# A continuation of a shell command broken across lines with a trailing backslash.
-CONT = re.compile(r"\\\s*$")
-
 # The allowlist that defines a candidate. The fourth alternative is the shipped bare form -
 # `scripts/diff-scope.sh HEAD~1 HEAD` - which the extractor used to skip outright, so two
 # islands' entire red/green pair went unread and the run reported "0 documented" at exit 0.
@@ -120,14 +136,133 @@ RUNNABLE = re.compile(
     r"^(?:python3\s|bash\s|sh\s|printf\s|\./"
     r"|(?:[A-Za-z0-9_.-]+/)+[A-Za-z0-9_.-]+\.(?:sh|py)(?:\s|$))"
 )
-# An exit-report line: `rc=$?; echo "EXIT=$rc"` or `echo $?`, with or without a `$ ` prompt.
-REPORT = re.compile(r"^(?:rc=\$\?|echo\s+(?:\$\?|\"?EXIT|\"?\$\{?rc))")
+# An exit-report line is a whole command, not a familiar prefix. Letting `echo $? | gate` or
+# `rc=$?; echo ...; gate` match here lends the compound row's annotation to the candidate above.
+# Prompts and comments are removed by the caller before this expression is judged.
+REPORT = re.compile(
+    r'^(?:echo[ \t]+\$\?|rc=\$\?;[ \t]*echo[ \t]+"EXIT=\$rc")[ \t]*$'
+)
+# Explicit proof output. Every other nonempty unmarked row is a possible command and therefore a
+# report boundary, even when malformed; the pipe marker is invalid as a standalone command and
+# removes that ambiguity deliberately rather than by consulting the host's executable inventory.
+OUTPUT = re.compile(r"^\s*\|\s")
 # The code a report line states, anchored at its comment: `# → 1`, `# -> EXIT=1`, `# 2`.
 ARROW = re.compile(r"\s*(?:[-=]*>|→)?\s*(?:EXIT\s*=\s*)?(\d+)\b")
+# An inline arrow on an independent command. Unlike ARROW, used after a known report line, this
+# requires the arrow marker so an arbitrary numeric prose comment cannot become an exit claim.
+INLINE_ARROW = re.compile(r"\s*(?:[-=]*>|→)\s*(?:EXIT\s*=\s*)?(\d+)\b")
 
 
 def is_runnable(cmd):
     return bool(RUNNABLE.match(cmd.strip()))
+
+
+def is_report(line):
+    """Whether `line` is one complete accepted exit-report command."""
+    return bool(REPORT.fullmatch(split_comment(line)[0].strip()))
+
+
+def decode_ansi_c_content(text):
+    """Decode the literal escapes Bash accepts inside one ANSI-C quoted word."""
+    simple = {
+        "a": "\a", "b": "\b", "e": "\x1b", "E": "\x1b", "f": "\f",
+        "n": "\n", "r": "\r", "t": "\t", "v": "\v", "\\": "\\",
+        "'": "'", '"': '"', "?": "?",
+    }
+    out = []
+    i = 0
+    while i < len(text):
+        if text[i] != "\\" or i + 1 >= len(text):
+            out.append(text[i])
+            i += 1
+            continue
+        escape = text[i + 1]
+        if escape in simple:
+            out.append(simple[escape])
+            i += 2
+            continue
+        if escape in "01234567":
+            end = i + 2
+            while end < len(text) and end < i + 4 and text[end] in "01234567":
+                end += 1
+            out.append(chr(int(text[i + 1:end], 8)))
+            i = end
+            continue
+        widths = {"x": 2, "u": 4, "U": 8}
+        if escape in widths:
+            end = i + 2
+            limit = end + widths[escape]
+            while end < len(text) and end < limit and text[end] in "0123456789abcdefABCDEF":
+                end += 1
+            if end > i + 2:
+                try:
+                    out.append(chr(int(text[i + 2:end], 16)))
+                except (ValueError, OverflowError):
+                    return None
+                i = end
+                continue
+        if escape == "c" and i + 2 < len(text):
+            control = text[i + 2]
+            out.append(chr(127 if control == "?" else ord(control.upper()) & 31))
+            i += 3
+            continue
+        out.extend(("\\", escape))
+        i += 2
+    # Bash variables and argv cannot carry NUL; ANSI-C quoting truncates there.
+    return "".join(out).split("\0", 1)[0]
+
+
+def normalize_ansi_c_quotes(text):
+    """Turn each static Bash ``$'...'`` word into an equivalent ordinary shell literal."""
+    out = []
+    quote = None
+    i = 0
+    while i < len(text):
+        char = text[i]
+        if quote:
+            out.append(char)
+            if char == "\\" and quote == '"' and i + 1 < len(text):
+                out.append(text[i + 1])
+                i += 2
+                continue
+            if char == quote:
+                quote = None
+            i += 1
+            continue
+        if char == "\\" and i + 1 < len(text):
+            out.append(text[i:i + 2])
+            i += 2
+            continue
+        if char in "'\"":
+            quote = char
+            out.append(char)
+            i += 1
+            continue
+        if not text.startswith("$'", i):
+            out.append(char)
+            i += 1
+            continue
+        end = i + 2
+        encoded = []
+        while end < len(text):
+            if text[end] == "\\" and end + 1 < len(text):
+                encoded.append(text[end:end + 2])
+                end += 2
+                continue
+            if text[end] == "'":
+                break
+            encoded.append(text[end])
+            end += 1
+        if end >= len(text):
+            # Leave malformed source malformed. Its row is still a report boundary, and Bash
+            # will reject it if it is itself an annotated allowlisted candidate.
+            out.append(char)
+            i += 1
+            continue
+        decoded = decode_ansi_c_content("".join(encoded))
+        out.append(text[i:end + 1] if decoded is None else shlex.quote(decoded))
+        i = end + 1
+    return "".join(out)
 
 
 def shell_words(script, depth=0):
@@ -145,7 +280,7 @@ def shell_words(script, depth=0):
     reading it as text.
     """
     try:
-        words = shlex.split(script)
+        words = shlex.split(normalize_ansi_c_quotes(script))
     except ValueError:
         return
     for i, word in enumerate(words):
@@ -158,7 +293,145 @@ def shell_words(script, depth=0):
                 break
 
 
-def forbidden_primitive(script):
+def matching_substitution_paren(text, opening):
+    """Index of the parenthesis closing a command/process substitution, or None."""
+    depth = 0
+    quote = None
+    i = opening
+    while i < len(text):
+        ch = text[i]
+        if quote:
+            if ch == "\\" and quote in ('"', "locale", "ansi", "backtick"):
+                i += 2
+                continue
+            if ((quote == "single" and ch == "'")
+                    or (quote in ('"', "locale") and ch == '"')
+                    or (quote == "ansi" and ch == "'")
+                    or (quote == "backtick" and ch == "`")):
+                quote = None
+            i += 1
+            continue
+        if ch == "\\":
+            i += 2
+            continue
+        if text.startswith("$'", i):
+            quote = "ansi"
+            i += 2
+            continue
+        if text.startswith('$"', i):
+            quote = "locale"
+            i += 2
+            continue
+        if ch == "'":
+            quote = "single"
+        elif ch == '"':
+            quote = '"'
+        elif ch == "`":
+            quote = "backtick"
+        elif ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                return i
+        i += 1
+    return None
+
+
+def matching_backtick(text, opening):
+    """Index of the unescaped backtick closing `opening`, or None."""
+    i = opening + 1
+    while i < len(text):
+        if text[i] == "\\":
+            i += 2
+            continue
+        if text[i] == "`":
+            return i
+        i += 1
+    return None
+
+
+def executable_substitutions(text):
+    """Yield shell source executed by command, process, and backtick substitutions.
+
+    These bodies execute even though an outer `shlex` parse sees them as parts of an argument.
+    Single and ANSI-C quotes suppress substitutions; command substitution and backticks remain
+    active inside double/locale quotes, while process substitution is active only unquoted.
+    Malformed, unterminated syntax yields no body because Bash cannot execute it either.
+    """
+    quote = None
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if quote in ("single", "ansi"):
+            if ch == "\\" and quote == "ansi":
+                i += 2
+                continue
+            if (quote == "single" and ch == "'") or (quote == "ansi" and ch == "'"):
+                quote = None
+            i += 1
+            continue
+        if quote in ('"', "locale"):
+            if ch == "\\":
+                i += 2
+                continue
+            if text.startswith("$(", i):
+                end = matching_substitution_paren(text, i + 1)
+                if end is not None:
+                    yield text[i + 2:end]
+                    i = end + 1
+                    continue
+            if ch == "`":
+                end = matching_backtick(text, i)
+                if end is not None:
+                    yield text[i + 1:end]
+                    i = end + 1
+                    continue
+            if ch == '"':
+                quote = None
+            i += 1
+            continue
+        if ch == "\\":
+            i += 2
+            continue
+        if text.startswith("$'", i):
+            quote = "ansi"
+            i += 2
+            continue
+        if text.startswith('$"', i):
+            quote = "locale"
+            i += 2
+            continue
+        if ch == "'":
+            quote = "single"
+            i += 1
+            continue
+        if ch == '"':
+            quote = '"'
+            i += 1
+            continue
+        if text.startswith("$(", i):
+            end = matching_substitution_paren(text, i + 1)
+            if end is not None:
+                yield text[i + 2:end]
+                i = end + 1
+                continue
+        if text.startswith(("<(", ">("), i):
+            end = matching_substitution_paren(text, i + 1)
+            if end is not None:
+                yield text[i + 2:end]
+                i = end + 1
+                continue
+        if ch == "`":
+            end = matching_backtick(text, i)
+            if end is not None:
+                yield text[i + 1:end]
+                i = end + 1
+                continue
+        i += 1
+
+
+def forbidden_primitive(script, depth=0):
     """The network, privilege-escalation or device-destructive primitive this script would
     reach, however it is spelled — or None.
 
@@ -176,17 +449,24 @@ def forbidden_primitive(script):
 
     The patterns run first and run always, not only when `shlex` refuses the line. They cover
     what a word parse cannot — a name welded to other syntax, and a line whose quoting is
-    unbalanced enough that there are no words to read.
+    unbalanced enough that there are no words to read. Command substitution, both process
+    substitutions, and backticks are executable shell source too, even when they sit inside one
+    outer argument. Their bodies are walked recursively and never executed by this inspection.
     """
     bare = FORBIDDEN.search(script)
     if bare:
         return bare.group(0)
     for word in PATH_WORD.findall(script):
-        if os.path.basename(word) in FORBIDDEN_NAMES:
+        if os.path.basename(word).lower() in FORBIDDEN_NAMES:
             return word
     for word in shell_words(script):
         if os.path.basename(word).lower() in FORBIDDEN_NAMES:
             return word
+    if depth < 8:
+        for body in executable_substitutions(script):
+            nested = forbidden_primitive(body, depth + 1)
+            if nested:
+                return nested
     return None
 
 
@@ -205,9 +485,11 @@ def reported_code(rest):
         stripped = raw.strip()
         if not stripped or stripped.startswith("#"):
             continue
+        if OUTPUT.match(raw):
+            continue
         m = PROMPT.match(raw)
         body = m.group(1).strip() if m else stripped
-        if REPORT.match(body):
+        if is_report(body):
             found = ANNOT.search(body)
             if found:
                 return int(found.group(1))
@@ -216,7 +498,9 @@ def reported_code(rest):
                 if tail:
                     return int(tail.group(1))
             return None
-        if m or is_runnable(body) or ASSIGN.match(split_comment(body)[0]) or command_shaped(body):
+        code = split_comment(body)[0]
+        if (m or is_runnable(body) or ASSIGN.match(code) or EXPORT.match(code)
+                or command_shaped(body)):
             return None
     return None
 
@@ -250,30 +534,115 @@ def split_comment(line):
     documents exit 2, so the truncated command MATCHED and was counted as a verified proof while
     running nothing at all. Fifteen documented lines in this pack carry a hash inside quotes.
 
-    A hash only opens a shell comment at the start of a word, so one welded to a previous
-    character stays part of the command, as does every hash inside a quote.
+    A hash only opens a shell comment at the start of an unescaped word. That makes the word
+    boundary semantic: the space in `foo\\ #bar` is data and the hash stays in the same word.
+    ANSI-C quotes have their own escape rules (`$'\\' #'` contains a protected hash), while
+    locale quotes (`$"...") behave like double quotes. The lexer keeps the original bytes; it
+    only identifies the point where an actual shell comment starts.
     """
     out = []
     quote = None
+    at_word_start = True
     i = 0
     while i < len(line):
         ch = line[i]
         if quote:
             out.append(ch)
-            if ch == "\\" and quote == '"' and i + 1 < len(line):
+            if ch == "\\" and quote in ('"', "locale", "ansi", "backtick") and i + 1 < len(line):
                 i += 1
                 out.append(line[i])
-            elif ch == quote:
+            elif ((quote == "single" and ch == "'")
+                  or (quote in ('"', "locale") and ch == '"')
+                  or (quote == "ansi" and ch == "'")
+                  or (quote == "backtick" and ch == "`")):
                 quote = None
-        elif ch in "\"'":
-            quote = ch
+        elif ch == "\\" and i + 1 < len(line):
             out.append(ch)
-        elif ch == "#" and (not out or out[-1].isspace()):
+            i += 1
+            out.append(line[i])
+            at_word_start = False
+        elif line.startswith("$'", i):
+            out.extend(("$", "'"))
+            i += 1
+            quote = "ansi"
+            at_word_start = False
+        elif line.startswith('$"', i):
+            out.extend(("$", '"'))
+            i += 1
+            quote = "locale"
+            at_word_start = False
+        elif ch == "'":
+            quote = "single"
+            out.append(ch)
+            at_word_start = False
+        elif ch == '"':
+            quote = '"'
+            out.append(ch)
+            at_word_start = False
+        elif ch == "`":
+            quote = "backtick"
+            out.append(ch)
+            at_word_start = False
+        elif ch == "#" and at_word_start:
             return "".join(out), line[i:]
         else:
             out.append(ch)
+            if ch.isspace() or ch in ";|&()<>\n":
+                at_word_start = True
+            else:
+                at_word_start = False
         i += 1
     return "".join(out), ""
+
+
+def line_continues(line):
+    """Whether Bash removes this physical row's final backslash-newline.
+
+    The backslash must be the final character, unescaped, and outside ordinary single or ANSI-C
+    quotes. It remains active inside double quotes. A backslash in a shell comment is data Bash
+    never parses, so that row does not continue.
+    """
+    code, comment = split_comment(line)
+    if comment or not code.endswith("\\"):
+        return False
+    trailing = len(code) - len(code.rstrip("\\"))
+    if trailing % 2 == 0:
+        return False
+    quote = None
+    i = 0
+    # Exclude the final, candidate continuation backslash from the state scan.
+    while i < len(code) - 1:
+        ch = code[i]
+        if quote:
+            if ch == "\\" and quote in ('"', "locale", "ansi", "backtick") and i + 1 < len(code) - 1:
+                i += 2
+                continue
+            if ((quote == "single" and ch == "'")
+                    or (quote in ('"', "locale") and ch == '"')
+                    or (quote == "ansi" and ch == "'")
+                    or (quote == "backtick" and ch == "`")):
+                quote = None
+            i += 1
+            continue
+        if ch == "\\" and i + 1 < len(code) - 1:
+            i += 2
+            continue
+        if code.startswith("$'", i):
+            quote = "ansi"
+            i += 2
+            continue
+        if code.startswith('$"', i):
+            quote = "locale"
+            i += 2
+            continue
+        if ch == "'":
+            quote = "single"
+        elif ch == '"':
+            quote = '"'
+        elif ch == "`":
+            quote = "backtick"
+        i += 1
+    return quote not in ("single", "ansi")
 
 
 def blocks(text):
@@ -282,18 +651,22 @@ def blocks(text):
         yield m.group(1)
 
 
-ASSIGN = re.compile(r"^\s*\$?\s*([A-Za-z_][A-Za-z0-9_]*)=(\S.*?)\s*$")
+# Empty is a value, not an absence of grammar. `PATH=` must be refused like every other unsafe
+# binding, while `D=` must replay and clear an earlier block-local value. Requiring `\S` here
+# dropped both lines and let the next command run in an environment the block did not state.
+ASSIGN = re.compile(r"^\s*\$?\s*([A-Za-z_][A-Za-z0-9_]*)=(.*?)\s*$")
 PLACEHOLDER = re.compile(r"<[a-z][a-z0-9._-]*>", re.IGNORECASE)
-# `export NAME=value` sets the environment and runs nothing, so it is replayed verbatim rather
-# than treated as a step this tool had to skip.
-EXPORT = re.compile(r"^\s*export\s+([A-Za-z_][A-Za-z0-9_]*)=(\S.*?)\s*$")
-# A documented `export` is replayed into the shell that runs the proof, so it is the one thing
-# a proof block can put into the environment of an allowlisted command. That is safe only for
+# `export NAME=value` sets the environment and runs nothing, so an accepted form is replayed
+# verbatim rather than treated as a step this tool had to skip.
+EXPORT = re.compile(r"^\s*export\s+([A-Za-z_][A-Za-z0-9_]*)=(.*?)\s*$")
+# A documented `export` is replayed into the shell that runs the proof. That is safe only for
 # variables that change the INPUT/decoding channel (a locale, a Python encoding) — never one
 # that redirects which code runs. `export PATH=./fake` in a SKILL.md forged a verified proof by
 # shimming the very `python3` the block then invoked; the allowlist the docstring names as
-# mitigation #1 was bypassed because `export` is off it. So: replay a safe name with a safe
-# (metacharacter-free) value; REFUSE anything else and report it.
+# mitigation #1 was bypassed because `export` is off it. The bare form is handled separately:
+# an inherited exported variable keeps that attribute after `PATH=...`, so omitting the keyword
+# changes no security property. Replay a safe export name with a safe (metacharacter-free) value;
+# REFUSE anything else and report it.
 SAFE_ENV = frozenset("""
 LANG LANGUAGE LC_ALL LC_CTYPE LC_COLLATE LC_MESSAGES LC_NUMERIC LC_TIME LC_MONETARY
 PYTHONUTF8 PYTHONIOENCODING PYTHONLEGACYWINDOWSFSENCODING
@@ -301,25 +674,31 @@ PYTHONUTF8 PYTHONIOENCODING PYTHONLEGACYWINDOWSFSENCODING
 SAFE_EXPORT_VALUE = re.compile(r"^[A-Za-z0-9_.:@=+/-]*$")
 REFUSE = "__REFUSE__"      # sentinel in the `expected` slot: main refuses and reports it
 
+# A bare assignment is not automatically local. Bash preserves the export attribute of an
+# inherited variable, so `PATH=./fake:$PATH` changes both command lookup in this shell and the
+# environment of the command it launches even though the line contains no `export`. These names
+# can redirect which code the proof reaches or inject startup code into a child interpreter.
+# Ordinary block-local fixture handles (`D`, `G`, `F`) remain replayable.
+UNSAFE_ASSIGNMENT_NAMES = frozenset({
+    "BASH_ENV", "CDPATH", "ENV", "GIT_EXEC_PATH", "IFS", "NODE_OPTIONS",
+    "PERL5OPT", "PYTHONHOME", "RUBYOPT",
+})
+UNSAFE_ASSIGNMENT_PREFIXES = ("LD_", "DYLD_")
+
 
 def safe_export(name, value):
     """Only a locale/encoding export with a plain value may enter a proof's environment."""
     return name in SAFE_ENV and bool(SAFE_EXPORT_VALUE.match(value))
 
-# Words that make a line a COMMAND even though its leading token is off the run allowlist.
-# Two different bugs needed this. A report line's lookahead walked straight PAST `node setup.js`
-# and attached the `echo $?` below it to the command ABOVE — a code borrowed from a different
-# run. And a bare `cd scripts` was dropped so quietly that the next command counted as verified
-# with its working directory never replayed. Deliberately a small, named list rather than a
-# shape test: output lines look command-shaped too (`LOST 0.10x gated=10m ...`), and treating
-# those as boundaries would strand real proofs as PENDING.
-SHELL_WORDS = frozenset("""
-cd pushd popd export set unset source exec eval trap umask shift read wait
-echo printf cat head tail sed awk grep rg find sort uniq cut tr tee xargs
-mkdir rmdir touch cp mv ln chmod chown rm true false test exit return
-git node npm npx yarn pnpm bunx uvx pipx go cargo make docker
-""".split())
 
+def unsafe_assignment(name):
+    """Whether a bare assignment can redirect lookup or inject child startup behavior."""
+    return (
+        name == "PATH"
+        or name.endswith("PATH")
+        or name in UNSAFE_ASSIGNMENT_NAMES
+        or name.startswith(UNSAFE_ASSIGNMENT_PREFIXES)
+    )
 
 def command_shaped(body):
     """Is this line a command, even if this tool would not run it?
@@ -332,6 +711,8 @@ def command_shaped(body):
     """
     body = body.strip()
     if not body or body.startswith("#"):
+        return False
+    if OUTPUT.match(body):
         return False
     # Judge the command, not its trailing comment. `PLACEHOLDER.search(body)` over the whole
     # line let a single `<word>` in a comment — `cd scripts   # then run <gate.py>` — read as a
@@ -346,8 +727,10 @@ def command_shaped(body):
         return False
     if code.startswith("(") or code.startswith("{"):     # a subshell or group
         return True
-    head = code.split()[0].split("=")[0]
-    return head in SHELL_WORDS
+    # Do not require successful tokenization and do not ask whether the apparent executable is
+    # installed. A malformed row still consumes shell status, and both guesses previously let
+    # the candidate above it borrow a report that belonged to this row.
+    return True
 
 
 
@@ -369,13 +752,14 @@ def commands(block):
     prefix and the command run in one shell: the substitution is re-evaluated, and the
     fixtures are rebuilt inside the directory it just made.
 
-    Each candidate carries `gapped`: true when some earlier step of its block could not be
-    replayed (off the allowlist, or not one whole command). A match after a gap is reported,
-    but never counted as a verified proof.
+    Each candidate carries an immutable set of gap causes. It is false when empty, preserving
+    the original truth test, while distinguishing an ordinary unreplayable step from a refused
+    environment binding. A match after either gap is reported but never counted as a verified
+    proof; downstream harnesses may additionally treat refusal as a non-verdict.
     """
     lines = block.splitlines()
     setup = []
-    gapped = False
+    gap_causes = set()
     i = 0
     while i < len(lines):
         raw = lines[i]
@@ -391,27 +775,30 @@ def commands(block):
         claims = ANNOT.search(split_comment(raw)[1]) and not raw.startswith(" ")
         cmd = m.group(1) if m else (
             raw if runnable or claims or ASSIGN.match(split_comment(bare)[0])
-            or EXPORT.match(split_comment(bare)[0]) else None)
+            or EXPORT.match(split_comment(bare)[0]) or command_shaped(bare) else None)
         if not cmd or not cmd.strip():
             # Dropping a line here used to be silent, so a bare `cd scripts` — a real step, with
             # no annotation and an unlisted leading token — left no trace, and the command after
             # it was reported as a verified proof although its working directory was never
             # replayed. That is the exact false green the UNSEQUENCED class exists to prevent.
             if command_shaped(bare):
-                gapped = True
+                gap_causes.add("unreplayable")
             i += 1
             continue
-        # Join backslash continuations.
-        while CONT.search(cmd) and i + 1 < len(lines):
+        # Bash removes an active backslash-newline; it does not replace it with a space. The
+        # distinction is executable: `ec\` + `ho` names `echo`, while `ec ho` names a different
+        # command. Preserve any real whitespace on either side and invent none. A final
+        # backslash inside ordinary single quotes is literal and therefore is not joined.
+        while line_continues(cmd) and i + 1 < len(lines):
             i += 1
-            cmd = CONT.sub(" ", cmd) + lines[i].strip()
+            cmd = cmd[:-1] + lines[i]
         # A report line (`rc=$?`, `echo $?`, `echo "EXIT=$rc"`) only re-states the previous
         # command's code. Skip it as a command and let its annotation attach to what came
         # before — and, critically, do NOT let it mark the block gapped. `echo` is off the run
         # allowlist, so every `$ echo $? # → N` report was being counted as an unreplayable
         # step, and every later proof in that block was demoted to UNSEQUENCED. All nineteen
         # UNSEQUENCED results in this pack were that false positive, not a real gap.
-        if REPORT.match(cmd.strip()) or re.match(r"^\s*rc=\$\?", cmd):
+        if is_report(cmd):
             i += 1
             continue
         # A bare assignment is context for what follows, not a command to check.
@@ -420,38 +807,57 @@ def commands(block):
             name, value = exported.group(1), exported.group(2)
             step = f"export {name}={value}"
             if safe_export(name, value):
-                yield step, None, list(setup), gapped
+                yield step, None, list(setup), frozenset(gap_causes)
                 setup.append(step)
             else:
                 # Not replayed. Refused and reported, and everything after it is gapped, because
                 # a block that tried to poison the environment is not a block whose later proofs
                 # can be trusted to have run in the environment they document.
-                yield step, REFUSE, list(setup), gapped
-                gapped = True
+                yield step, REFUSE, list(setup), frozenset(gap_causes)
+                gap_causes.add("refused")
             i += 1
             continue
-        assigned = ASSIGN.match(split_comment(cmd)[0])
+        assignment_code = split_comment(cmd)[0].strip()
+        assigned = ASSIGN.match(assignment_code)
+        # `rc=$?; echo ...` is assignment-prefixed, but only the exact pure-report form above is
+        # a report. A semicolon tail after that prefix is an independent compound command; do not
+        # replay it as a block-local assignment or hide its annotation from SKIPPED accounting.
+        if assigned and assignment_code.startswith("rc=$?;"):
+            assigned = None
         if assigned and not split_comment(cmd)[0].strip().startswith(("python3", "bash", "./")):
-            setup.append(f"{assigned.group(1)}={assigned.group(2)}")
+            name, value = assigned.group(1), assigned.group(2)
+            step = f"{name}={value}"
+            if unsafe_assignment(name):
+                # As with a refused export, the binding is not replayed and later commands are
+                # gapped. `PATH` is inherited-exported in ordinary invocations, so its bare form
+                # is the same command-forgery primitive as `export PATH=...`.
+                yield step, REFUSE, list(setup), frozenset(gap_causes)
+                gap_causes.add("refused")
+            else:
+                setup.append(step)
             i += 1
             continue
-        found = ANNOT.search(split_comment(cmd)[1])
-        expected = int(found.group(1)) if found else None
-        cmd = split_comment(cmd)[0].strip()
+        code, comment = split_comment(cmd)
+        found = ANNOT.search(comment)
+        report_prefix = code.strip().startswith(("echo $?", "rc=$?;"))
+        arrow = (INLINE_ARROW.match(comment[1:])
+                 if comment.startswith("#") and report_prefix else None)
+        expected = int(found.group(1)) if found else (int(arrow.group(1)) if arrow else None)
+        cmd = code.strip()
         # No inline annotation: the code may be stated by a report line below the output.
         if expected is None:
             expected = reported_code(lines[i + 1:])
         if cmd:
-            yield cmd, expected, list(setup), gapped
+            yield cmd, expected, list(setup), frozenset(gap_causes)
             # An unannotated step states no code, so it verifies nothing - but the block
             # needs it to build what the next command is pointed at.
             if expected is None and is_runnable(cmd) and not PLACEHOLDER.search(cmd):
                 if replayable(cmd):
                     setup.append(cmd)
                 else:
-                    gapped = True
+                    gap_causes.add("unreplayable")
             elif not is_runnable(cmd) and command_shaped(cmd):
-                gapped = True
+                gap_causes.add("unreplayable")
         i += 1
 
 
@@ -494,7 +900,7 @@ def main() -> int:
             for cmd, expected, setup, gapped in commands(block):
                 if expected == REFUSE:
                     refused += 1
-                    print(f"REFUSED {d.name}: unsafe environment export, not replayed")
+                    print(f"REFUSED {d.name}: unsafe environment binding, not replayed")
                     print(f"         {cmd}")
                     continue
                 if not is_runnable(cmd):

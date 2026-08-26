@@ -50,7 +50,7 @@ _ZERO_WIDTH = "\u200b\u200c\u200d\ufeff\u2060"
 _INLINE_MARKUP = "`*_~"
 _EDGE_DECORATION = "[]()<>\"'“”‘’,.;:!?"
 _MARKDOWN_PREFIX = re.compile(
-    r"^(?:>\s*|(?:[-+*]|\d+[.)])(?:\s+|$)|#{2,6}(?:\s+|$))"
+    r"^(?:>\s*|(?:[-+*]|\d+[.)])(?:\s+|$)|#{1,6}(?:\s+|$))"
 )
 _MARKDOWN_LINK = re.compile(r"^\[([^\]]+)\]\([^)]*\)$")
 FIELD_BODY = re.compile(r"^([A-Za-z][\w-]*):\s*(.*)$")
@@ -139,14 +139,20 @@ def read_ledger(path: Path) -> dict[str, dict[str, str]]:
             )
         if key:
             entry_ids[key] = (raw, n)
-    # A Markdown heading is comment-shaped to the ledger grammar, but `## M1` is visibly a
-    # second M1 block, not prose. Compare only headings whose first visible token collides with
-    # an opened id, so ordinary fixture commentary remains commentary.
+    # A Markdown heading is comment-shaped to the ledger grammar, but `# M1` or `## M1` is visibly a
+    # mutant block, not a new identity. Compare headings with raw entries AND earlier headings.
+    # The earlier version compared only with `entry_ids`, so two complete `# M1` blocks and no
+    # raw header both vanished as comments, yielding an ordinary UNEXCUSED verdict instead of
+    # refusing the two reader-visible rulings. A single decorated heading is inventoried here
+    # but deliberately never promoted into `entries`: raw survivor identity remains byte-exact,
+    # so one `# M1` block still cannot excuse raw survivor `M1`.
+    heading_ids: dict[str, tuple[str, int]] = {}
     for n, line in enumerate(lines, 1):
-        if opens_entry(line) or not re.match(r"^\s*#{2,6}\s+", line):
+        if opens_entry(line) or not re.match(r"^\s*#{1,6}\s+", line):
             continue
         named = reader_id(line)
-        opened = entry_ids.get(canonical_id(named))
+        key = canonical_id(named)
+        opened = entry_ids.get(key) or heading_ids.get(key)
         if opened:
             real, first = opened
             raise Malformed(
@@ -154,6 +160,8 @@ def read_ledger(path: Path) -> dict[str, dict[str, str]]:
                 f"'{real}'; the first is at line {first}. Markdown headings do not mint a "
                 "second mutant identity."
             )
+        if key:
+            heading_ids[key] = (named, n)
     entries: dict[str, dict[str, str]] = {}
     unmeasured: dict[str, list[str]] = {}
     current = last = None

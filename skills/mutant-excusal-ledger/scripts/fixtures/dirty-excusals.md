@@ -1,8 +1,8 @@
 # Known-DIRTY ledger for fixtures/survivors.txt — the gate must exit 1.
 # One violation class per survivor:
-#   M-src/pricing.ts-41-2  no entry at all          -> UNEXCUSED
-#   M-src/pricing.ts-58-1  entry missing 'head'     -> incomplete
-#   M-src/cart.ts-12-3     effort worn as equivalence -> argument under 40 chars
+#   missing entry: M-src/pricing.ts-41-2            -> UNEXCUSED
+#   incomplete entry: M-src/pricing.ts-58-1         -> missing 'head'
+#   thin argument: M-src/cart.ts-12-3               -> effort worn as equivalence
 
 M-src/pricing.ts-58-1  src/pricing.ts:58
   mutation:   `+` swapped to `-` in the discount accumulator

@@ -23,8 +23,10 @@ dead pipe while the path
 that actually prints a report does not.
 
 Exit 0 when every probed invocation kept its documented code or used the exit-2 IO seal,
-1 when any leaked, 2 on usage or IO, and 3 when nothing was probed at all — a harness that
-ran nothing has proven nothing, which is the failure this pack names as its worst gate shape.
+1 when any leaked, 2 on usage, IO, a refused proof step, or a candidate downstream of refusal,
+and 3 when nothing was probed at all — a harness that ran nothing has proven nothing, which is
+the failure this pack names as its worst gate shape. Refusal outranks "nothing probed": it says
+why the harness could not produce a verdict.
 
 LIMITS, stated rather than discovered.
 
@@ -33,6 +35,12 @@ covered here, and this file is not evidence about it. It also inherits `verify-p
 trust boundary — including its refusal, which both tools now take from one function so they
 cannot disagree about what is too dangerous to run: it RUNS commands taken from the repository
 it is checking, so point it only at a tree you trust.
+
+The shared grammar's `REFUSE` and gap-cause metadata are binding here. A refused setup is not
+silently omitted, and no proof whose setup could not be replayed is probed as a different script.
+An ordinary unreplayable gap is counted and excluded under the same eligibility semantics as
+`verify-proofs.py`; it does not make a sweep with other eligible proofs fail. A refusal, or a
+candidate downstream of one, makes the harness return non-verdict 2 after reporting its count.
 
 What a dead stream is allowed to cost a gate is a judgment, and it is spelled out at the
 acceptance rule below rather than left to the reader. A probe may keep the command's documented
@@ -224,6 +232,118 @@ def command_sources(text):
     return out
 
 
+def matching_shell_paren(text, opening):
+    """Index of the shell parenthesis balancing `opening`, or None."""
+    depth = 0
+    quote = None
+    i = opening
+    while i < len(text):
+        ch = text[i]
+        if ch == "\\" and quote != "'":
+            i += 2
+            continue
+        if quote:
+            if ch == quote:
+                quote = None
+            i += 1
+            continue
+        if ch in "'\"`":
+            quote = ch
+        elif ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                return i
+        i += 1
+    return None
+
+
+def matching_backtick(text, opening):
+    """Index of the unescaped backtick closing `opening`, or None."""
+    i = opening + 1
+    while i < len(text):
+        if text[i] == "\\":
+            i += 2
+            continue
+        if text[i] == "`":
+            return i
+        i += 1
+    return None
+
+
+def mask_nested_substitutions(text):
+    """Hide substitutions while classifying the stream behavior of the outer command.
+
+    Command and process substitutions run in their own execution context. A redirection or
+    status report inside one says nothing about the outer gate's streams or status handling:
+    `gate.py $(printf x >&-)` still runs `gate.py` with its ordinary stdout. Leaving the inner
+    source visible let that harmless argument buy the outer gate a false self-probe exemption.
+
+    Quotes are preserved so the remaining source still reaches `segments`, `simple_commands`,
+    and `shlex` with its outer grammar intact. Unterminated substitutions are left untouched;
+    malformed shell source is not grounds for silently exempting a proof.
+    """
+    out = []
+    quote = None
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        # shlex retains the backslash from a `\$(` written inside the outer command's
+        # double-quoted `bash -c` operand, while bash consumes that backslash before handing
+        # the operand to the inner shell. Treat the escaped spelling as the same nested
+        # substitution here. Otherwise its inner `>&-` remains visible and falsely exempts
+        # the outer gate; the resolved spelling checked by the recursion below is then safe
+        # while this unresolved spelling is not.
+        if quote != "'" and text.startswith("\\$(", i):
+            end = matching_shell_paren(text, i + 2)
+            if end is not None:
+                out.append("__closed_stream_substitution__")
+                i = end + 1
+                continue
+        if ch == "\\" and quote != "'" and i + 1 < len(text):
+            out.append(text[i:i + 2])
+            i += 2
+            continue
+        if ch == "'":
+            if quote is None:
+                quote = "'"
+            elif quote == "'":
+                quote = None
+            out.append(ch)
+            i += 1
+            continue
+        if ch == '"':
+            if quote is None:
+                quote = '"'
+            elif quote == '"':
+                quote = None
+            out.append(ch)
+            i += 1
+            continue
+        if quote != "'" and text.startswith("$(", i):
+            end = matching_shell_paren(text, i + 1)
+            if end is not None:
+                out.append("__closed_stream_substitution__")
+                i = end + 1
+                continue
+        if quote is None and (text.startswith("<(", i) or text.startswith(">(", i)):
+            end = matching_shell_paren(text, i + 1)
+            if end is not None:
+                out.append("__closed_stream_process_substitution__")
+                i = end + 1
+                continue
+        if quote != "'" and ch == "`":
+            end = matching_backtick(text, i)
+            if end is not None:
+                out.append("__closed_stream_backtick__")
+                i = end + 1
+                continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
 def self_probe(cmd, depth=0):
     """Does this command close one of its own streams, or act on its own status, on purpose?
 
@@ -248,17 +368,27 @@ def self_probe(cmd, depth=0):
     shell-looking argv carried by Python are not that command. Anywhere else the two characters
     are a value being carried, and carrying one is no reason to leave a gate unprobed.
     """
-    positioned = [part for part in command_sources(cmd) if part.strip()]
+    # Mask substitutions before splitting at command separators. A semicolon inside `$(...)`
+    # separates the substitution's commands, not the outer command; splitting the raw source
+    # first promoted the substitution's final `exit $?` into the gate position and falsely
+    # exempted the outer gate.
+    masked_cmd = mask_nested_substitutions(cmd)
+    positioned = [part for part in command_sources(masked_cmd) if part.strip()]
     if not positioned:
         return False
     gate_source = positioned[-1]
-    parts = segments(gate_source)
+    # A substitution's redirection and status belong to the substitution, not to the outer
+    # command whose eligibility is being decided. Mask those nested programs before looking
+    # for self-probe syntax; a real nested shell reached through `bash -c` is handled below by
+    # recursively classifying the shell operand itself.
+    outer_source = gate_source
+    parts = segments(outer_source)
     redirect_source = "\n".join(chunk for chunk, q in parts if q is None)
     if CLOSES_STREAM.search(redirect_source):
         return True
     # `lstrip` because a group's opening bracket is not part of the command inside it, and
     # `simple_commands` leaves brackets where it finds them on purpose.
-    gate_commands = [simple for simple in simple_commands(gate_source) if simple.strip()]
+    gate_commands = [simple for simple in simple_commands(outer_source) if simple.strip()]
     if gate_commands and OWN_STATUS.match(gate_commands[-1].strip().lstrip("({ \t")):
         return True
     if depth >= 3:
@@ -315,6 +445,8 @@ def main(argv):
     probed = 0
     leaks = []
     refused = 0
+    unsequenced = 0
+    refusal_gapped = 0
     examined = 0
     own_probes = 0
     sealed = 0
@@ -334,10 +466,28 @@ def main(argv):
         examined += 1
         skill_text = skill.read_text(encoding="utf-8")
         for block in vp.blocks(skill_text):
-            for cmd, expected, setup, _gapped in vp.commands(block):
+            for cmd, expected, setup, gapped in vp.commands(block):
+                # REFUSE is a grammar verdict about a setup row, not an expected process code.
+                # It must be consumed before the runnable filter, because environment bindings
+                # are intentionally off the command allowlist. Ignoring it let the later gapped
+                # proof run under a different environment than the document states.
+                if expected == vp.REFUSE:
+                    refused += 1
+                    continue
                 if expected is None or not vp.is_runnable(cmd):
                     continue
                 if vp.PLACEHOLDER.search(cmd):
+                    continue
+                if gapped:
+                    # verify-proofs does not count a matching gapped command as verified. This
+                    # harness cannot make a stronger claim by probing the command with the
+                    # missing/refused setup silently removed. Cause metadata distinguishes the
+                    # pack's disclosed ordinary gaps from a refused environment mutation: both
+                    # are excluded, but only refusal makes the whole harness a non-verdict.
+                    if "refused" in gapped:
+                        refusal_gapped += 1
+                    else:
+                        unsequenced += 1
                     continue
                 # A command that already closes a stream on purpose is the island's own
                 # probe of this very defect; re-closing it would test the harness, not it.
@@ -370,12 +520,18 @@ def main(argv):
         print(f"LEAK {name}: exit {rc} with {which} closed — documented {expected}, "
               f"and {rc} is neither that result nor the pack-wide exit-2 IO seal")
         print(f"      {cmd}")
-    tail = f", {refused} refused" if refused else ""
+    tail = ((f", {refused} refused" if refused else "")
+            + (f", {refusal_gapped} refusal-gapped" if refusal_gapped else "")
+            + (f", {unsequenced} unsequenced" if unsequenced else ""))
     print(f"\n{probed} closed-stream probes over {examined} island(s), {len(leaks)} leak(s){tail}"
           f" ({sealed} fail-closed to the pack-wide exit-2 seal; {own_probes} candidate(s) not "
           f"re-probed: they close a stream themselves)")
     if leaks:
         return 1
+    if refused or refusal_gapped:
+        print("NON-VERDICT - refused proof steps and their downstream candidates were not probed",
+              file=sys.stderr)
+        return 2
     if probed == 0:
         print("NOTHING PROBED - this is not a pass", file=sys.stderr)
         return 3

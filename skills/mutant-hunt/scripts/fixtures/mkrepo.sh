@@ -7,6 +7,7 @@
 # Usage: mkrepo.sh <clean|dirty> [dest-dir]   # prints the repo path on stdout
 # Exit codes: 0 repo built · 2 usage error.
 set -euo pipefail
+trap 'exit 2' ERR
 
 usage() { echo "usage: mkrepo.sh <clean|dirty> [dest-dir]" >&2; exit 2; }
 [ $# -ge 1 ] && [ $# -le 2 ] || usage
@@ -36,6 +37,10 @@ g() { git -C "$dest" -c user.name=fixture -c user.email=fixture@invalid -c commi
 
 git -c init.defaultBranch=main init -q "$dest"
 cp "$here/base/pricing.js" "$dest/pricing.js"
+# A frozen review clone makes committed fixture bytes read-only. `cp` preserves that mode on a
+# newly created destination; without restoring owner write here, the head-state copy below dies
+# and the caller can accidentally continue with an empty repo argument.
+chmod u+w "$dest/pricing.js"
 g add -A
 g commit -qm base
 cp "$here/$kind-head/pricing.js" "$dest/pricing.js"

@@ -1,7 +1,7 @@
 <h1 aria-label="Uncle Bob Skills">
   <picture>
     <source media="(max-width: 640px)" srcset="assets/readme/uncle-bob-skills-hero-mobile.webp">
-    <img src="assets/readme/uncle-bob-skills-hero.webp" alt="Uncle Bob Skills — fifty evidence-forged skills moving from human intent through agent work and deterministic gates to evidence and human decision">
+    <img src="assets/readme/uncle-bob-skills-hero.webp" alt="Uncle Bob Skills — human intent, agent work, evidence, and human decision">
   </picture>
 </h1>
 
@@ -27,7 +27,7 @@ These are curated entry points, not popularity rankings. The repository does not
 Designed and released by **Island Development Crew**: human-directed, agent-executed, and gate-verified. Human intent, boundaries, thresholds, risk acceptance, design ownership, and release authority remain human-owned.
 
 > [!NOTE]
-> **`v2.0.0` audit status:** its independent Seat 3 receipt is **CHANGES REQUIRED**. The `v2.1.0` corrective line records the repairs; acceptance and publication are established only by an external receipt and tag or release bound to the same exact commit and tree.
+> **How release trust works:** local gates verify only the content claims named below; they do not create release authority. Production status lives on an [authenticated GitHub release](https://github.com/Island-Dev-Crew/uncle-bob-skills/releases) for an exact commit, alongside its independent exact-head review receipt. The [changelog](CHANGELOG.md) preserves the corrective history.
 
 ## Power-user loops
 
@@ -90,7 +90,7 @@ git clone https://github.com/Island-Dev-Crew/uncle-bob-skills.git
 cd uncle-bob-skills
 ```
 
-There is no package runtime. The gates require Python 3, Bash, Git, and standard POSIX utilities in a UTF-8-capable shell environment. Native Windows execution is not certified.
+Reading and loading the Markdown skill contracts requires no package install. Each tool-backed skill documents its own narrower runtime; many use only Bash or standard-library Python. Running the complete pack-wide verification matrix requires Python 3.10+ with the pinned dependencies in [`requirements.txt`](requirements.txt) for YAML validation and CommonMark parsing, plus Bash, Git, and standard POSIX utilities in a UTF-8-capable shell environment. Native Windows execution is not certified.
 
 For Claude Code, load the intact clone as a local plugin:
 
@@ -113,6 +113,10 @@ The repository's [`.gitattributes`](.gitattributes) pins tracked bytes with `* -
 Run the checks from a trusted checkout with UTF-8 stdout (`PYTHONIOENCODING=utf-8` is sufficient when your terminal or CI collector is not UTF-8):
 
 ```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python3 -m pip install -r requirements.txt
+
 PYTHONIOENCODING=utf-8 python3 scripts/validate-island.py skills/*/
 PYTHONIOENCODING=utf-8 python3 scripts/lane-check.py
 PYTHONIOENCODING=utf-8 python3 scripts/verify-proofs.py
@@ -126,10 +130,10 @@ What those commands establish:
 | Check | Claim it tests |
 |---|---|
 | `validate-island.py` | Every island satisfies the pack's structural contract. |
-| `lane-check.py` | Shipped scripts remain inside their declared execution lanes. |
+| `lane-check.py` | Recognized static source forms in shipped scripts satisfy their declared lanes; the checker's documented literal-grammar and indirection limits still apply. |
 | `verify-proofs.py` | Eligible, sequenced proof commands reproduce their documented exit codes; other candidates are reported as PENDING, TEMPLATE, SKIPPED, REFUSED, or UNSEQUENCED. |
 | `closed-stream-check.py` | Eligible proof commands retain their documented verdict, or fail closed with the pack-wide I/O seal, when output streams disappear; commands that close a stream themselves are counted but not re-probed. |
-| `link-check.py` | Committed relative links resolve at the checked commit. |
+| `link-check.py` | Relative file and directory targets discovered in rendered Markdown and raw HTML resolve in the checked commit; URL fragments are not validated. |
 | `verify-release.py` | The committed file manifest matches `RELEASE-DIGEST.txt`; authorship and commit identity still require an external signed tag or release witness. |
 
 > [!IMPORTANT]
@@ -138,8 +142,15 @@ What those commands establish:
 Maintainers also run the certifiers' own watched-red suites before a release:
 
 ```bash
+PYTHONIOENCODING=utf-8 python3 scripts/self-test-validate-island.py
 PYTHONIOENCODING=utf-8 python3 scripts/fixtures/lane-breaches/check-regressions.py
+PYTHONIOENCODING=utf-8 python3 scripts/fixtures/proof-grammar-island/check-parser-regressions.py
+PYTHONIOENCODING=utf-8 python3 scripts/fixtures/proof-grammar-island/check-host-independent.py
+PYTHONIOENCODING=utf-8 python3 scripts/fixtures/verdict-flip-island/check-nested-substitution.py
+PYTHONIOENCODING=utf-8 python3 scripts/self-test-link-check.py
 PYTHONIOENCODING=utf-8 python3 scripts/self-test-verify-release.py
+PYTHONIOENCODING=utf-8 python3 skills/mutant-hunt/scripts/fixtures/check-readonly.py
+PYTHONIOENCODING=utf-8 python3 skills/steering-audit/scripts/self-test-readonly-probe.py
 ```
 
 Those suites test the checkers themselves. They are deliberately separate from the five content gates, which must not quietly certify their own implementation.
@@ -158,7 +169,7 @@ The ideas were drawn from Robert C. Martin's 2026 conversation with Matt Pocock 
 
 ## Credit and license
 
-The thinking is Robert C. Martin's, from a conversation with Matt Pocock ([video](https://www.youtube.com/live/zcLPGC-tvgk)). Martin's public tools—[swarm-forge](https://github.com/unclebob/swarm-forge), [crap4java](https://github.com/unclebob/crap4java), [crap4go](https://github.com/unclebob/crap4go), and [crap4clj](https://github.com/unclebob/crap4clj)—are worth studying as primary examples.
+The core engineering principles are drawn from Robert C. Martin's conversation with Matt Pocock ([video](https://www.youtube.com/live/zcLPGC-tvgk)); Island Development Crew authored this adaptation, skill design, tooling, and verification system. Martin's public tools—[swarm-forge](https://github.com/unclebob/swarm-forge), [crap4java](https://github.com/unclebob/crap4java), [crap4go](https://github.com/unclebob/crap4go), and [crap4clj](https://github.com/unclebob/crap4clj)—are worth studying as primary examples.
 
 [MIT](LICENSE) © 2026 Island Development Crew. The MIT grant covers this repository's original work. The full recording, transcript, and captions are not redistributed; short quotations and cited still excerpts are third-party material outside that grant. See [NOTICE](NOTICE.md) and [source notes](source/README.md).
 

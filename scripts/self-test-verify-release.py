@@ -9,6 +9,7 @@ behaviour are the contract.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import shutil
 import subprocess
@@ -42,7 +43,7 @@ def command(
     env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     process_env = {
-        **os.environ,
+        **{name: value for name, value in os.environ.items() if not name.startswith("GIT_")},
         "LC_ALL": "C.UTF-8",
         "GIT_CONFIG_GLOBAL": os.devnull,
         "GIT_CONFIG_NOSYSTEM": "1",
@@ -191,6 +192,62 @@ def test_stale_committed_digest_refuses_forged_worktree_digest(parent: Path) -> 
     expect_result(verify(repo), 1, "MISMATCH manifest-sha256")
 
 
+def test_committed_path_rename_changes_manifest(parent: Path) -> None:
+    """Fails if path identity can move while the digest remains green."""
+    repo = new_repo(parent, "path-rename")
+    write_and_commit_digest(repo)
+    git(repo, "mv", "payload.txt", "renamed.txt")
+    commit_all(repo, "rename payload without its digest")
+    expect_result(verify(repo), 1, "MISMATCH manifest-sha256")
+
+
+def test_committed_mode_change_changes_manifest(parent: Path) -> None:
+    """Fails if an ordinary blob's executable bit is absent from the manifest."""
+    repo = new_repo(parent, "mode-change")
+    write_and_commit_digest(repo)
+    (repo / "payload.txt").chmod(0o755)
+    commit_all(repo, "change payload mode without its digest")
+    expect_result(verify(repo), 1, "MISMATCH manifest-sha256")
+
+
+def test_same_object_id_with_symlink_mode_changes_manifest(parent: Path) -> None:
+    """Fails if mode/type identity is ignored when object bytes stay identical."""
+    repo = new_repo(parent, "symlink-type-change")
+    write_and_commit_digest(repo)
+    payload = repo / "payload.txt"
+    payload.unlink()
+    payload.symlink_to("alpha\n")
+    commit_all(repo, "replace payload blob with same-byte symlink")
+    expect_result(verify(repo), 1, "MISMATCH manifest-sha256")
+
+
+def test_gitlink_type_changes_manifest(parent: Path) -> None:
+    """Fails if a mode-160000 commit entry is absent from the release identity."""
+    repo = new_repo(parent, "gitlink-type-change")
+    write_and_commit_digest(repo)
+    target = git(repo, "rev-parse", "HEAD").stdout.strip()
+    git(
+        repo,
+        "update-index",
+        "--add",
+        "--cacheinfo",
+        f"160000,{target},vendor/dependency",
+    )
+    git(
+        repo,
+        "commit",
+        "--no-gpg-sign",
+        "--no-verify",
+        "-q",
+        "-m",
+        "add gitlink without updating digest",
+    )
+    entry = git(repo, "ls-tree", "HEAD", "vendor/dependency").stdout
+    if not entry.startswith("160000 commit "):
+        raise HarnessError(f"gitlink fixture has wrong tree identity: {entry!r}")
+    expect_result(verify(repo), 1, "MISMATCH manifest-sha256")
+
+
 def test_replace_ref_cannot_forge_match(parent: Path) -> None:
     """Fails if Git replacement objects can substitute the release snapshot."""
     repo = new_repo(parent, "replace-ref")
@@ -232,6 +289,23 @@ def test_generated_digest_is_self_consistent_after_commit(parent: Path) -> None:
         raise TestFailure(f"digest embeds self-referential identity: {forbidden}")
     commit_all(repo, "publish digest")
     expect_result(verify(repo), 0, "MATCH committed content manifest")
+
+
+def test_generated_digest_matches_independent_record_schema(parent: Path) -> None:
+    """Fails if mode, Git type, object id, path, or NUL framing leaves the digest."""
+    repo = new_repo(parent, "independent-record-schema")
+    object_id = git(repo, "rev-parse", "HEAD:payload.txt").stdout.strip()
+    record = f"100644 blob {object_id}\tpayload.txt\0".encode("utf-8")
+    expected = hashlib.sha256(record).hexdigest()
+    expect_result(verify(repo, "--write"), 0, "wrote RELEASE-DIGEST.txt")
+    published = (repo / "RELEASE-DIGEST.txt").read_text(encoding="utf-8")
+    if "files: 1\n" not in published:
+        raise TestFailure(f"independent fixture expected one record:\n{published}")
+    if f"manifest-sha256: {expected}\n" not in published:
+        raise TestFailure(
+            "generated manifest does not match independent "
+            "`mode type object-id TAB path NUL` schema"
+        )
 
 
 def test_published_digest_symlink_is_nonverdict(parent: Path) -> None:
@@ -414,6 +488,22 @@ def test_self_test_ignores_hostile_global_commit_config(parent: Path) -> None:
     expect_result(result, 0, "tests, 0 failures")
 
 
+def test_self_test_scrubs_ambient_git_controls(parent: Path) -> None:
+    """Fails if inherited Git repository/config controls can redirect fixture setup."""
+    result = command(
+        [sys.executable, str(SELF_TEST), INNER_ARG],
+        parent,
+        env={
+            "GIT_CONFIG_COUNT": "1",
+            "GIT_CONFIG_KEY_0": "commit.gpgsign",
+            "GIT_CONFIG_VALUE_0": "true",
+            "GIT_DIR": str(parent / "not-a-repository"),
+            "GIT_WORK_TREE": str(parent / "not-a-worktree"),
+        },
+    )
+    expect_result(result, 0, "tests, 0 failures")
+
+
 def test_self_test_internal_git_fault_maps_to_nonverdict(parent: Path) -> None:
     """Fails if broken fixture infrastructure is reported as a test verdict."""
     wrapper_dir = parent / "broken-git-bin"
@@ -463,9 +553,14 @@ TESTS = (
     test_malformed_committed_digest_is_non_verdict,
     test_worktree_tampering_cannot_change_verdict,
     test_stale_committed_digest_refuses_forged_worktree_digest,
+    test_committed_path_rename_changes_manifest,
+    test_committed_mode_change_changes_manifest,
+    test_same_object_id_with_symlink_mode_changes_manifest,
+    test_gitlink_type_changes_manifest,
     test_replace_ref_cannot_forge_match,
     test_corrupt_reachable_object_is_nonverdict,
     test_generated_digest_is_self_consistent_after_commit,
+    test_generated_digest_matches_independent_record_schema,
     test_published_digest_symlink_is_nonverdict,
     test_published_digest_executable_is_nonverdict,
     test_dead_stdout_maps_match_to_non_verdict,
@@ -476,6 +571,7 @@ TESTS = (
     test_self_test_dead_stdout_maps_to_non_verdict,
     test_self_test_broken_stdout_pipe_maps_to_nonverdict,
     test_self_test_ignores_hostile_global_commit_config,
+    test_self_test_scrubs_ambient_git_controls,
     test_self_test_internal_git_fault_maps_to_nonverdict,
     test_self_test_selection_ignores_environment,
     test_self_test_invalid_argument_is_nonverdict,

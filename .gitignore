@@ -1,5 +1,6 @@
 __pycache__/
 *.pyc
+.venv/
 .DS_Store
 
 # The full transcript and caption file are the whole of someone else's recorded
