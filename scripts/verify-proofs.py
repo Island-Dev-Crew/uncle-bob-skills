@@ -1131,62 +1131,64 @@ def mask_noncommand_contexts(syntax):
     refused while leaving subshell and case-branch boundaries visible.
     """
     chars = list(syntax)
-    current = syntax
+    command_boundary = 0
     index = 0
     while index < len(chars):
-        if current.startswith("${", index):
-            end = matching_data_delimiter(current, index + 1, "{", "}")
+        if syntax.startswith("${", index):
+            end = matching_data_delimiter(syntax, index + 1, "{", "}")
             if end is not None:
                 mask_span(chars, index, end + 1)
-                current = "".join(chars)
                 index = end + 1
                 continue
-        if current.startswith("$[", index):
-            end = matching_data_delimiter(current, index + 1, "[", "]")
+        if syntax.startswith("$[", index):
+            end = matching_data_delimiter(syntax, index + 1, "[", "]")
             if end is not None:
                 mask_span(chars, index, end + 1)
-                current = "".join(chars)
                 index = end + 1
                 continue
-        if (index + 1 < len(chars) and current[index] in "?*+@!"
-                and current[index + 1] == "("):
-            end = matching_data_paren(current, index + 1)
+        array_match = ARRAY_ASSIGNMENT.match(syntax, index)
+        if array_match is not None:
+            opening = array_match.end() - 1
+            end = matching_data_paren(syntax, opening)
+            if end is not None:
+                mask_span(chars, opening, end + 1)
+                index = end + 1
+                # An array assignment can prefix a following command (`ARGS=(x) tool`).
+                # Treat the resolved assignment as the start boundary for that command's
+                # position; declaration builtins merely make the same conservative masking
+                # classify their later operands as data.
+                command_boundary = index
+                continue
+        if (index + 1 < len(chars) and syntax[index] in "?*+@!"
+                and syntax[index + 1] == "("):
+            end = matching_data_paren(syntax, index + 1)
             if end is not None:
                 mask_span(chars, index, end + 1)
-                current = "".join(chars)
                 index = end + 1
                 continue
-        if (current.startswith("[[", index)
-                and COMMAND_POSITION.search(current[:index])):
-            end = current.find("]]", index + 2)
+        command_prefix = None
+        if syntax.startswith(("[[", "(("), index):
+            command_prefix = "".join(chars[command_boundary:index])
+        if (syntax.startswith("[[", index)
+                and COMMAND_POSITION.search(command_prefix)):
+            end = syntax.find("]]", index + 2)
             if end >= 0:
                 mask_span(chars, index, end + 2)
-                current = "".join(chars)
                 index = end + 2
+                command_boundary = index
                 continue
-        if (current.startswith("((", index)
-                and (COMMAND_POSITION.search(current[:index])
-                     or FOR_ARITHMETIC_POSITION.search(current[:index]))):
-            end = matching_data_paren(current, index)
+        if (syntax.startswith("((", index)
+                and (COMMAND_POSITION.search(command_prefix)
+                     or FOR_ARITHMETIC_POSITION.search(command_prefix))):
+            end = matching_data_paren(syntax, index)
             if end is not None:
                 mask_span(chars, index, end + 1)
-                current = "".join(chars)
                 index = end + 1
+                command_boundary = index
                 continue
+        if syntax[index] in ";\n()&|":
+            command_boundary = index + 1
         index += 1
-
-    # An array assignment may occur after a declaration option as well as at the beginning of a
-    # command. Its parentheses never open a subshell, so mask the complete balanced value.
-    while True:
-        current = "".join(chars)
-        match = ARRAY_ASSIGNMENT.search(current)
-        if match is None:
-            break
-        opening = match.end() - 1
-        end = matching_data_paren(current, opening)
-        if end is None:
-            break
-        mask_span(chars, opening, end + 1)
     return "".join(chars)
 
 
