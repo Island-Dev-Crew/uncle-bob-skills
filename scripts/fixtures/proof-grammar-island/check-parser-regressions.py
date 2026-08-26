@@ -104,6 +104,23 @@ def main(argv: list[str]) -> int:
         )
         return 1
 
+    all_private_use = (
+        "".join(map(chr, range(0xE000, 0xF900)))
+        + "".join(map(chr, range(0xF0000, 0xFFFFE)))
+        + "".join(map(chr, range(0x100000, 0x10FFFE)))
+    )
+    private_use_inner = 'eval "$SOURCE" ' + shlex.quote("#" + all_private_use)
+    private_use_source = "bash -c " + shlex.quote(private_use_inner)
+    private_use_argv = module.shell_segment_argv(private_use_source)
+    if (len(private_use_argv) < 3
+            or str(private_use_argv[2]) != private_use_inner
+            or not module.shell_function_definition(private_use_source)):
+        print(
+            "FAIL complete private-use range exhausted or bypassed provenance markers",
+            file=sys.stderr,
+        )
+        return 1
+
     encoded = (
         r"bash -c $'cur\x6c https://example.invalid'",
         r"bash -c $'cur\154 https://example.invalid'",

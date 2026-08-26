@@ -1131,19 +1131,21 @@ def mask_noncommand_contexts(syntax):
     refused while leaving subshell and case-branch boundaries visible.
     """
     chars = list(syntax)
+    current = syntax
     index = 0
     while index < len(chars):
-        current = "".join(chars)
         if current.startswith("${", index):
             end = matching_data_delimiter(current, index + 1, "{", "}")
             if end is not None:
                 mask_span(chars, index, end + 1)
+                current = "".join(chars)
                 index = end + 1
                 continue
         if current.startswith("$[", index):
             end = matching_data_delimiter(current, index + 1, "[", "]")
             if end is not None:
                 mask_span(chars, index, end + 1)
+                current = "".join(chars)
                 index = end + 1
                 continue
         if (index + 1 < len(chars) and current[index] in "?*+@!"
@@ -1151,20 +1153,24 @@ def mask_noncommand_contexts(syntax):
             end = matching_data_paren(current, index + 1)
             if end is not None:
                 mask_span(chars, index, end + 1)
+                current = "".join(chars)
                 index = end + 1
                 continue
-        command_position = bool(COMMAND_POSITION.search(current[:index]))
-        if current.startswith("[[", index) and command_position:
+        if (current.startswith("[[", index)
+                and COMMAND_POSITION.search(current[:index])):
             end = current.find("]]", index + 2)
             if end >= 0:
                 mask_span(chars, index, end + 2)
+                current = "".join(chars)
                 index = end + 2
                 continue
         if (current.startswith("((", index)
-                and (command_position or FOR_ARITHMETIC_POSITION.search(current[:index]))):
+                and (COMMAND_POSITION.search(current[:index])
+                     or FOR_ARITHMETIC_POSITION.search(current[:index]))):
             end = matching_data_paren(current, index)
             if end is not None:
                 mask_span(chars, index, end + 1)
+                current = "".join(chars)
                 index = end + 1
                 continue
         index += 1
@@ -1225,6 +1231,8 @@ COMMAND_PREFIX_WORDS = frozenset({
     "{", "if", "elif", "while", "until", "then", "else", "do", "!", "coproc",
 })
 DYNAMIC_SHELL_CHARS = frozenset("$`*?[]{}~()")
+SHELL_MARKER_ESCAPE = "\ue000"
+SHELL_MARKER_CODES = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
 class ShellWord(str):
@@ -1236,20 +1244,18 @@ class ShellWord(str):
         return instance
 
 
-def allocate_shell_markers(text, count):
-    """Return tokenization sentinels absent from the source being represented."""
-    markers = []
-    # BMP and supplementary private-use planes are ordinary Unicode data to shlex. Choosing
-    # per source, after ANSI-C normalization, prevents a literal private-use character in a
-    # proof from ever colliding with an internal provenance marker.
-    for start, stop in ((0xE000, 0xF900), (0xF0000, 0xFFFFE), (0x100000, 0x10FFFE)):
-        for codepoint in range(start, stop):
-            marker = chr(codepoint)
-            if marker not in text:
-                markers.append(marker)
-                if len(markers) == count:
-                    return markers
-    raise ValueError("cannot allocate shell-token provenance markers")
+def shell_marker_maps():
+    """Return escaped marker sequences and their one-character decode table."""
+    originals = "<>|" + "".join(sorted(DYNAMIC_SHELL_CHARS))
+    if len(originals) > len(SHELL_MARKER_CODES):
+        raise RuntimeError("shell-token provenance alphabet is too small")
+    codes = SHELL_MARKER_CODES[:len(originals)]
+    protected = {
+        original: SHELL_MARKER_ESCAPE + code
+        for original, code in zip(originals, codes)
+    }
+    restored = {code: original for original, code in zip(originals, codes)}
+    return protected, restored
 
 
 def protect_quoted_redirections(text, protected_redirections):
@@ -1331,10 +1337,25 @@ def protect_inert_shell_expansions(text, protected_dynamic):
 def restore_shell_word(word, restored_markers):
     """Restore protected data and retain whether the source word expands at runtime."""
     dynamic = any(char in DYNAMIC_SHELL_CHARS for char in word)
-    restored = word
-    for protected, char in restored_markers.items():
-        restored = restored.replace(protected, char)
-    return ShellWord(restored, dynamic=dynamic)
+    restored = []
+    index = 0
+    while index < len(word):
+        char = word[index]
+        if char != SHELL_MARKER_ESCAPE or index + 1 >= len(word):
+            restored.append(char)
+            index += 1
+            continue
+        code = word[index + 1]
+        if code == SHELL_MARKER_ESCAPE:
+            restored.append(SHELL_MARKER_ESCAPE)
+        elif code in restored_markers:
+            restored.append(restored_markers[code])
+        else:
+            # The encoder doubles every literal escape character, so this cannot be its
+            # output. Preserve an unexpected pair instead of deleting source bytes.
+            restored.extend((SHELL_MARKER_ESCAPE, code))
+        index += 2
+    return ShellWord("".join(restored), dynamic=dynamic)
 
 
 def skip_leading_redirection(words, index):
@@ -1381,15 +1402,16 @@ def shell_segment_argv(segment):
     """The executable-position argv in one outer shell segment, or an empty list."""
     try:
         normalized = normalize_ansi_c_quotes(segment)
-        marker_values = allocate_shell_markers(normalized, 3 + len(DYNAMIC_SHELL_CHARS))
-        protected_redirections = dict(zip("<>|", marker_values[:3]))
-        protected_dynamic = dict(zip(sorted(DYNAMIC_SHELL_CHARS), marker_values[3:]))
-        restored_markers = {
-            protected: char
-            for char, protected in (protected_redirections | protected_dynamic).items()
+        protected_markers, restored_markers = shell_marker_maps()
+        protected_redirections = {
+            char: protected_markers[char] for char in "<>|"
         }
+        protected_dynamic = {
+            char: protected_markers[char] for char in DYNAMIC_SHELL_CHARS
+        }
+        escaped = normalized.replace(SHELL_MARKER_ESCAPE, SHELL_MARKER_ESCAPE * 2)
         protected = protect_inert_shell_expansions(
-            protect_quoted_redirections(normalized, protected_redirections),
+            protect_quoted_redirections(escaped, protected_redirections),
             protected_dynamic,
         )
         lexer = shlex.shlex(
