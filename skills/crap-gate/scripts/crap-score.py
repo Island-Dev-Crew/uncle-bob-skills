@@ -38,7 +38,21 @@ def parse_rows(src):
     rows, errors = [], []
     for n, line in enumerate(src, 1):
         line = line.rstrip("\n")
-        if not line or line.startswith("#"):
+        if not line:
+            continue
+        # Narrow, on purpose, and the same rule the pack's other TSV gates already use:
+        # a comment is a raw `#` in column 1 AND no tab anywhere on the line. Treating
+        # every `#` line as a comment swallowed `#validate<TAB>9<TAB>40` — an ES2022
+        # private method, which is how JavaScript spells one and how istanbul reports it
+        # — so its 26.50 breach vanished and the gate exited 0. What decides it is the
+        # line's shape, never the name's: any tab-bearing line is a row, so no row can
+        # leave the numerator and denominator unnoticed, and an indented `# note` falls
+        # through to the field count below and dies there. The price is the standard
+        # `#function<TAB>complexity<TAB>coverage_pct` header spelling, which now reaches
+        # the errors below and exits 2 instead of being skipped — loud and fail-closed,
+        # never a false green. Spell such a header's separators as text, the way the
+        # fixtures beside this script do, and it stays a comment.
+        if line.startswith("#") and "\t" not in line:
             continue
         parts = line.split("\t")
         if len(parts) != 3:

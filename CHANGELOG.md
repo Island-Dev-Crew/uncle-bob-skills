@@ -1,10 +1,34 @@
 # Changelog
 
+## v2.1.0 — 2026-08-26
+
+**Corrective successor to `v2.0.0`.** The independent Seat 3 review of `v2.0.0` returned **CHANGES REQUIRED** at commit `7956a2a` / tree `a37578f7`. This entry records the successor's content; its acceptance and publication are established outside this file by an exact-head receipt and a human-created tag or release bound to that same head.
+
+### Public surface
+
+- Rebuilt the README as a GitHub-native landing page: responsive engraved hero, outcome-first routes, power-user loops, a compact catalog preview, an explicit legend, installation boundaries, and verification semantics that distinguish content gates from release acceptance.
+- Added a complete outcome-grouped catalog and a documentation/evidence map under `docs/`.
+- Moved the eight numbered extraction, ledger, roster, gauntlet, and hardening records out of the public root and into `docs/`, preserving their basenames and updating every proof command and relative link atomically.
+- Restored `LICENSE` to the canonical MIT text and moved third-party scope information to `NOTICE.md`, so the license grant and the source-material boundary are no longer mixed.
+
+### Seat 3 remediation
+
+- Pinned checkout bytes with `.gitattributes`, closed certifier false-greens across lane scanning, proof replay, closed-stream behavior, relative links, metadata typing, numerical boundaries, and CRLF handling, and added watched-red fixtures for each repaired class.
+- Corrected installation, standalone-tooling, Forge hand-off, source-provenance, and current-release claims. The pack supports four harnesses by file format; only the documented Claude Code install path is claimed as an installation recipe here.
+- Added certifier self-tests for command-position scanning and release integrity. These tests are part of the release checklist because the five content gates do not certify their own implementations.
+
+### Release integrity
+
+- Added `scripts/verify-release.py`, a committed-content manifest verifier that excludes its own digest, reads only committed objects, pins one revision for the full run, writes atomically without following a digest symlink, and fails closed on dead output streams.
+- Commit/tree identity remains deliberately out of band. A matching content digest is not authorship and does not establish the human-controlled signed tag or authenticated release witness required to bind a release.
+
 ## v2.0.0 — 2026-08-26
 
-**The hardening release.** Fifty islands, five deterministic pack gates, and a doctrine that every published number is re-derivable from the committed tree by a command. What separates 2.0 from the 1.x line is not new islands — the roster was complete at v1.2 — but that the pack was turned on itself: four independent OpenAI Codex reviews across three frozen heads (`0eb75eb`, `5ddf557`, and a pre-seat-3 survey of `5a5b6c2`), each returning CHANGES REQUIRED, each reproduced here before anything changed. The most valuable findings were in the pack's own certifying tools — a proof verifier that executed truncated commands, a closed-stream harness blind to the signal death it was built to catch, an exit-code check that never compared against the code it documented — and closing them is what earns the release its own first law. Ships with an [MIT license](LICENSE) and `scripts/link-check.py`, the instrument the pack's link count previously lacked. A third independent seat reviews this exact head next; its receipt, when it lands, is the last gate.
+> **Post-release correction:** the published release text overstated review provenance. Three earlier OpenAI Codex reviews were independent; the `5a5b6c2` five-lens pass was Claude author-side construction QA, not independent and not OpenAI. A later independent Seat 3 review of the exact `v2.0.0` head returned **CHANGES REQUIRED**, so `v2.0.0` never held an accepting receipt.
 
-Hardening. Phases 1–3 of [07-HARDENING-PLAN-2.0.md](07-HARDENING-PLAN-2.0.md) are complete; phase 4 opened with an independent non-Anthropic review (OpenAI Codex) of the frozen `0eb75eb` head, which returned CHANGES REQUIRED on five pack-level findings. Each was reproduced here before anything was changed.
+**The hardening release.** Fifty islands, five deterministic pack gates, and a doctrine that every published number is re-derivable from the committed tree by a command. What separates 2.0 from the 1.x line is not new islands — the roster was complete at v1.2 — but that the pack was turned on itself: **three independent OpenAI Codex reviews** across two frozen heads (one at `0eb75eb`, two at `5ddf557`), each returning CHANGES REQUIRED and each reproduced here before anything changed — plus a fourth pass at `5a5b6c2` that was **not** independent and must not be counted as one: a five-lens survey run by this pack's own Claude author-side agents. That is construction QA, not acceptance. The most valuable findings were in the pack's own certifying tools — a proof verifier that executed truncated commands, a closed-stream harness blind to the signal death it was built to catch, an exit-code check that never compared against the code it documented. Ships with an [MIT license](LICENSE) and `scripts/link-check.py`, the instrument the pack's link count previously lacked. The release shipped before its own exact-head independent receipt; Seat 3 later returned CHANGES REQUIRED.
+
+Hardening. Phases 1–3 of [07-HARDENING-PLAN-2.0.md](docs/07-HARDENING-PLAN-2.0.md) are complete; phase 4 opened with an independent non-Anthropic review (OpenAI Codex) of the frozen `0eb75eb` head, which returned CHANGES REQUIRED on five pack-level findings. Each was reproduced here before anything was changed.
 
 ### Fixed — the proof verifier passed by reading less than it claimed
 
@@ -92,7 +116,7 @@ The pack now stands at **351 verified proofs, 19 unsequenced, 0 mismatched** of 
 
 The README said islands 21–50 were unbuilt, counted 21 companion boundaries where COMPANION lists 22, and described `source/` as holding the transcript and captions — which are `.gitignore`d on purpose, because they are the whole of someone else's recorded conversation. The inventory is now counted from the tree, source availability is stated where a reader meets it, and one status section fixes each root document as **live**, **historical**, or **a closed record**, so a planning draft is never read as a current claim.
 
-`02-ROSTER-50.md` and `07-HARDENING-PLAN-2.0.md` carried their original status banners — "DRAFT r2, awaiting Jon's cut" and "plan, not work" — after being, respectively, fully built and three-fifths executed.
+`docs/02-ROSTER-50.md` and `docs/07-HARDENING-PLAN-2.0.md` carried their original status banners — "DRAFT r2, awaiting Jon's cut" and "plan, not work" — after being, respectively, fully built and three-fifths executed.
 
 ### Fixed — install topology, said out loud
 

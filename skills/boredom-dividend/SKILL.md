@@ -14,7 +14,7 @@ Both of the pack's founding gates came off this exact shelf (C8):
 - **CRAP** (C6) was shelved ~2000 on labor cost alone: *"it took me forever to go through every one of those functions… although it was interesting, I kind of set it aside."* It came back as an agent loop: *"why don't you run crap over everything you've just done and it would run crap and then it would clean up the code."* Full metric ground: [`crap-metric.md`](../../research/crap-metric.md). The revived gate lives at [`crap-gate`](../crap-gate/SKILL.md).
 - **Mutation testing** (C7) has been right since the 1970s and was impractical at ~2000 scale, where a full run ate a night. Now: *"Maybe it took it 30 minutes instead of an overnight run and then it would plug all the holes."* The cost curve inverted along exactly the axis that shelved it, on incremental caches and diff-scoped mutants ([`mutation-testing.md`](../../research/mutation-testing.md)). The revived gate lives at [`mutant-hunt`](../mutant-hunt/SKILL.md).
 
-The pattern generalizes past one person's shelf. The roster names exhaustive dependency checks as the next specimen ([`02-ROSTER-50.md`](../../02-ROSTER-50.md), island 20), and the literature's shelf is far larger: techniques that never left the papers because running them by hand was absurd.
+The pattern generalizes past one person's shelf. The roster names exhaustive dependency checks as the next specimen ([`02-ROSTER-50.md`](../../docs/02-ROSTER-50.md), island 20), and the literature's shelf is far larger: techniques that never left the papers because running them by hand was absurd.
 
 ## The mining method
 

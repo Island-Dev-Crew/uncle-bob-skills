@@ -23,17 +23,17 @@ Rounds 2 and 3 are the interesting part. Each one genuinely closed what it was h
 
 ## The convergence criteria — how the loop was stopped
 
-An adversarial loop that never ends is its own failure, and this pack has a doctrine for it: [`margin-ledger`](skills/margin-ledger/SKILL.md) says a gate may cost you until, never past, the point of value. So round 3 replaced "find nothing" with a tiered standard:
+An adversarial loop that never ends is its own failure, and this pack has a doctrine for it: [`margin-ledger`](../skills/margin-ledger/SKILL.md) says a gate may cost you until, never past, the point of value. So round 3 replaced "find nothing" with a tiered standard:
 
 - **Tier A — must fix in code.** A false green reachable by input a real user, editor, filesystem, or CI would plausibly produce: a UTF-8 BOM, CRLF, NFC vs NFD (macOS hands you NFD routinely), a case-variant path, an ordinary idiom swap in the scanned language. A gate that misses these is broken for real users.
-- **Tier B — fix if cheap, else disclose as a fixture.** A hole reachable only by deliberately hostile input. The precedent is [`stability-order`](skills/stability-order/SKILL.md), which passed by shipping `cycle-blind-spot.json`: a captured exit-0 run documenting a blind spot it chose not to close. An evidenced boundary beats a silent one.
+- **Tier B — fix if cheap, else disclose as a fixture.** A hole reachable only by deliberately hostile input. The precedent is [`stability-order`](../skills/stability-order/SKILL.md), which passed by shipping `cycle-blind-spot.json`: a captured exit-0 run documenting a blind spot it chose not to close. An evidenced boundary beats a silent one.
 - **Tier C — make the sentence true.** Not a false green at all: an IO path exiting the wrong code, a docstring naming a flag that does not exist, an absolute word ("every", "never", "refuses") broader than the code. The code may stay; the claim may not. Narrowing it is a legitimate fix, and this tier always terminates.
 
 Tier C is what makes the loop finite, and it is also where this pack's first law bites hardest: a sentence the implementation cannot back is laundering, whether or not any input exploits it.
 
 ## The six bypass classes
 
-Every bypass found across both waves falls into one of six shapes. They are now written into [`known-dirty-fixture`](skills/known-dirty-fixture/SKILL.md) under *the pair is necessary, not sufficient* — the island's own thesis, corrected by what Wave 2 proved: a red/green pair shows a gate **can** fail, never that it cannot be **fooled**, because a fixture only tries the input its author already imagined.
+Every bypass found across both waves falls into one of six shapes. They are now written into [`known-dirty-fixture`](../skills/known-dirty-fixture/SKILL.md) under *the pair is necessary, not sufficient* — the island's own thesis, corrected by what Wave 2 proved: a red/green pair shows a gate **can** fail, never that it cannot be **fooled**, because a fixture only tries the input its author already imagined.
 
 1. **An error path wearing a verdict's exit code** — a crash, unreadable file, decode error, closed stdin, or overflow exiting the code that means "real violation", so a caller records a verdict the gate never computed.
 2. **Key normalization** — the same entity under a different spelling missing its join and falling to the lenient branch.
@@ -57,7 +57,7 @@ python3 scripts/validate-island.py skills/*/     # 420 checks, 35 islands
 python3 scripts/verify-proofs.py                 # re-runs every documented command
 ```
 
-[`verify-proofs.py`](scripts/verify-proofs.py) is new in this wave and exists because of a mistake made repeatedly during it: **the verification method was the broken thing more often than the artifact.** Reading `$?` after a pipe gives the pipe's status. Reading it after `$(basename f)` gives the substitution's. `timeout` is not on macOS. A `grep -P` search returned zero on a pattern that was demonstrably present. Each of those produced a confident, wrong report about a working gate. The tool re-runs each island's own documented commands and compares exit codes, and its own limits — heredocs, `printf` setup, `cd` — are stated in its docstring rather than left to be discovered.
+[`verify-proofs.py`](../scripts/verify-proofs.py) is new in this wave and exists because of a mistake made repeatedly during it: **the verification method was the broken thing more often than the artifact.** Reading `$?` after a pipe gives the pipe's status. Reading it after `$(basename f)` gives the substitution's. `timeout` is not on macOS. A `grep -P` search returned zero on a pattern that was demonstrably present. Each of those produced a confident, wrong report about a working gate. The tool re-runs each island's own documented commands and compares exit codes, and its own limits — heredocs, `printf` setup, `cd` — are stated in its docstring rather than left to be discovered.
 
 ## Honest state
 

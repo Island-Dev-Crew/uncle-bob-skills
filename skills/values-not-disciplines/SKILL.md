@@ -5,7 +5,7 @@ description: Rule-inventory gate over a harness's quality rules - each rule must
 
 # Values Not Disciplines: name the tool or say advisory
 
-The pack's second law, in Bob's own words: *"it's probably a mistake to impose a human discipline on an agent. It is not a mistake to impose human values on the agent, but there may be thresholds that we need to change"* (C17, [ledger](../../01-CONCEPT-LEDGER.md)). The value survives the port. The ritual does not. The number moves. This island makes that law checkable by attacking the one place it fails silently: a value nobody ever turned into a measurement, still sitting in the rules file as a sentence.
+The pack's second law, in Bob's own words: *"it's probably a mistake to impose a human discipline on an agent. It is not a mistake to impose human values on the agent, but there may be thresholds that we need to change"* (C17, [ledger](../../docs/01-CONCEPT-LEDGER.md)). The value survives the port. The ritual does not. The number moves. This island makes that law checkable by attacking the one place it fails silently: a value nobody ever turned into a measurement, still sitting in the rules file as a sentence.
 
 His corollary is the whole argument: **"You can't tell an agent to be clean. You have to measure the cleanliness that they produce and have them correct failures."** That line is from X, not the conversation, and it is sourced in [`martin-canon.md`](../../research/martin-canon.md). The same file records that agents treat a rules file *"in the Pirates of the Caribbean sense. They're more like guidelines"* (C3). The reason is positional, and no rewording fixes it: *"the 50th and the 80th sentence in there, they're gone"* (C3). A tool has no middle: *"you're putting them into a loop"* and it holds *"until this tool says that it's okay"* (C4).
 
@@ -56,9 +56,9 @@ Five laundering moves each get their own verdict, because someone has tried ever
 python3 scripts/rule-inventory.py [--root DIR] INVENTORY.tsv
 ```
 
-Rows are TSV: `rule <TAB> measure`. Exit codes carry distinct meanings: `0` clean, `1` a real breach, `2` usage/IO/malformed. A broken pipe therefore can never read as a clean rule set. An empty inventory exits 2, because a rule set with no rules does not pass.
+Rows are TSV: `rule <TAB> measure`. A comment is narrow, and it is the same narrow rule the pack's other TSV gates run: a `#` in column 1 with no TAB on the line. Any tab-bearing line is a row whatever it starts with, so a rule carrying the ticket number that raised it — `#123 no hardcoded secrets <TAB> be clean` — is judged rather than dropped, and a `# rule <TAB> measure` header line gets judged as a row too, which is a loud verdict on the line instead of a silent drop of it. Two `#` lines pay for that narrowness by exiting 2 rather than being skipped: an indented `  # note`, which is no longer in column 1, and a tab-bearing `#` line whose field count is anything but two. Both are non-verdicts, never a false green. Exit codes carry distinct meanings: `0` clean, `1` a real breach, `2` usage/IO/malformed. A broken pipe therefore can never read as a clean rule set. An empty inventory exits 2, because a rule set with no rules does not pass.
 
-**Red/green proof.** Both fixtures ship beside the script; recompute from this island's directory:
+**Red/green proof.** All three fixtures ship beside the script; recompute from this island's directory:
 
 ```bash
 $ python3 scripts/rule-inventory.py --root scripts/fixtures/harness scripts/fixtures/harness-dirty.tsv
@@ -88,11 +88,19 @@ ADVISORY   prefer editorial layout over template grids  [labeled advisory]
 ADVISORY   module boundaries read well to a human reviewer  [labeled advisory]
 5 rules, 3 measured, 2 advisory, 0 unmeasured-and-unlabeled
 $ echo $?   # → 0
+
+$ python3 scripts/rule-inventory.py --root scripts/fixtures/harness scripts/fixtures/harness-hash-prefixed-rule.tsv
+PROSE-ONLY #123 no hardcoded secrets  [prose, not a tool: be]
+MEASURED   per-function CRAP ceiling at 6  [python3 tools/crap-score.py --threshold 6]
+2 rules, 1 measured, 0 advisory, 1 unmeasured-and-unlabeled
+$ echo $?   # → 1
 ```
 
-Both blocks are the full stdout, nothing elided. The dirty fixture fails for fourteen intended reasons, spread across all five laundering moves: bare prose; sentences whose first word resolves on PATH (`sort`, `look`, `head`); a bare no-op and two wrapped ones (`env true`, `nice true`); a tool that does not exist; a `../` escape from the root; a path that exists in the auditor's working directory but not under `--root`; an `-m` module that resolves nowhere; an existing-but-unexecutable `.md` named as the tool; and a nine-deep wrapper chain that names no command. Its one properly measured row still reads `MEASURED`, so the red is discrimination and not a parse error.
+All three blocks are the full stdout, nothing elided. The dirty fixture fails for fourteen intended reasons, spread across all five laundering moves: bare prose; sentences whose first word resolves on PATH (`sort`, `look`, `head`); a bare no-op and two wrapped ones (`env true`, `nice true`); a tool that does not exist; a `../` escape from the root; a path that exists in the auditor's working directory but not under `--root`; an `-m` module that resolves nowhere; an existing-but-unexecutable `.md` named as the tool; and a nine-deep wrapper chain that names no command. Its one properly measured row still reads `MEASURED`, so the red is discrimination and not a parse error.
 
-The clean fixture carries both advisory forms (`advisory` bare and `advisory: reason`), a tool invoked through an interpreter, and a `-m` module that resolves under `--root`. The green therefore proves two things: the gate accepts an honest label, and it accepts a real Python module invocation rather than demanding a script path everywhere. It also stays green on a bare host, since nothing in it depends on an installed package. Delete either fixture and this island's `enforced` claim reverts to `unverified`.
+The clean fixture carries both advisory forms (`advisory` bare and `advisory: reason`), a tool invoked through an interpreter, and a `-m` module that resolves under `--root`. The green therefore proves two things: the gate accepts an honest label, and it accepts a real Python module invocation rather than demanding a script path everywhere. It also stays green on a bare host, since nothing in it depends on an installed package.
+
+The third fixture guards the reader, not the judge. Its breaching rule cites the ticket that raised it, and a leading `#` used to mean *comment* before anything checked whether the line was a row — so `be clean`, the exact wish this island exists to catch, was dropped in silence and the gate exited 0 over an inventory it had only half read. Its measured row still reads `MEASURED`, so the red is the restored row and not a parse error. Delete any of the three and this island's `enforced` claim reverts to `unverified`.
 
 ## Boundaries
 

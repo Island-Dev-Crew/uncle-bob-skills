@@ -9,7 +9,7 @@ description: Names the one human mind that owns a system's design and holds that
 
 The agent era does not retire that seat. It leaves the seat as the main thing a human still does. The source splits the labour bluntly: *"tactical is the sergeant on the ground… strategic stuff is the general… agents are really good at tactical, really bad at strategic"* (C25). And the one step Bob reports trying to automate, and failing at, is the design step itself. After interrogating the agents about the structure, *"I would design a module structure… and give them an implementation plan"* (C12). He calls the attempt a live failure: *"I'm working now to see if I can automate that and I'm having not a lot of luck"* (C12).
 
-So this island encodes a **seat**, not a process: who holds the design, and what their sign-off covers. Conversation quotes reach this page only through the [concept ledger](../../01-CONCEPT-LEDGER.md); phrases quoted from the canon brief are cited to it where they appear.
+So this island encodes a **seat**, not a process: who holds the design, and what their sign-off covers. Conversation quotes reach this page only through the [concept ledger](../../docs/01-CONCEPT-LEDGER.md); phrases quoted from the canon brief are cited to it where they appear.
 
 > Read every "no" and "never" below as a rule this island *states*, not as a check it *runs*. **This island ships no script, and nothing in the rule below is machine-checked.** See [Enforced vs advisory](#enforced-vs-advisory).
 

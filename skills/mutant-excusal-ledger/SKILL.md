@@ -34,31 +34,46 @@ M-src/pricing.ts-41-2  src/pricing.ts:41
   head:       full SHA of the run this excusal was ruled at
 ```
 
-The id is whatever the mutation tool emits: a PIT mutator+line, a Stryker id. The one contract is that it matches the survivor list byte-for-byte. `excused-by` names a seat (`OpenAI Codex`, `Claude Fable 5`, `Jon Isaac`; see [repo law](../../CONTEXT.md)). `head` pins the ruling to the exact code it examined, because an equivalence argument about code that has since moved is void.
+The id is whatever the mutation tool emits: a PIT mutator+line, a Stryker id. The identity contract stays exact: the raw id must match the survivor list byte-for-byte before it excuses anything. Duplicate detection uses a separate reader-visible key. It removes U+200B, U+200C, U+200D, U+FEFF and U+2060 wherever they occur; unwraps Markdown headings, quote, bullet and numbered-list prefixes and links; removes inline emphasis/code decoration; then casefolds. Thus `M1`, `m1`, `` `M1` ``, `> **M1**`, `## M1`, a Markdown link whose visible label is `M1`, `M**1**`, `1. M1`, and an `M1` split by U+200B are one visible ruling even though only raw `M1` matches survivor `M1`. The key is computed before fields are parsed, so a second block is refused before its fields can merge into the first. Pushing the second block off column 0, indenting a numbered marker, or burying an invisible character inside the id changes none of that.
+
+One block per id, one line per field: a mutant ruled on twice, or a field stated twice inside one block, is a ledger a reader and a parser can resolve differently, and the gate refuses it as malformed rather than picking a winner. Four names are read as fields, `mutation`, `argument`, `excused-by` and `head`; a list or quote marker in front of one does not stop it being that field, so `- head:` cannot hide a second `head:`. Every other indented line is text continuing the field above it, which is what lets an argument wrap onto a line opening with a URL or a `note:` of its own. The one thing argument prose may not do is open a line with a mutant id this ledger rules on, in any reader-visible spelling, because that is exactly what a second block looks like. Name the mutant inside the sentence instead. `excused-by` names a seat (`OpenAI Codex`, `Claude Fable 5`, `Jon Isaac`; see [repo law](../../CONTEXT.md)). `head` pins the ruling to the exact code it examined, because an equivalence argument about code that has since moved is void.
 
 ## The gate
 
-[`scripts/check-excusals.py`](scripts/check-excusals.py) reads the survivor list (one id per line, as the hunt emits it) and the ledger. It exits non-zero on any survivor with no entry, on an entry missing a required field, and on an argument under 40 characters:
+[`scripts/check-excusals.py`](scripts/check-excusals.py) reads the survivor list (one id per line, as the hunt emits it) and the ledger. It exits 1 — a verdict on the survivors — for any survivor with no exact raw-id entry, any entry missing a required field, and any argument under 40 characters. It exits 2 without ruling at all when the ledger itself will not read one way: two headers collide under the reader-visible key, an id heads an indented line instead of opening its entry at column 0, or a field is stated twice inside one entry. That is not a stricter verdict, it is the refusal to give one, and it comes first, because two blocks claiming one mutant can otherwise merge their halves into a complete-looking excusal nobody wrote:
 
 ```bash
 python3 <this-skill-dir>/scripts/check-excusals.py \
   evidence/<slug>/out/survivors.txt evidence/<slug>/out/excusals.md
 ```
 
-The loop: run the gate → for each FAIL, either write a real equivalence argument or send the mutant back to the hunt as a kill-task → re-run the gate until exit 0. Strike an id from the survivor list only when the re-run hunt confirms the kill. Stale excusals (entries for mutants no longer surviving) warn — prune them; sediment in a ledger is how laundering starts.
+The loop: run the gate → on MALFORMED nothing was ruled, so settle what the ledger says (one block per mutant, one statement per field) before reading anything else into it → for each FAIL, either write a real equivalence argument or send the mutant back to the hunt as a kill-task → re-run the gate until exit 0. Strike an id from the survivor list only when the re-run hunt confirms the kill. Stale excusals (entries for mutants no longer surviving) warn — prune them; sediment in a ledger is how laundering starts.
 
 ## Enforced vs advisory
 
-- **Enforced** (by `check-excusals.py`, exit code, today): an unexcused survivor blocks; every entry carries `mutation`, `argument`, `excused-by`, `head`; the argument meets a 40-character floor.
+- **Enforced** (by `check-excusals.py`, exit code, today): an unexcused survivor blocks; every entry carries `mutation`, `argument`, `excused-by`, `head`; the argument meets a 40-character floor; raw survivor identity stays byte-exact; no two headers collide after reader-visible canonicalization — case, Markdown markers and the enumerated zero-width characters cannot split them — and no entry states one field twice.
 - **Enforced** (by the pack validator): this island's own structure and frontmatter.
 The gate carries its own red/green proof ([`known-dirty-fixture`](../known-dirty-fixture/SKILL.md)), fixtures shipped beside it. Run from this skill dir, these exact commands produced these exit codes:
 
 ```bash
-python3 scripts/check-excusals.py scripts/fixtures/survivors.txt scripts/fixtures/dirty-excusals.md   # exit 1 — RED
-python3 scripts/check-excusals.py scripts/fixtures/survivors.txt scripts/fixtures/clean-excusals.md   # exit 0 — GREEN
+python3 scripts/check-excusals.py scripts/fixtures/survivors.txt scripts/fixtures/dirty-excusals.md              # exit 1 — RED
+python3 scripts/check-excusals.py scripts/fixtures/survivors.txt scripts/fixtures/duplicate-excusals.md          # exit 2 — MALFORMED
+python3 scripts/check-excusals.py scripts/fixtures/survivors.txt scripts/fixtures/indented-duplicate-excusals.md # exit 2 — MALFORMED
+python3 scripts/check-excusals.py scripts/fixtures/survivors.txt scripts/fixtures/cited-excusals.md              # exit 0 — GREEN
+python3 scripts/check-excusals.py scripts/fixtures/survivors.txt scripts/fixtures/clean-excusals.md              # exit 0 — GREEN
+python3 scripts/check-excusals.py scripts/fixtures/canonical-survivor.txt scripts/fixtures/duplicate-casefold-excusals.md          # exit 2 — MALFORMED
+python3 scripts/check-excusals.py scripts/fixtures/canonical-survivor.txt scripts/fixtures/duplicate-decorated-excusals.md         # exit 2 — MALFORMED
+python3 scripts/check-excusals.py scripts/fixtures/canonical-survivor.txt scripts/fixtures/duplicate-zero-width-excusals.md        # exit 2 — MALFORMED
+python3 scripts/check-excusals.py scripts/fixtures/canonical-survivor.txt scripts/fixtures/duplicate-numbered-indented-excusals.md # exit 2 — MALFORMED
+python3 scripts/check-excusals.py scripts/fixtures/canonical-survivor.txt scripts/fixtures/canonical-clean-excusals.md              # exit 0 — GREEN
+python3 scripts/check-excusals.py scripts/fixtures/markdown-survivor.txt scripts/fixtures/duplicate-heading-excusals.md          # exit 2 — MALFORMED
+python3 scripts/check-excusals.py scripts/fixtures/markdown-survivor.txt scripts/fixtures/duplicate-link-excusals.md             # exit 2 — MALFORMED
+python3 scripts/check-excusals.py scripts/fixtures/markdown-survivor.txt scripts/fixtures/duplicate-inline-decoration-excusals.md # exit 2 — MALFORMED
+python3 scripts/check-excusals.py scripts/fixtures/markdown-survivor.txt scripts/fixtures/duplicate-list-field-excusals.md       # exit 2 — MALFORMED
+python3 scripts/check-excusals.py scripts/fixtures/markdown-survivor.txt scripts/fixtures/markdown-clean-excusals.md              # exit 0 — GREEN
 ```
 
-The dirty ledger fires all three enforced rules at once: an unexcused survivor, an entry missing `head`, and `argument: could not kill it` (17 chars) rejected as effort wearing equivalence's name. Recompute both instead of trusting this paragraph.
+The dirty ledger fires all three verdict rules at once: an unexcused survivor, an entry missing `head`, and `argument: could not kill it` (17 chars) rejected as effort wearing equivalence's name. The original duplicate pair catches raw top-level and indented repeats. The canonical fixtures each rendered GREEN before their guard existed: a top-level case flip, quote/inline decoration, a link, a Markdown heading, an interior U+200B, a numbered header indented inside the first block, and a list-prefixed duplicate field. They now refuse before merging. The canonical and Markdown clean fixtures prove the rule is discriminating rather than blanket rejection. The cited ledger also stays GREEN while its argument wraps onto lines opening with `https:` and `note:` — the reds a parser invents for itself when it promotes every indented `word:` to a field and then finds one stated twice. Recompute the commands instead of trusting this paragraph.
 
 - **Advisory** (honestly, unavoidably): the *truth* of an equivalence argument. No script can verify equivalence in general, which is the undecidability that put this ledger here in the first place. The character floor is a substance proxy standing in for the judgment call, not a truth check. A reviewer recomputing the packet judges the argument itself. Expect the excusal rate to land inside the 4–39% band from the research, and read a rate far above it as laundering pressure rather than bad luck.
 

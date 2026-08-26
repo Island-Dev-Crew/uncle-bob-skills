@@ -5,7 +5,7 @@ description: The comparative planning doctrine for the agent era - heavy upfront
 
 # Story Cadence: small batches beat gorgeous plans
 
-The doctrine in one move. The urge to fully specify before agents run is *"a very old temptation… in the 70s. It led us to the waterfall process"* (C19, quoted via [the ledger](../../01-CONCEPT-LEDGER.md)). With agents it fails the same way it failed then, only faster. The answer is not a better plan. It is a shorter one, run on a cadence: a story or two, look, sort out, next stories (C20). What settles the argument is economics: the cost-of-change collapse (C21). Everything below is that comparison made usable. Every direct quote is pulled through the ledger, never from memory.
+The doctrine in one move. The urge to fully specify before agents run is *"a very old temptation… in the 70s. It led us to the waterfall process"* (C19, quoted via [the ledger](../../docs/01-CONCEPT-LEDGER.md)). With agents it fails the same way it failed then, only faster. The answer is not a better plan. It is a shorter one, run on a cadence: a story or two, look, sort out, next stories (C20). What settles the argument is economics: the cost-of-change collapse (C21). Everything below is that comparison made usable. Every direct quote is pulled through the ledger, never from memory.
 
 ## Why plans decay mid-run
 

@@ -10,7 +10,9 @@ Usage:
 
 Input rows are TSV: `rule <TAB> measure`. `measure` is either the command line
 that measures the rule, or the literal label `advisory` / `advisory: reason`.
-Blank lines and `#` comments are skipped.
+Blank lines are skipped, and so is a comment — which here means a `#` in column 1
+with no TAB on the line. A tab-bearing line is a row whatever it starts with, so a
+rule cited by its ticket number (`#123 no secrets`) is judged rather than dropped.
 
 Exit codes are distinct meanings — a broken pipe never reads as a clean harness:
   0  verdict: every rule is MEASURED or ADVISORY
@@ -229,7 +231,19 @@ def read_rows(path: str):
             die(f"cannot read {path}: {e}")
     rows = []
     for n, line in enumerate(text.splitlines(), 1):
-        if not line.strip() or line.lstrip().startswith("#"):
+        if not line.strip():
+            continue
+        # Narrow, on purpose, and the same rule the pack's other TSV gates already use:
+        # a comment is a raw `#` in column 1 AND no tab anywhere on the line. Treating
+        # every `#` line as a comment swallowed `#123 no hardcoded secrets<TAB>be clean`
+        # — a rule carrying the ticket number that raised it, which is how a rules file
+        # cites one — so a real PROSE-ONLY breach vanished and the gate exited 0. What
+        # decides it is the line's shape, never the rule column's wording, which may
+        # hold any prose at all: a tab-bearing line is data whatever it starts with, so
+        # no rule can leave the tally unnoticed, and an indented `# note` falls through
+        # to the field count below and dies there. A `# rule<TAB>measure` header is
+        # therefore judged as a row — a loud verdict on the line, not a silent drop.
+        if line.startswith("#") and "\t" not in line:
             continue
         parts = line.split("\t")
         if len(parts) != 2:

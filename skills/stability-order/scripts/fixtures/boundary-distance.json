@@ -1,0 +1,17 @@
+{
+  "components": {
+    "web":    { "abstract": 0, "total": 8  },
+    "api":    { "abstract": 0, "total": 8  },
+    "report": { "abstract": 3, "total": 10 },
+    "store":  { "abstract": 8, "total": 8  },
+    "clock":  { "abstract": 8, "total": 8  },
+    "text":   { "abstract": 8, "total": 8  }
+  },
+  "edges": [
+    ["web", "report"],
+    ["api", "report"],
+    ["report", "store"],
+    ["report", "clock"],
+    ["report", "text"]
+  ]
+}

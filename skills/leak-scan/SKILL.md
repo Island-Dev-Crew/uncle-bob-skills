@@ -7,7 +7,7 @@ description: Detect information leakage - one design decision expressed in two o
 
 Ousterhout's classic red flag is **information leakage**: one design decision reflected in multiple modules ([`ousterhout-debate.md`](../../research/ousterhout-debate.md)). It is not duplicate *text*. Two copy-pasted helpers serving different purposes are a tidiness matter. One *fact* stated in a client and stated again in a server is leakage even when the two statements share no characters at all.
 
-Uncle Bob's ground for why an agent fleet cares: partitioning is not a human affectation. *"Anything that is well partitioned with well-disciplined interfaces… is something a human can grasp because we compartmentalize in our minds. Well, so do the models"* (C15). A small interface lets a model *"read the interface without having to understand the implementation"* (C16). Quotes come only through the [concept ledger](../../01-CONCEPT-LEDGER.md).
+Uncle Bob's ground for why an agent fleet cares: partitioning is not a human affectation. *"Anything that is well partitioned with well-disciplined interfaces… is something a human can grasp because we compartmentalize in our minds. Well, so do the models"* (C15). A small interface lets a model *"read the interface without having to understand the implementation"* (C16). Quotes come only through the [concept ledger](../../docs/01-CONCEPT-LEDGER.md).
 
 ## The two prices a leak charges an agent
 

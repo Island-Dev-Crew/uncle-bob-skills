@@ -15,7 +15,7 @@ This island is the counterweight. It carries the posture that keeps the hunt run
 
 ## Why the hunt is not optional here
 
-**The agent's own assurance is not evidence.** Bob, on polling the agents: *"I've had a number of debates with the agents, and by the way, you can't trust any debate you have with an agent, but I still have them anyway"* (C18, via [the ledger](../../01-CONCEPT-LEDGER.md)). An agent asserting its diff is correct, a second agent agreeing, a summary that says "all tests pass": that is color, not a finding. Any of it may generate hypotheses for the hunt. None of it closes one.
+**The agent's own assurance is not evidence.** Bob, on polling the agents: *"I've had a number of debates with the agents, and by the way, you can't trust any debate you have with an agent, but I still have them anyway"* (C18, via [the ledger](../../docs/01-CONCEPT-LEDGER.md)). An agent asserting its diff is correct, a second agent agreeing, a summary that says "all tests pass": that is color, not a finding. Any of it may generate hypotheses for the hunt. None of it closes one.
 
 **Unfound defects compound.** *"they are as subject as humans are to messy code… The code can get messy enough that the agents cannot deal with it any longer and then they'll just start to spin"* (C2). A defect waved through does not sit still. It becomes the substrate the next agent works on. A review that stops looking is not neutral; it is a deposit.
 

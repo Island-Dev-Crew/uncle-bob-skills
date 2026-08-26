@@ -1,0 +1,6 @@
+interface:
+  display_name:
+    en: Non-string Metadata
+  short_description:
+    - a
+    - b

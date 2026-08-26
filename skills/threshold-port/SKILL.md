@@ -5,7 +5,7 @@ description: Port a human engineering practice into an agent lane and recalibrat
 
 # Threshold Port: keep the value, drop the ritual, move the number
 
-Bob's sharpest line in the conversation draws the whole map: *"it's probably a mistake to impose a human discipline on an agent. It is not a mistake to impose human values on the agent, but there may be thresholds that we need to change"* (C17, [ledger](../../01-CONCEPT-LEDGER.md)). This island turns that line into a repeatable port. TDD, a coverage floor, a complexity cap: each one crosses to the agent lane in three moves, and the number at the end moves only on evidence.
+Bob's sharpest line in the conversation draws the whole map: *"it's probably a mistake to impose a human discipline on an agent. It is not a mistake to impose human values on the agent, but there may be thresholds that we need to change"* (C17, [ledger](../../docs/01-CONCEPT-LEDGER.md)). This island turns that line into a repeatable port. TDD, a coverage floor, a complexity cap: each one crosses to the agent lane in three moves, and the number at the end moves only on evidence.
 
 ## Scope: numbers, not markdown
 

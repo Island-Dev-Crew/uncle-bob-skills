@@ -1,5 +1,5 @@
 OCCUPIED TERRITORY AUDIT — Forge 50 vs Uncle Bob pack candidate themes
-(Registry: /Users/IDC2.5/Desktop/IDC-skills/skills/registry.json, release 2.0.2; 50 skills confirmed on disk. Verdicts on collision-prone islands grounded in their SKILL.md heads, not just registry summaries.)
+(Registry snapshot: IDC Skills Forge release 2.0.2; 50 skills confirmed on disk during the audit. Verdicts on collision-prone islands were grounded in their `SKILL.md` heads, not only registry summaries. The Forge repository is not vendored here.)
 
 1. idc-skill-authoring — how to author/structure any skill in this fleet — CLEAR (the new pack must be built *under* it, but no candidate theme duplicates it).
 2. writing-for-agents — token/attention levers for any agent-read document — ADJACENT to context-trajectory-management and module-compartmentalization: it owns doc-level context economy (pointers, two loads, pruning). New pack must NOT restate doc-level pruning/pointer levers; its lane is session-level trajectory and source-code module sizing, citing this island for the document half.

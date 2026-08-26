@@ -7,12 +7,12 @@ Bands: LOST < floor <= THIN < 2 <= IN-BAND <= 4 < WIDE.
 
 Exit codes, and these four are the whole set: 0 every story and the aggregate at or
 above the floor; 1 any margin below the floor (the game is lost, C5); 2 fail-closed on
-empty or malformed ledger CONTENT (an empty ledger proves nothing); 3 the ledger could
-not be read or decoded at all, or the invocation was wrong. 2 and 3 must not share a
-code — run from the wrong directory, a path error exiting 2 is indistinguishable from a
-real fail-closed verdict. Nothing here exits 1 except a margin below the floor: an
-unhandled exception used to, and a crash reading as LOST is a verdict this tool never
-reached.
+empty or malformed ledger CONTENT, an internal fault, or an output stream that cannot
+carry the report; 3 the input ledger could not be read or decoded at all, or the
+invocation was wrong. Input-path/usage refusal stays distinct from malformed content;
+output IO uses the pack-wide exit-2 seal. Nothing here exits 1 except a margin below the
+floor: an unhandled exception used to, and a crash reading as LOST is a verdict this
+tool never reached.
 """
 import argparse
 import io
@@ -163,19 +163,19 @@ if __name__ == "__main__":
         _code = _exc.code if isinstance(_exc.code, int) else (0 if _exc.code is None else 1)
     except KeyboardInterrupt:
         _code = 3
-    except BaseException as _exc:              # an exception is not a verdict
+    except BaseException as _exc:              # internal/output IO uses the pack-wide seal
         try:
             print(f"error: internal failure: {type(_exc).__name__}: {_exc}", file=sys.stderr)
         except BaseException:
             pass
-        _code = 3
+        _code = 2
     for _stream, _fd in ((sys.stdout, 1), (sys.stderr, 2)):
         try:
             if _stream is not None:
                 _stream.flush()
         except BaseException:
             if _code in (0, 1):                # output that never landed is not a verdict
-                _code = 3
+                _code = 2
             try:                               # so the shutdown flush cannot raise again
                 os.dup2(os.open(os.devnull, os.O_WRONLY), _fd)
             except BaseException:

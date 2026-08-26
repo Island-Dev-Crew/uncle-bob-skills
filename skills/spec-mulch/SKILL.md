@@ -5,7 +5,7 @@ description: Treat a story spec as scaffolding that mulches on merge. It exists 
 
 # Spec Mulch: the spec dies on merge
 
-A story spec is scaffolding, not source. It exists to launch exactly one story through the relay. The moment that story merges, the spec has done its whole job and comes down: *"the specifications are ephemeral… they go away"* (C22, [ledger](../../01-CONCEPT-LEDGER.md)). What endures is never the plan doc. It is the end result, plus the standing gates that hold it in shape: *"I look at the end result and say, well, that is the specification"* (C22). This island encodes that lifecycle in two pieces: a mulch-on-merge marker every spec carries from birth, and a check that goes red while any launched story's scaffolding survives.
+A story spec is scaffolding, not source. It exists to launch exactly one story through the relay. The moment that story merges, the spec has done its whole job and comes down: *"the specifications are ephemeral… they go away"* (C22, [ledger](../../docs/01-CONCEPT-LEDGER.md)). What endures is never the plan doc. It is the end result, plus the standing gates that hold it in shape: *"I look at the end result and say, well, that is the specification"* (C22). This island encodes that lifecycle in two pieces: a mulch-on-merge marker every spec carries from birth, and a check that goes red while any launched story's scaffolding survives.
 
 ## Two boundaries, stated up front
 

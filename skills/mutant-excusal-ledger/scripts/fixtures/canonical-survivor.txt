@@ -1,0 +1,2 @@
+# One exact survivor identity shared by the reader-visible duplicate fixtures.
+M-src/pricing.ts-41-2

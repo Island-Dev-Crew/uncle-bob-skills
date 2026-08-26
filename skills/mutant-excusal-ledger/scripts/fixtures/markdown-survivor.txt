@@ -1,0 +1,2 @@
+# One compact survivor identity for Markdown-position regressions.
+M1

@@ -7,7 +7,7 @@ description: Routes each work item by Brooks's 1986 split - accidental complexit
 
 Brooks split software difficulty in two in 1986. **Accidental** complexity is what our representations and tools impose: the difficulty of *expressing* the thing. **Essential** complexity is the difficulty of the thing itself. His bound follows from that split. No single technique yields an order of magnitude within a decade, because a large part of the difficulty was never the tool's to remove ([`seventies-canon.md`](../../research/seventies-canon.md)).
 
-That bound is not a prediction that nothing improves. It is a prediction about *where* improvement stops, and it stops exactly on the seam this pack was built around. The conversation names the same seam in a different vocabulary: *"tactical is the sergeant on the ground… strategic stuff is the general… agents are really good at tactical, really bad at strategic"* (C25, quoted via [the ledger](../../01-CONCEPT-LEDGER.md); every conversation quotation on this page reaches it that way, never from memory).
+That bound is not a prediction that nothing improves. It is a prediction about *where* improvement stops, and it stops exactly on the seam this pack was built around. The conversation names the same seam in a different vocabulary: *"tactical is the sergeant on the ground… strategic stuff is the general… agents are really good at tactical, really bad at strategic"* (C25, quoted via [the ledger](../../docs/01-CONCEPT-LEDGER.md); every conversation quotation on this page reaches it that way, never from memory).
 
 This island owns one job: **classify each item essential or accidental, then route it by that tag.** Nothing else.
 

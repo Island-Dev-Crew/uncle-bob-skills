@@ -5,7 +5,7 @@ description: Live recognition of agent thrash - the struggle Uncle Bob says novi
 
 # Thrash Watch: see the struggle
 
-When Bob's agents failed in December, their behavior was the data, and he could read it: *"the important part was the next step where I watched them thrash. I could see the agent struggle and I recognized the struggle since I have been through that struggle… the novice would come in and not recognize the struggle"* ([C27](../../01-CONCEPT-LEDGER.md)). Recognition is the skill this island encodes. The root cause is almost always mess: *"they are as subject as humans are to messy code… The code can get messy enough that the agents cannot deal with it any longer and then they'll just start to spin"* (C2). The threshold differs from a human's, but it exists (C2). A codebase a human still tolerates can already be spinning its agents.
+When Bob's agents failed in December, their behavior was the data, and he could read it: *"the important part was the next step where I watched them thrash. I could see the agent struggle and I recognized the struggle since I have been through that struggle… the novice would come in and not recognize the struggle"* ([C27](../../docs/01-CONCEPT-LEDGER.md)). Recognition is the skill this island encodes. The root cause is almost always mess: *"they are as subject as humans are to messy code… The code can get messy enough that the agents cannot deal with it any longer and then they'll just start to spin"* (C2). The threshold differs from a human's, but it exists (C2). A codebase a human still tolerates can already be spinning its agents.
 
 ## Report or repair - route before you watch
 

@@ -51,7 +51,16 @@ DRIVE = re.compile(r"^[A-Za-z]:")
 # non-ASCII space separators. A plain U+0020 is a legal filename character and is
 # excluded; everything else here makes a key that silently joins nothing.
 INVISIBLE = ("Cc", "Cf", "Zl", "Zp", "Zs")
-EPS = 1e-9
+# No tolerance is applied to any comparison here, and the arithmetic is what earns
+# that. Every metric is PARSED, never computed: float() rounds each decimal
+# spelling exactly once, so '3.2' and '3.20' land on the identical double and the
+# equal-passes convention holds without a window. The one number this script does
+# compute, the budget percentage, is a single correctly-rounded division of exact
+# operands, so it lands on the same double as a --budget typed as that very
+# percentage. Nothing accumulates rounding, so a tolerance could only widen the
+# thresholds the prose calls strict - which is exactly what a 1e-9 epsilon here
+# used to do: a new file at 6.0000000005 printed 'at or under ceiling 6' and the
+# gate exited 0. Strict now means strict to the last bit a double can hold.
 FIELDS = ("crap", "complexity", "coverage")
 
 
@@ -90,8 +99,8 @@ def fmt_close(value, other, spec=".2f", wide=".12g"):
 
     The verdict compares full floats; a message that prints 'crap 3.20 -> 3.20'
     on a WORSE line hides the difference the verdict actually turned on. Widening
-    once is not enough - at CRAP 1000 (complexity 32 at zero coverage) a gap
-    larger than EPS still vanishes at .12g - so the widening walks out to '.17g',
+    once is not enough - at CRAP 1000 (complexity 32 at zero coverage) a gap of
+    1e-9 still vanishes at .12g - so the widening walks out to '.17g',
     which round-trips a double and therefore renders two distinct floats
     distinctly. Equal floats print at `spec`, because there is nothing to show.
     """
@@ -221,11 +230,11 @@ def compare(base, cur, ceiling):
         if name in base:
             b_crap, b_comp, b_cov = base[name]
             worse = []
-            if crap > b_crap + EPS:
+            if crap > b_crap:
                 worse.append(f"crap {fmt_close(b_crap, crap)} -> {fmt_close(crap, b_crap)}")
-            if comp > b_comp + EPS:
+            if comp > b_comp:
                 worse.append(f"complexity {fmt_close(b_comp, comp, 'g')} -> {fmt_close(comp, b_comp, 'g')}")
-            if cov < b_cov - EPS:
+            if cov < b_cov:
                 worse.append(f"coverage {fmt_close(b_cov, cov, 'g')}% -> {fmt_close(cov, b_cov, 'g')}%")
             if worse:
                 regressions += 1
@@ -237,11 +246,17 @@ def compare(base, cur, ceiling):
                 print(f"ok          {name}  "
                       f"crap {fmt_close(b_crap, crap)} -> {fmt_close(crap, b_crap)}, "
                       f"coverage {fmt_close(b_cov, cov, 'g')}% -> {fmt_close(cov, b_cov, 'g')}%")
-        elif crap > ceiling + EPS:
+        elif crap > ceiling:
             new_over += 1
-            print(f"NEW-OVER    {name}  crap {crap:.2f} over ceiling {ceiling:g}")
+            # Widened on the same terms as the WORSE line, and for the same reason:
+            # with no tolerance in the comparison a file can be over the ceiling by
+            # less than .2f shows, and 'crap 6.00 over ceiling 6' reads as a verdict
+            # with no reason in it.
+            print(f"NEW-OVER    {name}  crap {fmt_close(crap, ceiling)} "
+                  f"over ceiling {fmt_close(ceiling, crap, 'g')}")
         else:
-            print(f"ok new      {name}  crap {crap:.2f} at or under ceiling {ceiling:g}")
+            print(f"ok new      {name}  crap {fmt_close(crap, ceiling)} "
+                  f"at or under ceiling {fmt_close(ceiling, crap, 'g')}")
     return regressions, new_over
 
 
@@ -303,12 +318,16 @@ def main(argv=None):
         regressions, new_over = compare(base, cur, args.ceiling)
         merged = dict(base)
         merged.update(cur)
-        over = [n for n, v in merged.items() if v[0] > args.ceiling + EPS]
+        over = [n for n, v in merged.items() if v[0] > args.ceiling]
         pct = 100.0 * len(over) / len(merged)
-        bust = pct > args.budget + EPS
+        bust = pct > args.budget
+        # Both sides widen, not just the share. With no tolerance in the comparison
+        # a bust can be narrower than .1f shows, and a line reading '4.8% (limit
+        # 4.8%)' above a BUDGET-BUST is evidence that contradicts its own verdict.
         shown = fmt_close(pct, args.budget, ".1f")
+        limit = fmt_close(args.budget, pct, ".1f")
         print(f"budget: {len(over)}/{len(merged)} files over ceiling {args.ceiling:g} = "
-              f"{shown}% (limit {args.budget:.1f}%)")
+              f"{shown}% (limit {limit}%)")
         if bust:
             print("BUDGET-BUST over-ceiling share exceeds the declared project allowance")
         print(f"{len(cur)} touched files, {regressions} regressions, {new_over} new over ceiling")

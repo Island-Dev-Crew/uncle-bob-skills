@@ -9,7 +9,7 @@ Coverage instruments lines and branches. It records that a line **ran**. It reco
 
 This is the documented hole in the metric, not a hypothetical. Coverage measures execution, not assertion quality, so assertion-free tests game it and teams optimise the number without reducing risk ([`research/crap-metric.md`](../../research/crap-metric.md)). It is also why the relay puts a hardener behind the cleaner: *"the guy who runs the mutation testing and he's absolutely merciless… it's going to have 100% coverage"* (C9). A hundred percent is the hardener's *starting* condition, never his verdict.
 
-This island patrols the gap: **find the tests that execute without asserting, and route each one to the mutation run that proves the case.** Quotes reach it only through the [concept ledger](../../01-CONCEPT-LEDGER.md).
+This island patrols the gap: **find the tests that execute without asserting, and route each one to the mutation run that proves the case.** Quotes reach it only through the [concept ledger](../../docs/01-CONCEPT-LEDGER.md).
 
 ## Four ways a suite games the number
 
@@ -94,7 +94,7 @@ Steps 4 and 5 run on the neighbouring island, not here. Skipping them leaves the
 
 - **[`crap-gate`](../crap-gate/SKILL.md) owns the score this island distrusts**: the formula, the human 4 / agent 6 / experiment 8 regimes, the input contract. This island never computes or re-tunes a CRAP score; it audits whether the coverage term feeding one was earned.
 - **[`mutant-hunt`](../mutant-hunt/SKILL.md) owns the mutation run that settles it**: diff scoping, operator families, the zero-survivors-on-the-diff contract, the runtime budget cap. This island owns **detection of gamed coverage and the routing to mutation**; it hands over scope and stops.
-- **Writing a suite that teaches is the sibling [`tests-as-spec`](../tests-as-spec/SKILL.md)** (Wave 2, [roster](../../02-ROSTER-50.md) line 24): naming, arrangement, and a suite readable as the specification by the next fresh context. That island is about tests worth reading; this one is about tests worth trusting.
+- **Writing a suite that teaches is the sibling [`tests-as-spec`](../tests-as-spec/SKILL.md)** (Wave 2, [roster](../../docs/02-ROSTER-50.md) line 24): naming, arrangement, and a suite readable as the specification by the next fresh context. That island is about tests worth reading; this one is about tests worth trusting.
 - **Where the scan executes** (pre-commit, PostToolUse, a CI step) belongs to [`agent-guardrails`](../../COMPANION.md#agent-guardrails), and the loop plumbing around it to [`archipelago`](../../COMPANION.md#archipelago).
 - **The captured findings enter [`evidence-packet`](../../COMPANION.md#evidence-packet) format**: the scanner's stdout and its exit code become one rung of the packet's verification ladder, never a second evidence format. The `--assert-helper` excusal needs no separate note. It is printed on the summary line the packet already captures, and a stdout that could not be written exits 2 rather than contributing a verdict with no evidence behind it.
 

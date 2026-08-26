@@ -5,7 +5,7 @@ description: Component stability computed as a check instead of argued as an opi
 
 # Stability Order: the numbers a component cannot argue with
 
-Bob's structural move is a human one: *"I'd interrogate the agents. What's the structure here? How does this module interrelate with that module?… and then I would get scared to death because the answers were horribly frightening. And then I would design a module structure…"* (C12, [ledger](../../01-CONCEPT-LEDGER.md)). The interrogation returns prose, and prose is where opinion hides. This island turns the countable half of that answer into arithmetic. Three numbers per component. Two principles read as verdicts over those numbers. A checker that names the component out loud when either principle breaks. What remains judgement stays judgement, and is labeled so below.
+Bob's structural move is a human one: *"I'd interrogate the agents. What's the structure here? How does this module interrelate with that module?… and then I would get scared to death because the answers were horribly frightening. And then I would design a module structure…"* (C12, [ledger](../../docs/01-CONCEPT-LEDGER.md)). The interrogation returns prose, and prose is where opinion hides. This island turns the countable half of that answer into arithmetic. Three numbers per component. Two principles read as verdicts over those numbers. A checker that names the component out loud when either principle breaks. What remains judgement stays judgement, and is labeled so below.
 
 Research ground for every non-transcript claim here is [`martin-canon.md`](../../research/martin-canon.md): Clean Architecture (2017) Ch. 14, the component *coupling* chapter that carries ADP, SDP and SAP, plus the DIP formulation *"depend in the direction of abstraction"*.
 
@@ -43,6 +43,8 @@ Two edge cases decide whether the gate is honest:
 | `abstract-and-unstable` (`A + I > 1`) | abstraction nobody depends on | dead weight: interfaces with no callers |
 
 Clean Architecture Ch. 14 gives these two regions names. The brief in [`martin-canon.md`](../../research/martin-canon.md) verifies the principles and the chapter, not the region nicknames. So the checker prints the symptom instead of a nickname it cannot cite.
+
+**Both comparisons are exact, and neither carries a tolerance.** `Ce`, `Ca`, `abstract` and `total` are counts, so `I`, `A` and `D` are rationals. The checker computes them as `fractions.Fraction` and parses `--max-distance` as one too, so the verdict turns on the number you wrote rather than on the double nearest it, and every decimal in the output is rendering. The precision matters in both directions, and the island got it wrong in one of them: a `1e-9` epsilon used to widen both comparisons, and it passed a component sitting at `D = 1/3` against `--max-distance 0.333333333`. Plain floats fail the opposite way — `0.3 + 0.6 - 1` is `0.10000000000000009`, so a component at exactly `D = 1/10` would be convicted of breaching `0.1`. Exact rationals are the only reading that is strict without also being wrong, and both readings are captured as runs below.
 
 ## The input contract
 
@@ -89,7 +91,7 @@ This island supplies metric content only:
 
 ## Enforced vs advisory
 
-- `enforced`: the arithmetic and both verdicts. [`scripts/stability-check.py`](scripts/stability-check.py) computes `I`, `A` and `D` from the declared graph, then exits 1 on any SDP breach or any `D > max-distance`. It exits 2 fail-closed on an undeclared component, a self-edge, `abstract > total`, an out-of-range `--max-distance`, an unreadable spec, or an edgeless graph. The island's own shape is enforced by the pack validator (`scripts/validate-island.py` at the pack root).
+- `enforced`: the arithmetic and both verdicts. [`scripts/stability-check.py`](scripts/stability-check.py) computes `I`, `A` and `D` from the declared graph as exact rationals, then exits 1 on any SDP breach or any `D > max-distance`. Neither comparison carries a tolerance in either direction, so a breach `1e-10` past the ceiling fails and a component sitting exactly on it passes; the breach line widens its own numbers until the two render differently, out to the exact fraction. It exits 2 fail-closed on an undeclared component, a self-edge, `abstract > total`, an out-of-range `--max-distance`, an unreadable spec, or an edgeless graph. The island's own shape is enforced by the pack validator (`scripts/validate-island.py` at the pack root).
 - `advisory`: everything feeding the checker. What counts as a component boundary, the type-counting rule behind `A`, the graph-extraction command, the `0.5` ceiling, and the choice of lever when a breach lands. Each is named here so a later wave can mechanize it; claiming any of them as enforced would launder advisory into enforced.
 
 **Red/green proof.** The checker earns its `enforced` line by having been watched failing, the [`known-dirty-fixture`](../known-dirty-fixture/SKILL.md) ritual. Recompute from this island's directory:
@@ -107,6 +109,15 @@ bash ../known-dirty-fixture/scripts/prove-gate.sh scripts/fixtures/dirty-compone
 ```
 
 Deleting either fixture returns the gate to `unverified`.
+
+**The boundary, pinned from both sides.** A third fixture carries one component at exactly `D = |3/10 + 3/5 - 1| = 1/10`, in a graph with no SDP breach anywhere, so the SAP comparison is the only judgement the run makes:
+
+```bash
+python3 scripts/stability-check.py scripts/fixtures/boundary-distance.json --max-distance 0.1            # exit 0
+python3 scripts/stability-check.py scripts/fixtures/boundary-distance.json --max-distance 0.0999999999   # exit 1
+```
+
+Exactly on the line passes, and `1e-10` past it is past it: `SAP-BREACH report D=1/10 > 999999999/10000000000`. The red run reported `0 violations` and exit `0` until the epsilon came out. The green run is the other half of the same claim: with plain floats it turns red, because `D` computes to `0.10000000000000009` and the breach prints as `D=0.10 > 0.10` — a conviction whose own evidence line says the two numbers are equal. That is why the breach line widens, and why the last rendering it widens to is the fraction itself: past one widening, a decimal is a shadow of the number, and this gate compared the number.
 
 **The blind spot, captured.** The exemption `>=` buys is proven the same way the gate is, so the hole is a run and not a sentence:
 

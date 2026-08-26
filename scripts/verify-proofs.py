@@ -33,7 +33,10 @@ a mismatch or a refusal, 2 on usage or IO, and 3 when nothing was executed at al
 verifier that ran nothing has verified nothing, and saying PASS there is the same failure
 as a gate that scans zero files. A candidate that is neither a proof nor a template is
 reported as PENDING, one line each, and never guessed at; `--strict` makes any PENDING
-exit 4, so a caller that wants full coverage can demand it. PENDING is the failure
+exit 4, so a caller that wants full coverage can demand it, and 4 OUTRANKS 3 when both are
+true: an island whose every candidate is PENDING ran nothing, and answering the coverage
+question with the same code an island holding no proof block at all returns tells the
+caller who asked the less specific of two true things. PENDING is the failure
 direction of every ambiguity here: an output line that could pass for a command ends the
 search for a report line, which leaves a proof unverified rather than pairing a command
 with a code that is not its own.
@@ -44,10 +47,16 @@ oversight — a proof block that is never executed is a claim again. So it is on
 point at a repository you trust: a fork, a pull request, or an untrusted clone can put a
 command in a fenced block and this tool will run it. Two mitigations, neither a substitute
 for that sentence: the leading token must be on the allowlist above, and a command carrying
-a network, privilege-escalation, or device-destructive primitive is REFUSED rather than run.
-The allowlist widened when the grammar was written down — it now admits a bare
-island-relative script and a `printf` stdin pipe — so it constrains the first token only,
-never the rest of the line.
+a network, privilege-escalation, or device-destructive primitive is REFUSED rather than run,
+by the name the KERNEL would resolve rather than the characters on the page - `/usr/bin/curl`
+and `../../sbin/dd` are refused with the bare words, and so are the spellings only a shell
+resolves (`cur\\l`, `'cur'l`, `c''url`, `CURL`), because the line is parsed into words the way
+bash parses it before those words are judged. What a word parse does NOT reach is a name assembled
+at run time: `C=cur\\l; bash -c '$C x'` carries no forbidden word in any word it has, and is run.
+That is the trust sentence above, restated about one narrower case rather than argued away. The
+allowlist
+widened when the grammar was written down — it now admits a bare island-relative script and a
+`printf` stdin pipe — so it constrains the first token only, never the rest of the line.
 
 KNOWN LIMITS, stated rather than discovered. Each annotated command runs from the island's
 directory, preceded by the steps of its own block that this tool can replay verbatim: the
@@ -81,13 +90,22 @@ from pathlib import Path
 
 # Refused outright rather than executed. Not a sandbox — a `python3 -c` can still do
 # anything — but it closes the shapes that exfiltrate or escalate, which are the ones a
-# hostile proof block would reach for first. Re-measured after the grammar widened the
-# allowlist: zero candidates in this repo match, so it costs no false red today. Re-measure
+# hostile proof block would reach for first. Re-measured after the refusal learned to read the
+# line as words rather than as text, which is the reading that could newly catch an innocent
+# argument: zero candidates in this repo match, so it costs no false red today. Re-measure
 # rather than trust this sentence — `grep -c REFUSED` on a full run is the check.
-FORBIDDEN = re.compile(
-    r"(?<![\w./-])(?:curl|wget|nc|ncat|netcat|telnet|ssh|scp|sftp|rsync"
-    r"|sudo|doas|chown|chgrp|shutdown|reboot|mkfs|dd)(?![\w./-])"
-)
+FORBIDDEN_NAMES = frozenset("""
+curl wget nc ncat netcat telnet ssh scp sftp rsync
+sudo doas chown chgrp shutdown reboot mkfs dd
+""".split())
+# The bare-word spelling. The lookbehind is what keeps `scripts/dd-helper.py` from reading as
+# `dd` — and it is also why this pattern alone cannot see a program named by path.
+FORBIDDEN = re.compile(r"(?<![\w./-])(?:" + "|".join(sorted(FORBIDDEN_NAMES)) + r")(?![\w./-])")
+# A word that names a program by path rather than by bare name: `/usr/bin/curl`, `../../sbin/dd`.
+PATH_WORD = re.compile(r"[A-Za-z0-9_.~-]*(?:/[A-Za-z0-9_.~-]+)+")
+# The interpreters whose `-c` operand is shell source in its own right rather than data, so a
+# word inside it is a program the kernel will reach and not an argument being passed along.
+SHELL_INTERPRETERS = frozenset({"bash", "sh"})
 
 # `# exit N`, `# -> EXIT=N`, `# → EXIT=N`, tolerating surrounding prose in the comment.
 ANNOT = re.compile(r"#.*?(?:exit\s*=?\s*|EXIT=)(\d+)", re.IGNORECASE)
@@ -110,6 +128,66 @@ ARROW = re.compile(r"\s*(?:[-=]*>|→)?\s*(?:EXIT\s*=\s*)?(\d+)\b")
 
 def is_runnable(cmd):
     return bool(RUNNABLE.match(cmd.strip()))
+
+
+def shell_words(script, depth=0):
+    """Every word this script hands the kernel, with quoting and escaping already resolved.
+
+    `shlex.split` performs the same word parse the shell does, which is the whole point: it is
+    the one reading under which `cur\\l`, `'cur'l`, `"cur"l` and `c''url` stop being four
+    strings and become one word, `curl`. A nested `bash -c` operand is walked too, the way
+    `closed-stream-check.py`'s `self_probe` walks it, because that operand is shell source again
+    and a spelling this parse resolves here can hide behind one more quote inside it. Depth is
+    capped for the reason that cap exists there: a proof block does not nest interpreters three
+    deep, and a runaway parse would be a worse failure than a word this never sees.
+
+    A line `shlex` refuses — an unbalanced quote — yields nothing, and the caller falls back to
+    reading it as text.
+    """
+    try:
+        words = shlex.split(script)
+    except ValueError:
+        return
+    for i, word in enumerate(words):
+        yield word
+        if depth >= 3 or os.path.basename(word).lower() not in SHELL_INTERPRETERS:
+            continue
+        for j in range(i + 1, len(words)):
+            if words[j] == "-c" and j + 1 < len(words):
+                yield from shell_words(words[j + 1], depth + 1)
+                break
+
+
+def forbidden_primitive(script):
+    """The network, privilege-escalation or device-destructive primitive this script would
+    reach, however it is spelled — or None.
+
+    Three readings are needed because three spellings reach the same binary. `curl x` is caught
+    by the bare-word pattern; the lookbehind that keeps `scripts/dd-helper.py` from reading as
+    `dd` also blinds that pattern to `/usr/bin/curl x`, which executes the identical program, so
+    a word naming a path is judged by its basename — the name the kernel resolves. Neither
+    pattern sees the third spelling, and that is not a matter of a missing character class:
+    both read the line as text, and the shell does not. `cur\\l`, `'cur'l`, `"cur"l` and `c''url`
+    are ordinary quoting, bash resolves every one to `curl`, and a documented proof carrying any
+    of them was RUN — by this tool and then four more times by the harness that shares this
+    test. So the line is also read as the shell parses it, and the resulting words are compared
+    case-insensitively, because on a case-insensitive volume `CURL` and `/usr/bin/CURL` execute
+    the same binary as their lowercase spellings.
+
+    The patterns run first and run always, not only when `shlex` refuses the line. They cover
+    what a word parse cannot — a name welded to other syntax, and a line whose quoting is
+    unbalanced enough that there are no words to read.
+    """
+    bare = FORBIDDEN.search(script)
+    if bare:
+        return bare.group(0)
+    for word in PATH_WORD.findall(script):
+        if os.path.basename(word) in FORBIDDEN_NAMES:
+            return word
+    for word in shell_words(script):
+        if os.path.basename(word).lower() in FORBIDDEN_NAMES:
+            return word
+    return None
 
 
 def reported_code(rest):
@@ -437,10 +515,10 @@ def main() -> int:
                     print(f"         {cmd}")
                     continue
                 script = "; ".join(setup + [cmd]) if setup else cmd
-                bad = FORBIDDEN.search(script)
+                bad = forbidden_primitive(script)
                 if bad:
                     refused += 1
-                    print(f"REFUSED {d.name}: {bad.group(0)!r} is not run by this tool")
+                    print(f"REFUSED {d.name}: {bad!r} is not run by this tool")
                     print(f"         {cmd}")
                     continue
                 ran += 1
@@ -471,6 +549,17 @@ def main() -> int:
         # block that had to be refused as exit 3 read as "nothing to check" when the truth
         # was "something here was too dangerous to run".
         return 1
+    if strict and pending:
+        # Ordered ahead of the nothing-ran check on purpose. An island whose candidates ALL
+        # lack a documented code satisfies both conditions at once, and the docstring's
+        # unconditional promise — any PENDING exits 4 under --strict — was false there: it
+        # returned the same 3 an island with no proof block at all returns, so the caller who
+        # explicitly asked about coverage was told "nothing to check" instead of "here are the
+        # candidates that document nothing". 4 is the more specific of two true answers, and
+        # --strict is the caller asking for exactly that one.
+        print(f"STRICT: {pending} candidate(s) carry no documented exit code",
+              file=sys.stderr)
+        return 4
     if ran == 0:
         # A verifier that ran nothing has verified nothing. Reporting success here let an
         # island whose proof block the extractor could not recognise — or which has none —
@@ -480,10 +569,6 @@ def main() -> int:
         print("NOTHING VERIFIED - no annotated command was executed; this is not a pass",
               file=sys.stderr)
         return 3
-    if strict and pending:
-        print(f"STRICT: {pending} candidate(s) carry no documented exit code",
-              file=sys.stderr)
-        return 4
     return 0
 
 

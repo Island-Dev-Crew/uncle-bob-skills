@@ -1,8 +1,8 @@
 # Extraction — Uncle Bob × Matt Pocock, two channels
 
 **Video:** https://www.youtube.com/live/zcLPGC-tvgk · 3,399 s (~56.7 min) · analyzed 2026-08-19 under the `video-analysis` island.
-**Channel 1 (said):** the full ~57-minute conversation as YouTube auto-captions, 10,121 words. The transcript is cited here, not redistributed — [`source/README.md`](source/README.md) regenerates it and its timestamped captions in two documented commands, so every quote below can be re-checked against the source.
-**Channel 2 (shown):** 120-frame target at ~28 s cadence → **105 informative frames** after mpdecimate dedup; sweep run by three independent readers over f_001–f_035 / f_036–f_070 / f_071–f_105; the 11 notable frames preserved in [`source/frames-notable/`](source/frames-notable/). The frames are a sample, not the whole video — a one-frame flash between samples can be missed.
+**Channel 1 (said):** the full ~57-minute conversation as YouTube auto-captions, 10,121 words. The transcript is cited here, not redistributed — [`source/README.md`](../source/README.md) regenerates it and its timestamped captions in two documented commands, so every quote below can be re-checked against the source.
+**Channel 2 (shown):** 120-frame target at ~28 s cadence → **105 informative frames** after mpdecimate dedup; sweep run by three independent readers over f_001–f_035 / f_036–f_070 / f_071–f_105; the 11 notable frames preserved in [`source/frames-notable/`](../source/frames-notable/). The frames are a sample, not the whole video — a one-frame flash between samples can be missed.
 
 ## Thesis (from the words)
 
@@ -28,14 +28,14 @@ This is a **words-dominant** source: three independent frame readers confirmed z
 
 | Claim in the conversation | Verdict |
 |---|---|
-| CRAP metric exists, formula, 2007 origin | **Verified** — Savoia & Evans, `comp²×(1−cov/100)³+comp`, threshold 30 canonical ([research/crap-metric.md](research/crap-metric.md)). Bob's own crap4java/crap4go/crap4clj repos active Aug 2026. |
-| Mutation testing history + overnight-in-2000 impracticality | **Verified mechanism** (Lipton 1971; DeMillo/Lipton/Sayward 1978; Google runs it diff-scoped at 2B LOC). His personal 2000 anecdote is his account. Note: literal 100%-kill is provably unreachable (equivalent mutants, 4–39%) — the hardener needs an excusal ledger ([research/mutation-testing.md](research/mutation-testing.md)). |
-| Lost-in-the-middle | **Verified** — Liu et al. TACL 2024 U-curve; IFScale instruction-density decay; Horthy's ~40% smart-zone line ([research/lost-in-the-middle.md](research/lost-in-the-middle.md)). |
-| Clean Code 2nd edition exists | **Verified** — Pearson, Sept/Oct 2025, incl. "Appendix: The Clean Code Debate" (the Ousterhout debate), p. 561 ([research/ousterhout-debate.md](research/ousterhout-debate.md)). |
+| CRAP metric exists, formula, 2007 origin | **Verified** — Savoia & Evans, `comp²×(1−cov/100)³+comp`, threshold 30 canonical ([research/crap-metric.md](../research/crap-metric.md)). Bob's own crap4java/crap4go/crap4clj repos active Aug 2026. |
+| Mutation testing history + overnight-in-2000 impracticality | **Verified mechanism** (Lipton 1971; DeMillo/Lipton/Sayward 1978; Google runs it diff-scoped at 2B LOC). His personal 2000 anecdote is his account. Note: literal 100%-kill is provably unreachable (equivalent mutants, 4–39%) — the hardener needs an excusal ledger ([research/mutation-testing.md](../research/mutation-testing.md)). |
+| Lost-in-the-middle | **Verified** — Liu et al. TACL 2024 U-curve; IFScale instruction-density decay; Horthy's ~40% smart-zone line ([research/lost-in-the-middle.md](../research/lost-in-the-middle.md)). |
+| Clean Code 2nd edition exists | **Verified** — Pearson, Sept/Oct 2025, incl. "Appendix: The Clean Code Debate" (the Ousterhout debate), p. 561 ([research/ousterhout-debate.md](../research/ousterhout-debate.md)). |
 | "Agents have a huge, perfectly accurate short-term memory" | **Unverified as research** — his working rationale for threshold widening; treat as hypothesis. |
 | "Software is the most complicated thing…" is Dijkstra | **Unverified as verbatim** — RCM hedged it himself; nearest sourced ground is EWD340. |
-| His harness/tools are public exemplars | **Verified** — github.com/unclebob/swarm-forge (tmux multi-agent orchestrator), crap4* repos ([research/martin-canon.md](research/martin-canon.md)). |
+| His harness/tools are public exemplars | **Verified** — github.com/unclebob/swarm-forge (tmux multi-agent orchestrator), crap4* repos ([research/martin-canon.md](../research/martin-canon.md)). |
 
 ## So-what
 
-The conversation is a complete, internally consistent operating doctrine for agent-directed engineering, and nearly every load-bearing element is *checkable* — which is what makes it forgeable into skills under the IDC law. The mining products: 28 cited concepts ([01](01-CONCEPT-LEDGER.md)), 7 research briefs ([research/](research/)), a Forge-50 collision audit, and a 50-island roster ([02](02-ROSTER-50.md)).
+The conversation is a complete, internally consistent operating doctrine for agent-directed engineering, and nearly every load-bearing element is *checkable* — which is what makes it forgeable into skills under the IDC law. The mining products: 28 cited concepts ([01](01-CONCEPT-LEDGER.md)), 7 research briefs ([research/](../research/)), a Forge-50 collision audit, and a 50-island roster ([02](02-ROSTER-50.md)).

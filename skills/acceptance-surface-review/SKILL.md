@@ -9,7 +9,7 @@ The pack's core doctrine has a consequence that is easy to state and hard to hol
 
 The consequence: **the human's review surface shrinks to the acceptance artifacts.** Not because generated code is trustworthy. Because a human reading generated code line by line re-imposes exactly the slowness the whole architecture was built to remove — *"it's interesting because it's fast, but it's frustrating because it makes me slow"* (C1). Every gate in this pack exists to buy that reading back. A reviewer who opens the diff anyway spends the margin the gates just earned.
 
-This island owns one question: **what is on the surface, and how does criticality widen it.** Research ground for the non-transcript claims: [`martin-canon.md`](../../research/martin-canon.md). Quotes reach this page only through the [concept ledger](../../01-CONCEPT-LEDGER.md).
+This island owns one question: **what is on the surface, and how does criticality widen it.** Research ground for the non-transcript claims: [`martin-canon.md`](../../research/martin-canon.md). Quotes reach this page only through the [concept ledger](../../docs/01-CONCEPT-LEDGER.md).
 
 ## The surface
 
@@ -118,7 +118,7 @@ The two runs after them are not fixtures, because a dead pipe cannot be checked 
 
 ## Boundaries
 
-- **The verdict ceremony is not mine.** Who may review (never the author), what a verdict binds, when a verdict voids on a moved head: that is the Forge's [`cross-family-review`](../../COMPANION.md#cross-family-review), and this island **invokes it, never redefines it**. The ruling is recorded as audit line 3 of [`03-FORGE50-AUDIT.md`](../../03-FORGE50-AUDIT.md). This island decides what lands in front of the reviewer; that island decides what the reviewer's "yes" is worth.
+- **The verdict ceremony is not mine.** Who may review (never the author), what a verdict binds, when a verdict voids on a moved head: that is the Forge's [`cross-family-review`](../../COMPANION.md#cross-family-review), and this island **invokes it, never redefines it**. The ruling is recorded as audit line 3 of [`03-FORGE50-AUDIT.md`](../../docs/03-FORGE50-AUDIT.md). This island decides what lands in front of the reviewer; that island decides what the reviewer's "yes" is worth.
 - **The artifacts are produced upstream.** The Gherkin spec and the QA procedure are the output contract of [`specifier-seat`](../specifier-seat/SKILL.md). What a well-formed scenario or QA step looks like is settled there, and is not restated here. This island never authors the surface; it rules on whether the right surface was put in front of a human.
 - **Their red-green binding is gated elsewhere.** That the scenarios fail before implementation and pass after is [`gherkin-gate`](../gherkin-gate/SKILL.md)'s enforcement. Review reads the passing spec; it does not re-derive that the spec was ever red.
 - **The executable QA run is [`qa-script-seat`](../qa-script-seat/SKILL.md)'s.** The human reads the procedure and the script's binary verdict; determinizing procedure into script belongs to that seat.

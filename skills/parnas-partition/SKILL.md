@@ -13,7 +13,7 @@ Ask "what does this do?" and every pile of code has an answer. Ask instead: *wha
 
 ## The agent-era sharpening
 
-Parnas wrote for humans holding a design in their heads. The criterion binds harder now, for a reason Bob states directly about models: *"Anything that is well partitioned with well-disciplined interfaces… is something a human can grasp because we compartmentalize in our minds. Well, so do the models"*. He is just as direct about the failure mode when you don't: *"If you load up a module with every bit of stuff under the of under the sun [sic], the poor agent is going to wonder, 'What the heck am I doing in here?'"* (C15, quoted through [the ledger](../../01-CONCEPT-LEDGER.md); all conversation quotes on this island come that way, never from memory).
+Parnas wrote for humans holding a design in their heads. The criterion binds harder now, for a reason Bob states directly about models: *"Anything that is well partitioned with well-disciplined interfaces… is something a human can grasp because we compartmentalize in our minds. Well, so do the models"*. He is just as direct about the failure mode when you don't: *"If you load up a module with every bit of stuff under the of under the sun [sic], the poor agent is going to wonder, 'What the heck am I doing in here?'"* (C15, quoted through [the ledger](../../docs/01-CONCEPT-LEDGER.md); all conversation quotes on this island come that way, never from memory).
 
 The research brief draws the consequence explicitly. Modules whose internals are hidden *are exactly the modules an agent can regenerate without cascading breakage*, and the module boundary is the natural context-window boundary ([`seventies-canon.md`](../../research/seventies-canon.md)). So a secret is three things at once:
 

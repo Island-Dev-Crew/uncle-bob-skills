@@ -24,12 +24,15 @@ numerator: an unbacked strategic claim lowers the share instead of flattering it
 Exit codes (distinct meanings, never shared):
   0  every strategic row evidenced AND share at or above the floor
   1  verdict breach — an unevidenced strategic row, or share below the floor
-  2  fail-closed on ledger CONTENT — empty ledger, or a malformed/undecidable row
-  3  IO or usage error — unreadable path, bad flag, --help (never a verdict)
+  2  fail-closed on ledger content, internal failure, or unwritable output
+  3  input IO or usage error — unreadable path, bad flag, --help (never a verdict)
 
 OVER the ceiling prints OVER and exits 0: over-investment is a judgment call this
-script does not own. The floor is enforced; the ceiling is a reading.
+script does not own. The floor is enforced; the ceiling is a reading. Both file and
+stdin input decode as strict UTF-8. Non-finite aggregate sums or percentage products
+are malformed arithmetic, never a verdict.
 """
+import io
 import math
 import re
 import os
@@ -86,9 +89,10 @@ def parse_args(argv):
 
 
 def read_lines(path):
-    if path is None:
-        return sys.stdin.read().splitlines()
     try:
+        if path is None:
+            with io.TextIOWrapper(sys.stdin.buffer, encoding="utf-8", errors="strict") as fh:
+                return fh.read().splitlines()
         return Path(path).read_text(encoding="utf-8").splitlines()
     except (OSError, UnicodeDecodeError) as err:
         usage(f"cannot read ledger {path!r}: {err}")
@@ -161,10 +165,19 @@ def main(argv) -> int:
             discounted += minutes
             unevidenced += 1
             print(f"UNEVIDENCED {minutes:>6.0f}m  {detail:<34}  {item}")
+    if not all(math.isfinite(value) for value in (total, evidenced, discounted)):
+        die("aggregate minutes overflow — the ledger's minutes are out of range", EXIT_MALFORMED)
     # Cross-multiplied comparison: no division, so the floor is exact at the boundary.
-    if evidenced * 100.0 < floor * total:
+    scaled_evidence = evidenced * 100.0
+    scaled_floor = floor * total
+    scaled_ceiling = ceiling * total
+    if not all(math.isfinite(value)
+               for value in (scaled_evidence, scaled_floor, scaled_ceiling)):
+        die("aggregate comparison overflows — the ledger's minutes are out of range",
+            EXIT_MALFORMED)
+    if scaled_evidence < scaled_floor:
         verdict = "UNDER"
-    elif evidenced * 100.0 > ceiling * total:
+    elif scaled_evidence > scaled_ceiling:
         verdict = "OVER"
     else:
         verdict = "IN-BAND"
@@ -194,19 +207,19 @@ if __name__ == "__main__":
         _code = _exc.code if isinstance(_exc.code, int) else (0 if _exc.code is None else 1)
     except KeyboardInterrupt:
         _code = 3
-    except BaseException as _exc:              # an exception is not a verdict
+    except BaseException as _exc:              # internal/output IO uses the pack-wide seal
         try:
             print(f"error: internal failure: {type(_exc).__name__}: {_exc}", file=sys.stderr)
         except BaseException:
             pass
-        _code = 3
+        _code = 2
     for _stream, _fd in ((sys.stdout, 1), (sys.stderr, 2)):
         try:
             if _stream is not None:
                 _stream.flush()
         except BaseException:
             if _code in (0, 1):                # output that never landed is not a verdict
-                _code = 3
+                _code = 2
             try:                               # so the shutdown flush cannot raise again
                 os.dup2(os.open(os.devnull, os.O_WRONLY), _fd)
             except BaseException:

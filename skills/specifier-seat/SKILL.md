@@ -10,7 +10,7 @@ The intake seat of the five-seat relay (C9): *"take a human written document and
 ## Boundaries: who owns what
 
 - Upstream, this seat transforms; it does not elicit. The specifier starts AFTER shared understanding is settled. Reaching that understanding means interviewing the human, and that is [`grill`](../../COMPANION.md#grill)'s seat: grill drills the human and emits the settled decisions, and this seat consumes them. If the intent doc still holds open questions, live alternatives, or a "TBD", bounce it back to the human with each gap named, and stop. Asking the questions yourself is doing grill's job in the wrong seat.
-- Downstream, two named consumers. The coder seat takes the Gherkin spec; its job includes writing the unit tests and code *and* getting the Gherkin working (C9). The qa-script-seat takes the QA procedure and turns it into an executable script with a deterministic, binary verdict (C9). Seat names and ownership live in the pack roster ([`02-ROSTER-50.md`](../../02-ROSTER-50.md)). Write each artifact for its consumer, not for the archive: agents read everything they're sent, so completeness beats brevity here (C24).
+- Downstream, two named consumers. The coder seat takes the Gherkin spec; its job includes writing the unit tests and code *and* getting the Gherkin working (C9). The qa-script-seat takes the QA procedure and turns it into an executable script with a deterministic, binary verdict (C9). Seat names and ownership live in the pack roster ([`02-ROSTER-50.md`](../../docs/02-ROSTER-50.md)). Write each artifact for its consumer, not for the archive: agents read everything they're sent, so completeness beats brevity here (C24).
 
 ## The input contract: what "settled" means
 

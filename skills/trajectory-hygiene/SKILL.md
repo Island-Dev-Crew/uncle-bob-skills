@@ -5,7 +5,7 @@ description: Mid-session context stewardship - the kill-vs-continue call on a ru
 
 # Trajectory Hygiene: kill or continue
 
-A context window has momentum. Steer an agent one way early and "everything that follows in that same session… will continue following that trajectory. And the only way to clear the trajectory is to clear the context window" ([C11](../../01-CONCEPT-LEDGER.md)). Uncle Bob's contamination parable makes the second half concrete. A coffee conversation gets polluted by a passer-by's soap-opera chatter, and "from that point on all the coffee references have to do with the soap opera… The model doesn't know. It can't differentiate." (C11). Contamination never washes out. Correcting a poisoned session from inside that session only spends more tokens inside the poison. The one reset is a fresh context.
+A context window has momentum. Steer an agent one way early and "everything that follows in that same session… will continue following that trajectory. And the only way to clear the trajectory is to clear the context window" ([C11](../../docs/01-CONCEPT-LEDGER.md)). Uncle Bob's contamination parable makes the second half concrete. A coffee conversation gets polluted by a passer-by's soap-opera chatter, and "from that point on all the coffee references have to do with the soap opera… The model doesn't know. It can't differentiate." (C11). Contamination never washes out. Correcting a poisoned session from inside that session only spends more tokens inside the poison. The one reset is a fresh context.
 
 This island encodes the standing mid-session decision: *continue* while the trajectory serves the task, *kill-and-respawn* when it stops.
 

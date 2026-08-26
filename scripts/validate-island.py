@@ -7,11 +7,12 @@ Exit 0 iff every island passes every enforced check. Prints OK/FAIL per check.
 Enforced checks (each can go red — a gate that cannot fail is not a gate):
   F1  SKILL.md exists
   F2  frontmatter block present (--- ... ---) and parses as YAML
-  F3  frontmatter has non-empty name and description
+  F3  frontmatter has non-empty name and description, both actual YAML strings
   F4  name == folder basename, ^[a-z0-9]+(-[a-z0-9]+)*$, <=64 chars
   F5  no '<' or '>' anywhere in the frontmatter block
-  F6  description length 60..1024 chars
-  F7  agents/openai.yaml exists, parses, has interface.display_name + interface.short_description
+  F6  description is a string of length 60..1024 chars
+  F7  agents/openai.yaml exists, parses to a mapping, and interface.display_name +
+      interface.short_description are both non-blank strings
   F8  body cites the concept ledger (>=1 match of C1..C28)
   F9  body states the evidence discipline: contains both 'enforced' and 'advisory'.
       A PRESENCE test, not a truth test — it cannot tell a real enforced/advisory split
@@ -33,6 +34,27 @@ import yaml
 C_CITE = re.compile(r"\bC(?:[1-9]|1[0-9]|2[0-8])\b")
 NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 MD_LINK = re.compile(r"\]\((?!https?://)([^)#]+\.md)")
+
+
+def is_text(v) -> bool:
+    """A metadata field only counts when YAML handed back an actual non-blank string.
+
+    YAML will just as happily hand back a list, a mapping, an int, a bool, or None for
+    `name:` or `description:`, and every check below used to launder those through
+    bool()/str(): a mapping description measured as 130 characters of prose, an int
+    description measured as 70, and a list display_name counted as 'present'. The
+    field is then not the field the check names, so the check is not the check.
+    """
+    return isinstance(v, str) and bool(v.strip())
+
+
+def shape(v) -> str:
+    """Name what a rejected field actually carried, so FAIL says why and not just that."""
+    if v is None:
+        return "missing"
+    if isinstance(v, str):
+        return "blank"
+    return f"{type(v).__name__}, not a string"
 
 
 def check(results, island, cid, ok, detail=""):
@@ -64,26 +86,38 @@ def validate(d: Path, results) -> None:
     if not parsed:
         return
 
-    name = fm.get("name") or ""
-    desc = fm.get("description") or ""
-    check(results, island, "F3", bool(name) and bool(str(desc).strip()), "name+description non-empty")
+    name, desc = fm.get("name"), fm.get("description")
+    name_ok, desc_ok = is_text(name), is_text(desc)
+    bad = [f"{k} is {shape(v)}" for k, v, ok in (("name", name, name_ok), ("description", desc, desc_ok)) if not ok]
+    check(results, island, "F3", name_ok and desc_ok,
+          "; ".join(bad) if bad else "name+description non-empty strings")
     check(
         results, island, "F4",
-        name == island and bool(NAME_RE.match(str(name))) and len(str(name)) <= 64,
-        f"name '{name}' matches folder + regex",
+        name_ok and name == island and bool(NAME_RE.match(name)) and len(name) <= 64,
+        f"name '{name}' matches folder + regex" if name_ok else f"name is {shape(name)}",
     )
     check(results, island, "F5", "<" not in fm_text and ">" not in fm_text, "no angle brackets in frontmatter")
-    dlen = len(str(desc))
-    check(results, island, "F6", 60 <= dlen <= 1024, f"description length {dlen} in 60..1024")
+    check(results, island, "F6", desc_ok and 60 <= len(desc) <= 1024,
+          f"description length {len(desc)} in 60..1024" if desc_ok else f"description is {shape(desc)}")
 
     sidecar = d / "agents" / "openai.yaml"
     side_ok, side_detail = False, "agents/openai.yaml missing"
     if sidecar.is_file():
         try:
             sc = yaml.safe_load(sidecar.read_text(encoding="utf-8"))
-            iface = (sc or {}).get("interface") or {}
-            side_ok = bool(iface.get("display_name")) and bool(iface.get("short_description"))
-            side_detail = "sidecar interface complete" if side_ok else "sidecar missing display_name/short_description"
+            # isinstance, not `or {}`: a sidecar whose `interface:` parsed as a list used
+            # to reach .get() and take the whole run down with an AttributeError, so the
+            # island was never validated at all rather than reported malformed.
+            iface = sc.get("interface") if isinstance(sc, dict) else None
+            if not isinstance(iface, dict):
+                side_detail = f"sidecar interface is {type(iface).__name__}, not a mapping" if iface is not None else "sidecar has no interface mapping"
+            else:
+                dn, sd = iface.get("display_name"), iface.get("short_description")
+                side_ok = is_text(dn) and is_text(sd)
+                side_detail = ("sidecar interface complete" if side_ok else
+                               "; ".join(f"sidecar {k} is {shape(v)}"
+                                         for k, v in (("display_name", dn), ("short_description", sd))
+                                         if not is_text(v)))
         except yaml.YAMLError as e:
             side_detail = f"sidecar YAML error: {e}"
     check(results, island, "F7", side_ok, side_detail)

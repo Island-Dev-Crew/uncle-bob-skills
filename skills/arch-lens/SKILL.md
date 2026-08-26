@@ -5,7 +5,7 @@ description: Have the agents build the repo its own drill-down architecture view
 
 # Arch Lens: the repo builds its own viewer
 
-Have the agents build the repo its own drill-down architecture viewer, the way RCM had his: *"I also had my agents build me an architecture viewer so I can pop up on the screen a nice little UML diagram… shows me the modular structure of the system and where the dependencies run and I can click on a module and I can see inside it to the submodules… and it'll actually pop the code up on the screen"* ([C13](../../01-CONCEPT-LEDGER.md)).
+Have the agents build the repo its own drill-down architecture viewer, the way RCM had his: *"I also had my agents build me an architecture viewer so I can pop up on the screen a nice little UML diagram… shows me the modular structure of the system and where the dependencies run and I can click on a module and I can see inside it to the submodules… and it'll actually pop the code up on the screen"* ([C13](../../docs/01-CONCEPT-LEDGER.md)).
 
 The move is *agents-build-their-own-instruments*. The viewer is not a package to install. It is a small tool the agent writes for *this* repo's language and layout, and - when the human asks to keep it - commits beside the code it renders. RCM ran the same interrogation by hand: *"What's the structure here? How does this module interrelate with that module?"* (C12). A standing diagram answers that question instead of a prompt asked again every time. What the picture reveals may scare you. Deciding how to re-partition stays a human judgment (C12), and that call is made next door, per the boundary below.
 

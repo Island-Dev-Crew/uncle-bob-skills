@@ -39,6 +39,8 @@ A fourth spelling joins nothing at all. A key carrying an invisible codepoint is
 4. **New files have no baseline to ride**, so they answer to the absolute ceiling instead: crap-gate's number, passed in, never redefined here.
 5. **Rewrite the baseline downward only**, on green, as part of the same commit. A baseline refreshed after a red run is a gate switched off with extra steps (advisory; see the boundary on hook plumbing below).
 
+**Worse means worse by any amount, and over means over by any amount.** No tolerance widens either comparison. The metrics are *parsed*, never computed: `float()` rounds each decimal spelling exactly once, so `3.2` and `3.20` land on the identical double and the equal-passes rule holds without a window. The one number the script computes, the budget percentage, is a single correctly-rounded division of exact operands, so it lands on the same double as a `--budget` typed as that very percentage. Nothing accumulates rounding, so a tolerance could only move the line — which is what a `1e-9` epsilon here used to do, on all four comparisons at once. It is gone, and the fixture below pins its absence.
+
 ## The legacy budget
 
 crap4j shipped this pattern with its own numbers: threshold 30, with a project-level allowance of **at most 5% of methods over it** ([`crap-metric.md`](../../research/crap-metric.md)). Ported here, the budget is a second, absolute check that runs beside the ratchet: across the merged project view, the share of files over the ceiling may not exceed `--budget`. That is what lets a repo with a `legacy/report_writer.py` scoring 41 turn the gate on this afternoon.
@@ -134,6 +136,22 @@ python3 scripts/ratchet.py --baseline scripts/fixtures/baseline.tsv \
 
 Every one of them was a false or mis-coded green first. The case variant, the NFC/NFD pair, the `#`-prefixed row and the BOM'd record each reported exit 0 on a file that had regressed or blown the ceiling. The BOM one did it on the `dirty-abs-path` regression in a fourth spelling, worse on all three axes and still under the ceiling. The `inf` baseline reported exit 0 with the crap axis silently switched off. The latin-1 record crashed out on exit 1, the code reserved for a real verdict, sending a CI consumer to repair code over an encoding fault. The closed stdout returned 0 having printed nothing at all. Deleting any fixture returns the gate to `unverified`.
 
+**The boundary itself.** One more fixture pins the width of the comparison, because a threshold is only as strict as the comparator under it:
+
+```bash
+python3 scripts/ratchet.py --baseline scripts/fixtures/baseline.tsv \
+  --current scripts/fixtures/dirty-eps-boundary.tsv --ceiling 6 --budget 5   # exit 1
+```
+
+Every breach in it is 5e-10 past the line it crosses. `api/router.py` moves 3.20 → 3.2000000005 and `api/handlers.py` opens at 6.0000000005 against a ceiling of 6, while `web/view.py` repeats its baseline row byte for byte and still passes. The whole run reported exit 0 until the epsilon came out: `ok` on the regression — printing `crap 3.2 -> 3.2000000005` on the line that called it fine — and `ok new … at or under ceiling 6` on the new file, with the over-ceiling share reading 1 of 21 instead of 2. The budget percentage was the same hole one step along, and it needs no fixture of its own because a flag reaches it:
+
+```bash
+python3 scripts/ratchet.py --baseline scripts/fixtures/baseline.tsv \
+  --current scripts/fixtures/clean-improved.tsv --ceiling 6 --budget 4.7619047619   # exit 1
+```
+
+1 of 21 files over the ceiling is 4.7619047619047619%, which is over that budget by about 5e-12 and was reported green. The budget line widens both of its numbers, not just the share: `4.8% (limit 4.8%)` printed above a `BUDGET-BUST` would be evidence contradicting its own verdict.
+
 The broken pipe is the last one. It needs a reader rather than a file, so it is a probe rather than a fixture, captured at exit 2 where it returned 120 before fd 1 was neutralised. The probe **exits with the code it is reporting** and prints nothing itself: written as a heredoc that only printed the child's status, the block annotated exit 2 while the command itself returned 0 — an annotation no run had produced, and one no line-based verifier could re-run. It stays silent because a probe of a dead output stream must not itself depend on a live one.
 
 ```bash
@@ -148,7 +166,7 @@ python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);p=subprocess.Pope
 
 ## Enforced vs advisory
 
-- `enforced` — the comparison and the verdict. [`scripts/ratchet.py`](scripts/ratchet.py) fails any file whose CRAP or complexity rose or whose coverage fell. It joins on one key function, so a path variant either joins its baseline row or the gate refuses to run and names what it found (`./`, `//`, `\`, trailing slash, letter case, Unicode form, trailing dot or space, absolute, drive-prefixed, tree-escaping, invisible codepoint); it never reroutes a regression to the lenient new-file branch. It judges every four-field row, including one whose path starts with `#`. It fails any new file over the passed-in ceiling, and fails a merged over-ceiling share above the budget. It exits 2 on every malformed, unreadable, non-UTF-8, overflowing or non-finite input listed above, on any unhandled exception, and on a stdout it cannot print the verdict to, whether closed or broken. Where a printed number would round onto the one it is compared against, the message widens until the two render differently, on `WORSE` lines, `ok` lines and the budget line alike, walking out to `.17g`, which round-trips a double and so cannot collapse two distinct floats onto one string. Run red and green before this line was written. The island's own shape is enforced by the pack validator (`scripts/validate-island.py` at the pack root).
+- `enforced` — the comparison and the verdict. [`scripts/ratchet.py`](scripts/ratchet.py) fails any file whose CRAP or complexity rose or whose coverage fell. It joins on one key function, so a path variant either joins its baseline row or the gate refuses to run and names what it found (`./`, `//`, `\`, trailing slash, letter case, Unicode form, trailing dot or space, absolute, drive-prefixed, tree-escaping, invisible codepoint); it never reroutes a regression to the lenient new-file branch. It judges every four-field row, including one whose path starts with `#`. It fails any new file over the passed-in ceiling, and fails a merged over-ceiling share above the budget. All four comparisons are strict to the last bit a double holds: no tolerance is applied to any of them, so a breach 5e-10 past a line is a breach. It exits 2 on every malformed, unreadable, non-UTF-8, overflowing or non-finite input listed above, on any unhandled exception, and on a stdout it cannot print the verdict to, whether closed or broken. Where a printed number would round onto the one it is compared against, the message widens until the two render differently, on `WORSE` lines, `ok` lines, `NEW-OVER` and `ok new` lines and the budget line alike, walking out to `.17g`, which round-trips a double and so cannot collapse two distinct floats onto one string. Run red and green before this line was written. The island's own shape is enforced by the pack validator (`scripts/validate-island.py` at the pack root).
 - `advisory` — everything around the comparator: the per-file grain, the choice of budget number and the duty to tighten it, the downward-only baseline-rewrite rule, and the upstream production of the records themselves. Each is stated plainly so a later wave can mechanize it; calling any of them enforced today would launder an intention into a check.
 
 ## Done means

@@ -5,7 +5,7 @@ description: The red-before-green gate on a story's Gherkin scenarios - the acce
 
 # Gherkin Gate: the bar you cannot talk out of
 
-The acceptance contract lives on disk, not in the prompt. The relay's specifier seat emits *"a Gherkin… given-when-then stuff. A high level acceptance test"* (C9). This island is the check that turns that file into a gate: every scenario proven red before implementation and green after, bound to its story and to the feature file's exact bytes. One concern: the evidence. Research ground for every non-transcript claim below is [`atdd-gherkin-agile.md`](../../research/atdd-gherkin-agile.md); quotes come only through the [concept ledger](../../01-CONCEPT-LEDGER.md).
+The acceptance contract lives on disk, not in the prompt. The relay's specifier seat emits *"a Gherkin… given-when-then stuff. A high level acceptance test"* (C9). This island is the check that turns that file into a gate: every scenario proven red before implementation and green after, bound to its story and to the feature file's exact bytes. One concern: the evidence. Research ground for every non-transcript claim below is [`atdd-gherkin-agile.md`](../../research/atdd-gherkin-agile.md); quotes come only through the [concept ledger](../../docs/01-CONCEPT-LEDGER.md).
 
 ## Why a file beats an instruction
 

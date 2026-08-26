@@ -29,10 +29,19 @@ hash_file() {
 # real hash plus a suffix. A binding gate that a superstring satisfies is not a gate.
 resolve() { python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$1"; }
 
-grep -Eq '^# STORY: [A-Za-z0-9._-]+$' "$script" \
+# Anchored, but not against the reader's line endings. A QA script generated on Windows —
+# or checked out by a contributor whose git has core.autocrlf=true — carries a terminal CR
+# on every line, and correct headers were failing as "missing". This gate reads files the
+# user generated on their own machine, which no .gitattributes of ours can reach, so the
+# tolerance has to live here. One TERMINAL CR only: the anchors stay whole-line and the CR
+# is optional at the end alone, so the three forged superstrings above are still rejected.
+cr=$'\r'
+
+grep -Eq "^# STORY: [A-Za-z0-9._-]+${cr}?$" "$script" \
   || { echo "FAIL missing '# STORY: <id>' header line in $script" >&2; exit 1; }
 
 doc_hdr="$(sed -n 's/^# QA-DOC: \(.*\)$/\1/p' "$script" | head -1)"
+doc_hdr="${doc_hdr%$cr}"
 [ -n "$doc_hdr" ] \
   || { echo "FAIL missing '# QA-DOC: <path>' header line in $script" >&2; exit 1; }
 # Compare resolved paths, not raw strings: ./doc.md, doc.md and /abs/doc.md are the
@@ -41,7 +50,7 @@ doc_hdr="$(sed -n 's/^# QA-DOC: \(.*\)$/\1/p' "$script" | head -1)"
   || { echo "FAIL QA-DOC header binds '$doc_hdr', not '$qadoc'" >&2; exit 1; }
 
 want="$(hash_file "$qadoc")"
-grep -Eq "^# QA-SHA256: ${want}$" "$script" \
+grep -Eq "^# QA-SHA256: ${want}${cr}?$" "$script" \
   || { echo "FAIL QA-SHA256 header absent or stale (QA doc now hashes to $want)" >&2; exit 1; }
 
 case "$script" in

@@ -5,7 +5,7 @@ description: The closing doctrine of the conversation - binary, then assembly, t
 
 # Abstraction Ladder: the panic is old, and it was wrong the same way each time
 
-You are standing on a rung. Below you is the compiler; below that, assembly; below that, hand-encoded binary. The conversation ends on that ladder, **binary → assembly → the compiler → the models**, and records identical panic at each step (C28, via [the ledger](../../01-CONCEPT-LEDGER.md)). Its closing claim is that the fundamentals kept surviving anyway:
+You are standing on a rung. Below you is the compiler; below that, assembly; below that, hand-encoded binary. The conversation ends on that ladder, **binary → assembly → the compiler → the models**, and records identical panic at each step (C28, via [the ledger](../../docs/01-CONCEPT-LEDGER.md)). Its closing claim is that the fundamentals kept surviving anyway:
 
 > *"the fundamentals are the way of organizing that complexity into a form that can be conceived not just by humans, but by our models as well. Since our models are modeled after humans."* (C28)
 

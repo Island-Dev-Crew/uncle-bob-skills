@@ -5,7 +5,7 @@ description: Declare which module may depend on which and how the flow runs - a 
 
 # Dependency Fence: direction declared, checked, repaired three ways
 
-Uncle Bob's fence is a deterministic tool, not a prose rule: *"define which module should depend on which, which one should not depend on which, how the dependency should flow. That goes into a nice tight little specification file that the agents cannot violate. There's another little checker that runs at the end."* (C14, [ledger](../../01-CONCEPT-LEDGER.md)). This island ships that trio: the spec file, the checker, and the only three repairs allowed when the checker goes red.
+Uncle Bob's fence is a deterministic tool, not a prose rule: *"define which module should depend on which, which one should not depend on which, how the dependency should flow. That goes into a nice tight little specification file that the agents cannot violate. There's another little checker that runs at the end."* (C14, [ledger](../../docs/01-CONCEPT-LEDGER.md)). This island ships that trio: the spec file, the checker, and the only three repairs allowed when the checker goes red.
 
 ## Named extension: what this island owns
 

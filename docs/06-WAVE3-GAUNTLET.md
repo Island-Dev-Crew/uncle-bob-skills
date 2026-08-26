@@ -30,6 +30,8 @@ Every one was reachable by input a real editor, filesystem, or CI produces — t
 
 ## Verification
 
+Run these historical commands from the repository root; the paths are intentionally root-relative.
+
 ```bash
 python3 scripts/validate-island.py skills/*/     # 600 checks, 50 islands
 python3 scripts/verify-proofs.py                 # re-runs every documented command

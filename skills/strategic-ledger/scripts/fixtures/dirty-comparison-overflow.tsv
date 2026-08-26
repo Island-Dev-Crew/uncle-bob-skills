@@ -1,0 +1,2 @@
+# One finite aggregate whose percentage cross-products overflow binary64.
+overflow-scale	strategic	1e308	crap_max=14->5

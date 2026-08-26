@@ -1,10 +1,10 @@
 # Source evidence
 
-The pack's grounding rule is that no island quotes the conversation from memory: every island cites a numbered concept in [`../01-CONCEPT-LEDGER.md`](../01-CONCEPT-LEDGER.md), and every concept carries a short attributed quote checked against the source recording.
+The pack's grounding rule is that no island quotes the conversation from memory: every island cites a numbered concept in [`../docs/01-CONCEPT-LEDGER.md`](../docs/01-CONCEPT-LEDGER.md), and every concept carries a short attributed quote checked against the source recording.
 
 ## What is here, and what is not
 
-**Here:** [`frames-notable/`](frames-notable/) — eleven stills sampled from the video, the ones that carry information the words alone do not (the bathrobe the running joke is about, the moment the costume changes, the book held up at the close). They are documentary excerpts, cited frame by frame in [`../00-EXTRACTION.md`](../00-EXTRACTION.md).
+**Here:** [`frames-notable/`](frames-notable/) — eleven stills sampled from the video, the ones that carry information the words alone do not (the bathrobe the running joke is about, the moment the costume changes, the book held up at the close). They are documentary excerpts, cited frame by frame in [`../docs/00-EXTRACTION.md`](../docs/00-EXTRACTION.md).
 
 **Not here:** the full transcript and the complete timestamped caption file. Both are the whole of someone else's recorded conversation, and this repository does not redistribute them. The ledger's short attributed quotes are ordinary citation; a full transcript is a copy.
 
@@ -49,4 +49,4 @@ grep -c "They are fast with code. I am slow with code" transcript.txt   # expect
 
 Robert C. Martin ("Uncle Bob") in conversation with Matt Pocock, ~57 minutes, retrieved 2026-08-19: https://www.youtube.com/live/zcLPGC-tvgk
 
-The conversation is Martin's and Pocock's work and is cited here, not reproduced. The skills in this repository are an independent interpretation built on it.
+The conversation is Martin's and Pocock's work. The full recording, transcript, and captions are not reproduced here; the short quotations and eleven cited still excerpts above are third-party source material outside this repository's MIT grant. Their inclusion is documentation, not a license, legal clearance, or endorsement. The skills are Island Development Crew's independent interpretation. See [`../NOTICE.md`](../NOTICE.md).

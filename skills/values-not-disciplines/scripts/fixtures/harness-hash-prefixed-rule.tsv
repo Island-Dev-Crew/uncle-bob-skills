@@ -1,0 +1,2 @@
+#123 no hardcoded secrets	be clean
+per-function CRAP ceiling at 6	python3 tools/crap-score.py --threshold 6

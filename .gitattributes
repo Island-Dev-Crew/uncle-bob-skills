@@ -1,0 +1,25 @@
+# Byte-exact checkout on every platform, by default, for every path.
+#
+# This pack's evidence is byte-exact. Islands ship fixtures that are deliberately CRLF, that
+# carry a BOM, that are Latin-1, and that are not valid UTF-8 at all — each one exists to prove a
+# gate handles that shape. Git's line-ending conversion is therefore not a convenience here; it
+# is corruption of the evidence. And the reverse bites too: a clone with the Windows default
+# `core.autocrlf=true` rewrote all 19 shell files to CRLF, 14 of them then failed `bash -n`, and
+# three headline gates turned red on a tree that is provably green — a false red produced by the
+# reader's git config rather than by anything in the repository.
+#
+# `-text` on every path tells Git to store and check out these bytes unchanged, whatever
+# `core.autocrlf` / `core.eol` the reader has set. It is the repository-level control Git
+# documents for exactly this, applied at the only scope that is safe when both LF files and
+# deliberately-CRLF fixtures live in the same tree: all of it.
+#
+# Adding a normal `text eol=lf` rule for source and enumerating the fixtures as exceptions was
+# considered and rejected — it makes every future fixture a landmine that silently normalises
+# unless someone remembers to exempt it, and a silent normalisation is precisely the failure this
+# file exists to prevent.
+* -text
+
+# These two regression fixtures intentionally carry CRLF bytes. Tell `git diff --check` that
+# their carriage returns terminate lines rather than constituting trailing whitespace.
+skills/qa-script-seat/scripts/fixtures/clean-bound-gate-crlf.py whitespace=cr-at-eol
+skills/qa-script-seat/scripts/fixtures/dirty-crlf-gate.sh whitespace=cr-at-eol

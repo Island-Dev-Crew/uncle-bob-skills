@@ -17,21 +17,33 @@ and the failure is silent, because the gate did its work and only died on the wa
 WHAT IT DOES. It re-runs the commands the islands already document as proofs — the same
 grammar `verify-proofs.py` reads — with stdout connected to a pipe whose reader is already
 closed, then with stderr the same way. A gate that survives both with its own documented
-code is sealed. This probes the REAL verdict paths rather than `--help`, which is the
-distinction that matters: an early usage exit often survives a dead pipe while the path
+code or the pack-wide exit-2 IO seal is sealed. This probes the REAL verdict paths rather
+than `--help`, which is the distinction that matters: an early usage exit often survives a
+dead pipe while the path
 that actually prints a report does not.
 
-Exit 0 when every probed invocation kept a plausible verdict code, 1 when any leaked, 2 on
-usage or IO, and 3 when nothing was probed at all — a harness that ran nothing has proven
-nothing, which is the failure this pack names as its worst gate shape.
+Exit 0 when every probed invocation kept its documented code or used the exit-2 IO seal,
+1 when any leaked, 2 on usage or IO, and 3 when nothing was probed at all — a harness that
+ran nothing has proven nothing, which is the failure this pack names as its worst gate shape.
 
-LIMIT, stated rather than discovered. It can only probe what the islands document. A gate
-path with no documented invocation is not covered here, and this file is not evidence about
-it. It also inherits `verify-proofs.py`'s trust boundary: it RUNS commands taken from the
-repository it is checking, so point it only at a tree you trust.
+LIMITS, stated rather than discovered.
+
+It can only probe what the islands document. A gate path with no documented invocation is not
+covered here, and this file is not evidence about it. It also inherits `verify-proofs.py`'s
+trust boundary — including its refusal, which both tools now take from one function so they
+cannot disagree about what is too dangerous to run: it RUNS commands taken from the repository
+it is checking, so point it only at a tree you trust.
+
+What a dead stream is allowed to cost a gate is a judgment, and it is spelled out at the
+acceptance rule below rather than left to the reader. A probe may keep the command's documented
+code or use the pack-wide exit-2 IO seal. Nothing else is accepted, even when another command in
+the same island documents that code. The summary counts how many probes rested on the IO seal
+rather than on their documented result surviving.
 """
 import importlib.util
 import os
+import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -40,8 +52,14 @@ from pathlib import Path
 # nothing else is.
 #
 #   - the code the command DOCUMENTS: its verdict survived the closed stream intact.
-#   - a NON-VERDICT code: the gate could not emit its report and fail-closed instead. A report
-#     nobody received is not a verdict, so declining to claim one is correct.
+#   - 2: the one code every tool and gate in this pack seals an internal or IO fault to, its own
+#     `__main__` block included. A report that cannot be written IS an IO fault, so 2 is an
+#     honest answer to a dead stream from any of them and needs no further declaration.
+#
+# An island-wide declaration is not sufficient. A gate documenting 1 — a breach — can answer
+# 3, "nothing was checked", while a separate empty-input command in the same SKILL.md honestly
+# documents 3. Accepting the island's vocabulary launders the breach. Each probe is therefore
+# bound to its own documented code, with only the universal exit-2 IO seal as an alternative.
 #
 # Everything else is a leak: a shutdown code (CPython's 120, a shell's 141), a signal, a
 # TIMEOUT — OR, the dangerous one this check exists for, a DIFFERENT verdict than documented.
@@ -49,17 +67,11 @@ from pathlib import Path
 # breach silently reported as clean, and the previous rule — membership in a pack-wide union
 # {0,1,2,3,4} — passed it, because 0 was in the set. The union was also justified as "measured",
 # which was false: three islands document 130. This compares against the command's own code.
-VERDICT = {0, 1}          # green / red — a real answer about the code under test
-NON_VERDICT = {2, 3, 4}   # usage / IO / fail-closed / strict — explicitly "no answer"
-
+ALWAYS_FAIL_CLOSED = 2    # the pack-wide IO seal; honest from anything, declared or not
 
 def leaked(rc, expected):
     """A probe result is a leak unless the verdict survived or the gate fail-closed."""
-    if rc == expected:
-        return False
-    if rc in NON_VERDICT:
-        return False
-    return True
+    return rc not in (expected, ALWAYS_FAIL_CLOSED)
 
 
 def load_grammar():
@@ -79,6 +91,198 @@ def load_grammar():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
+
+
+# A redirection that closes a stream (`>&-`, `1>&-`, `2>&-`). Shell SYNTAX, and an ordinary
+# pair of characters inside a quote.
+CLOSES_STREAM = re.compile(r"\d*>&-")
+# `$?` where a command acts on its OWN status rather than merely carrying the two characters
+# somewhere: it assigns the status, or reports it, or exits with it. Anchored at the start of a
+# simple command, because the position is the whole distinction — `rc=$?` is control flow and
+# `g.py "exit was $?"` is an argument, and the two differ in nothing else.
+OWN_STATUS = re.compile(
+    r"^(?:[A-Za-z_][A-Za-z0-9_]*=\$\?"
+    r"|(?:echo|printf|exit|return)\b.*\$\?)")
+# The interpreters whose `-c` operand is shell source in its own right rather than data.
+SHELL_INTERPRETERS = frozenset({"bash", "sh"})
+
+
+def segments(text):
+    """Split `text` into (chunk, quote) pairs, where quote is None, `'` or `"`.
+
+    Quoting is the whole question here, so it is answered once rather than approximated at each
+    call site: `>&-` closes a stream only where the shell reads it as syntax, and a `;` or `|`
+    ends a command only there too. `simple_commands` below is the other reader of this split.
+    """
+    out = []
+    buf = []
+    quote = None
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if quote:
+            if ch == "\\" and quote == '"' and i + 1 < len(text) and text[i + 1] in "$`\"\\":
+                i += 1                    # escaped inside double quotes: data, not syntax
+            elif ch == quote:
+                out.append(("".join(buf), quote))
+                buf = []
+                quote = None
+            else:
+                buf.append(ch)
+        elif ch in "\"'":
+            out.append(("".join(buf), None))
+            buf = []
+            quote = ch
+        elif ch == "\\" and i + 1 < len(text):
+            i += 1                        # an escaped character is data wherever it sits
+        else:
+            buf.append(ch)
+        i += 1
+    out.append(("".join(buf), quote))
+    return out
+
+
+def simple_commands(text):
+    """Split `text` into the simple commands a shell would see, quotes removed.
+
+    Built on `segments` so the quoting question stays answered in one place: a `;`, `|`, `&` or
+    newline separates commands only where no quote covers it, and everything inside a quote
+    belongs to the command it sits in. A `$` inside SINGLE quotes is blanked, because there it is
+    a dollar sign and never an expansion — without that, `echo 'EXIT=$?'`, which prints those
+    characters and reads no status at all, would read as a status report.
+
+    A bracket is deliberately NOT a separator, though a shell treats one as a command boundary.
+    `$(…)` opens with the same character a subshell does, so splitting there turned the argument
+    in `g.py $(echo $?)` into a command of its own and read the gate as its own probe — the very
+    exemption this file had just finished narrowing. Splitting only at the separators that cannot
+    also open a substitution costs nothing: a bracket that really does open a group is followed by
+    commands the remaining separators still divide, and the caller strips the opening bracket off
+    the front of each piece.
+    """
+    out = []
+    buf = []
+    for chunk, quote in segments(text):
+        if quote == "'":
+            buf.append(chunk.replace("$", "\0"))
+            continue
+        if quote is not None:
+            buf.append(chunk)
+            continue
+        pieces = re.split(r"[;|&\n]", chunk)
+        buf.append(pieces[0])
+        for piece in pieces[1:]:
+            out.append("".join(buf))
+            buf = [piece]
+    out.append("".join(buf))
+    return out
+
+
+def command_sources(text):
+    """Split shell source at unquoted command separators while preserving quotes.
+
+    `simple_commands` deliberately removes quote syntax for status-position matching. Shell
+    interpreter recursion needs the opposite representation: the final command's original
+    quoting, so `bash -c 'echo $?'` remains one operand. Keeping both views prevents a `bash`
+    token carried as Python argv, or a status-reporting producer before a pipe, from being
+    mistaken for the actual gate command.
+    """
+    out = []
+    buf = []
+    quote = None
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if quote:
+            buf.append(ch)
+            if ch == "\\" and quote == '"' and i + 1 < len(text):
+                i += 1
+                buf.append(text[i])
+            elif ch == quote:
+                quote = None
+        elif ch in "\"'":
+            quote = ch
+            buf.append(ch)
+        elif ch == "\\" and i + 1 < len(text):
+            buf.append(ch)
+            i += 1
+            buf.append(text[i])
+        # `>&-`, `<&-`, `2>&1` and `&>` are redirections inside one command, not
+        # command separators. Splitting at their ampersand hid the very syntax this parser
+        # exists to recognise and re-probed every genuine closed-stream self-test.
+        elif ch == "&" and ((i > 0 and text[i - 1] in "<>") or
+                            (i + 1 < len(text) and text[i + 1] == ">")):
+            buf.append(ch)
+        elif ch == "|" and i > 0 and text[i - 1] == ">":
+            buf.append(ch)
+        elif ch in ";|&\n":
+            out.append("".join(buf))
+            buf = []
+        else:
+            buf.append(ch)
+        i += 1
+    out.append("".join(buf))
+    return out
+
+
+def self_probe(cmd, depth=0):
+    """Does this command close one of its own streams, or act on its own status, on purpose?
+
+    Such a command is the island's own probe of this very defect; re-closing its stream would
+    test the harness rather than the gate. The exclusion used to be `">&-" in cmd or "$?" in
+    cmd` — a substring test over the whole line — so a command that merely CONTAINED those
+    characters inside a quoted argument (`printf 'exit was $?'`) was dropped from the check it
+    exists to run, and a gate could buy its way out of being probed with one argument.
+
+    Stripping quotes is not the fix for `>&-`, and that is why this walks the syntax: four
+    islands write a real self-probe as `bash -c '… >&-'`, where the redirection lives inside a
+    quote and is nonetheless a redirection, because the `-c` operand is itself shell source. So
+    `>&-` is read where no quote covers it — in this command, and recursively in any `-c`
+    operand.
+
+    `$?` needed the opposite correction. Reading it wherever a shell would EXPAND it still let
+    one keystroke buy the same exemption: `g.py "exit was $?"` expands, so the double-quoted
+    twin of the argument that had just been closed off walked straight back out of the probe
+    set, and the flipping gate behind it went unseen. Expansion was never the property that
+    matters — POSITION is. A command's own control flow is `rc=$?`, `echo $?`, `exit $?`: the
+    status becoming the thing the final command does. An earlier pipeline producer and
+    shell-looking argv carried by Python are not that command. Anywhere else the two characters
+    are a value being carried, and carrying one is no reason to leave a gate unprobed.
+    """
+    positioned = [part for part in command_sources(cmd) if part.strip()]
+    if not positioned:
+        return False
+    gate_source = positioned[-1]
+    parts = segments(gate_source)
+    redirect_source = "\n".join(chunk for chunk, q in parts if q is None)
+    if CLOSES_STREAM.search(redirect_source):
+        return True
+    # `lstrip` because a group's opening bracket is not part of the command inside it, and
+    # `simple_commands` leaves brackets where it finds them on purpose.
+    gate_commands = [simple for simple in simple_commands(gate_source) if simple.strip()]
+    if gate_commands and OWN_STATUS.match(gate_commands[-1].strip().lstrip("({ \t")):
+        return True
+    if depth >= 3:
+        return False
+    try:
+        words = shlex.split(gate_source.strip().lstrip("({ \t"))
+    except ValueError:
+        return False
+    # Only the executable position may open a nested shell. `python gate.py bash -c 'echo $?'`
+    # carries those words as Python argv; walking every word treated the data as a command and
+    # let a leaking gate opt out of the probe.
+    if not words or os.path.basename(words[0]) not in SHELL_INTERPRETERS:
+        return False
+    for j in range(1, len(words)):
+        if words[j] == "-c" and j + 1 < len(words):
+            operand = words[j + 1]
+            # `shlex` and bash disagree about one escape, and the disagreement is load-
+            # bearing here: inside double quotes bash resolves `\$` to `$` and hands the
+            # inner shell an expansion, while `shlex` leaves the backslash where it was.
+            if any(self_probe(o, depth + 1)
+                   for o in (operand, operand.replace("\\$", "$"))):
+                return True
+            break
+    return False
 
 
 def probe(script, cwd, stream):
@@ -113,6 +317,7 @@ def main(argv):
     refused = 0
     examined = 0
     own_probes = 0
+    sealed = 0
     explicit = bool(argv[1:])
     for arg in args:
         d = Path(arg)
@@ -127,7 +332,8 @@ def main(argv):
                 return 2
             continue
         examined += 1
-        for block in vp.blocks(skill.read_text(encoding="utf-8")):
+        skill_text = skill.read_text(encoding="utf-8")
+        for block in vp.blocks(skill_text):
             for cmd, expected, setup, _gapped in vp.commands(block):
                 if expected is None or not vp.is_runnable(cmd):
                     continue
@@ -137,7 +343,7 @@ def main(argv):
                 # probe of this very defect; re-closing it would test the harness, not it.
                 # Counted and printed, not pruned in silence — a quiet prune is the same
                 # false green this pack names elsewhere, and 19 candidates land here today.
-                if ">&-" in cmd or "$?" in cmd:
+                if self_probe(cmd):
                     own_probes += 1
                     continue
                 script = "; ".join(setup + [cmd]) if setup else cmd
@@ -146,7 +352,7 @@ def main(argv):
                 # to execute — twice, once per stream — while verify-proofs.py, reading the same
                 # blocks, refused that very script. Two tools disagreeing about what is too
                 # dangerous to run is worse than either answer alone.
-                if vp.FORBIDDEN.search(script):
+                if vp.forbidden_primitive(script):
                     refused += 1
                     continue
                 for stream in (1, 2):
@@ -155,13 +361,19 @@ def main(argv):
                     if leaked(rc, expected):
                         leaks.append((d.name, "stdout" if stream == 1 else "stderr",
                                       rc, expected, cmd))
+                    elif rc != expected:
+                        # Accepted, and counted rather than passed over in silence: this is the
+                        # concession the acceptance rule makes, so its size belongs on the summary
+                        # line where a reader can see how much of the green rests on it.
+                        sealed += 1
     for name, which, rc, expected, cmd in leaks:
         print(f"LEAK {name}: exit {rc} with {which} closed — documented {expected}, "
-              f"and {rc} is neither that verdict nor a fail-closed non-verdict")
+              f"and {rc} is neither that result nor the pack-wide exit-2 IO seal")
         print(f"      {cmd}")
     tail = f", {refused} refused" if refused else ""
     print(f"\n{probed} closed-stream probes over {examined} island(s), {len(leaks)} leak(s){tail}"
-          f" ({own_probes} candidate(s) not re-probed: they close a stream themselves)")
+          f" ({sealed} fail-closed to the pack-wide exit-2 seal; {own_probes} candidate(s) not "
+          f"re-probed: they close a stream themselves)")
     if leaks:
         return 1
     if probed == 0:

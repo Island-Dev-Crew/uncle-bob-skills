@@ -1,0 +1,3 @@
+# Two individually finite rows whose aggregate overflows binary64.
+overflow-a	strategic	1e308	crap_max=14->5
+overflow-b	strategic	1e308	fan_in=11->3

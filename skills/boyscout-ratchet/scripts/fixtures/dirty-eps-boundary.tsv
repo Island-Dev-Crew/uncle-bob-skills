@@ -1,0 +1,8 @@
+# boundary fixture: every breach here is 5e-10 past the line it crosses, the
+# width a 1e-9 epsilon used to swallow. api/router.py regresses against its
+# baseline row, api/handlers.py clears no ceiling of 6, and web/view.py is
+# byte-identical to its baseline row - equal still passes, so the run
+# discriminates rather than rejecting everything.
+api/router.py	3.2000000005	4	95
+api/handlers.py	6.0000000005	1	100
+web/view.py	2.80	3	88

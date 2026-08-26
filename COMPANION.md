@@ -1,10 +1,18 @@
 # Companion islands — the IDC Skills Forge
 
-This pack is **standalone**: nothing here requires another repo to run, and every gate, fixture, and validator in it works from a fresh clone with nothing but `python3` and `bash`.
+**Every local gate, fixture, and validator in this pack runs from a fresh clone without another repository.** The runtime floor is Python 3, Bash, Git, standard POSIX utilities, and UTF-8-capable output. No shipped script reaches for the Forge. The proof replayer named in [CONTEXT.md](CONTEXT.md) runs every eligible, safely replayable, sequenced proof inside this tree and reports every candidate it does not execute. That is the whole of the standalone claim, and it is the half a machine checks.
 
-But the pack was built under the IDC Forge methodology, and its islands were deliberately scoped so they never re-implement a concern the Forge already owns. Where an island says "that boundary belongs to X", X is one of the 22 Forge islands below. Those references are **boundary statements, not dependencies** — they tell you what this pack deliberately does *not* do, so you can reach for the right tool instead of finding a half-built one here.
+It is a claim about the **tools**, not about every step of every protocol. The pack was built under the IDC Forge methodology, and its islands were deliberately scoped so they never re-implement a concern the Forge already owns. Where an island says "that boundary belongs to X", X is one of the 22 Forge islands below. Most of those references are **boundary statements**: they tell you what this pack deliberately does *not* do, so you reach for the right tool instead of finding a half-built one here, and the island's own protocol still runs to its own gate without X.
 
-The Forge lives in its own repository (**IDC Skills Forge**, `IDC-skills`). If you have it, the islands below are at `skills/<name>/SKILL.md` in that repo. If you don't, this page is the whole answer: it tells you what the concern is and who owns it, and this pack keeps its hands off it either way.
+Three are **hand-offs**, marked as such below, and they are the honest exception to "standalone". There an island's protocol routes a *required* step outside this repository, and the paragraph on this page is a summary of the concern, not enough to execute the step:
+
+- [`qa-script-seat`](skills/qa-script-seat/SKILL.md) generates its driver in **computer-use-smoke**'s shape and hands that island the runtime preflight and the exit-code verdict.
+- Each seat of [`seat-relay`](skills/seat-relay/SKILL.md) is briefed in **delegated-authority-prompt**'s mandate format.
+- Relay seats isolate through **worktree-fleet** mechanics once more than one coder mutates the same repo.
+
+Without those three islands the local gates still run and still fail closed; what you supply yourself is the step. Each island says so at the step, in its own words.
+
+The Forge lives in the public [IDC Skills repository](https://github.com/Island-Dev-Crew/idc-skills) and is not vendored here. The three hand-off targets are [computer-use-smoke](https://github.com/Island-Dev-Crew/idc-skills/blob/main/skills/computer-use-smoke/SKILL.md), [delegated-authority-prompt](https://github.com/Island-Dev-Crew/idc-skills/blob/main/skills/delegated-authority-prompt/SKILL.md), and [worktree-fleet](https://github.com/Island-Dev-Crew/idc-skills/blob/main/skills/worktree-fleet/SKILL.md). If that repository is unavailable, the hand-off step is yours to satisfy with equivalent tooling. One further Forge island, [teach](https://github.com/Island-Dev-Crew/idc-skills/blob/main/skills/teach/SKILL.md), is named by [`human-subagent`](skills/human-subagent/SKILL.md) and [`strategy-shelf`](skills/strategy-shelf/SKILL.md) but is not one of the 22 boundaries below; the ruling that drew that line is entry 33 of [03-FORGE50-AUDIT.md](docs/03-FORGE50-AUDIT.md).
 
 ---
 
@@ -18,16 +26,16 @@ Surveys a whole codebase for refactor opportunities: mines change-history hot sp
 The full-cycle, evidence-gated build protocol: typed contracts at every seam, gates that must be able to fail, loopback routing, a tamper-evident ledger, band caps. **Owns gate infrastructure.** This pack's gates plug into that machinery; they never re-invent ledgers, loopback, or band caps.
 
 ### computer-use-smoke
-Drives a real UI through a scripted smoke path and asserts observable outcomes. **Owns behavioral UI assertion.** [`qa-script-seat`](skills/qa-script-seat/SKILL.md) generates the executable from a QA procedure and binds it to a story; the runtime assertion primitive is that island's.
+**HAND-OFF.** Drives a real UI through a scripted smoke path and asserts observable outcomes. **Owns behavioral UI assertion.** [`qa-script-seat`](skills/qa-script-seat/SKILL.md) generates the executable from a QA procedure and binds it to a story; the runtime assertion primitive is that island's. *That seat's step 2 needs this island's mechanics and does not restate them — outside this pack, and yours to supply if you do not have the Forge.*
 
 ### cross-family-review
 The verdict ceremony: an independent reviewer from a **different model family** reviews a diff at an exact head along a Standards axis and a Spec axis, and returns a named-seat verdict bound to that SHA — the seat that wrote the code never reviews it, and the verdict **voids** the moment the head moves, including a message-only amend. **Owns who may review, what a verdict binds, and when it voids.** [`acceptance-surface-review`](skills/acceptance-surface-review/SKILL.md) rules only on *what surface* lands in front of that reviewer and how blast radius widens it; it invokes the ceremony and never redefines the verdict format, the void-on-move rule, or the author-never-reviews law.
 
 ### deep-modules
-Vocabulary and enforcement for deep modules — much behaviour behind a small interface at a clean seam — with dependency-cruiser rules making entry points the only way in. **Owns the design vocabulary, entry-point rules, and the deletion test.** [`dependency-fence`](skills/dependency-fence/SKILL.md) is a named extension owning layering *direction* only; [`interface-budget`](02-ROSTER-50.md) (Wave 2) adds only the context-economy rationale.
+Vocabulary and enforcement for deep modules — much behaviour behind a small interface at a clean seam — with dependency-cruiser rules making entry points the only way in. **Owns the design vocabulary, entry-point rules, and the deletion test.** [`dependency-fence`](skills/dependency-fence/SKILL.md) is a named extension owning layering *direction* only; [`interface-budget`](skills/interface-budget/SKILL.md) (Wave 2) adds only the context-economy rationale.
 
 ### delegated-authority-prompt
-Composes a maximum-authority delegation prompt in five slots — objective and definition of done, context pack, decision rights, stop conditions, evidence contract. **Owns the mandate format.** Each seat in [`seat-relay`](skills/seat-relay/SKILL.md) is briefed with that pattern rather than a new prompt shape.
+**HAND-OFF.** Composes a maximum-authority delegation prompt in five slots — objective and definition of done, context pack, decision rights, stop conditions, evidence contract. **Owns the mandate format.** Each seat in [`seat-relay`](skills/seat-relay/SKILL.md) is briefed with that pattern rather than a new prompt shape. *The relay's step 1 needs the five slots and does not restate them; the five names above are the summary, not the island.*
 
 ### diagnose
 A disciplined loop for hard bugs: build a red-capable feedback loop first, reproduce, minimise, hypothesise, instrument, fix with a regression test. **Owns debugging code.** [`thrash-watch`](skills/thrash-watch/SKILL.md) here watches *agent behaviour* — looping, flailing, giving up — and borrows "build the observation loop first" by reference.
@@ -69,11 +77,11 @@ One pipeline from a discussed feature to shipped code: spec, then tracer-bullet 
 Charts work too big for one session as a map of decision tickets, resolved one at a time. **Owns multi-session planning machinery.** [`story-cadence`](skills/story-cadence/SKILL.md) is comparative doctrine only — how big a batch should be and why — with no map or ticket machinery of its own.
 
 ### worktree-fleet
-Git worktrees for same-machine parallel agents, with the boundary that worktree artifacts are inadmissible as gate evidence until re-derived from a fresh clone. **Owns parallel isolation and that evidence rule.** Relay seats reuse those mechanics when several stories mutate one repo. *(User-invoked in the Forge — read it directly.)*
+**HAND-OFF, conditional.** Git worktrees for same-machine parallel agents, with the boundary that worktree artifacts are inadmissible as gate evidence until re-derived from a fresh clone. **Owns parallel isolation and that evidence rule.** Relay seats reuse those mechanics when several stories mutate one repo. *(User-invoked in the Forge — read it directly.)* *The hand-off only bites once a second coder mutates the same repo; a single-story relay never reaches it. The evidence rule in bold is inlined at [`seat-relay`](skills/seat-relay/SKILL.md) and holds whether or not you have the island.*
 
 ### writing-for-agents
 The universal levers for any document an agent reads: context pointers, the two loads, information hierarchy, completion criteria, pruning, failure modes. **Owns document-level context economy.** [`priority-zone`](skills/priority-zone/SKILL.md) owns the *positional* evidence and its enforcement — the token budget at the head of a context — not the wording levers.
 
 ---
 
-**No authority without evidence.** These are the boundaries this pack refuses to cross. An island that quietly re-implemented one of them would be a duplicate, and the roster in [02-ROSTER-50.md](02-ROSTER-50.md) records the boundary each one was built to respect.
+**No authority without evidence.** These are the boundaries this pack refuses to cross — nineteen of them concerns it simply keeps its hands off, and three marked **HAND-OFF** where a protocol here reaches for a step that ships elsewhere. An island that quietly re-implemented one of them would be a duplicate, and the roster in [02-ROSTER-50.md](docs/02-ROSTER-50.md) records the boundary each one was built to respect.

@@ -7,7 +7,7 @@ description: Component cohesion for the agent era - the REP/CCP/CRP tension tria
 
 Three principles decide which classes belong in one component. They contradict each other on purpose. The honest answer is never "satisfy all three"; it is "know which one your repo is paying for right now." The agent era adds a fourth pull that used to be invisible: **a component is also a context-window unit**. So "how big may this component grow?" is now a question you measure rather than feel.
 
-Canon ground for the three principles is [`martin-canon.md`](../../research/martin-canon.md) (*Clean Architecture*, Ch. 13). Conversation quotes come only through the [concept ledger](../../01-CONCEPT-LEDGER.md). The tension *reading* below says which principle pulls which way, and what that costs at each stage. That reading is this island's reasoning from the three definitions, not a sourced quotation, and it stays `advisory` throughout.
+Canon ground for the three principles is [`martin-canon.md`](../../research/martin-canon.md) (*Clean Architecture*, Ch. 13). Conversation quotes come only through the [concept ledger](../../docs/01-CONCEPT-LEDGER.md). The tension *reading* below says which principle pulls which way, and what that costs at each stage. That reading is this island's reasoning from the three definitions, not a sourced quotation, and it stays `advisory` throughout.
 
 ## The three principles and the direction each pulls
 
@@ -116,7 +116,7 @@ Then re-run the gate. The loop ends only when the tool consents (C4). That is th
 - **Token economics of reading an interface instead of an implementation** belongs to the sibling [`interface-budget`](../interface-budget/SKILL.md): what an agent must load before it may open the implementation, and the log that justifies each load. This island sizes the component; that island prices reading it.
 - **Workspace and folder compartmentalisation** is a Forge concern this pack refuses: how directories, worktrees, and per-agent workspaces are laid out on disk, and who gets which one. [COMPANION.md](../../COMPANION.md) records those refusals, and the on-disk isolation lane there is [`worktree-fleet`](../../COMPANION.md#worktree-fleet). This island partitions *code* into components and says nothing about where they live on a filesystem.
 - **Dependency direction between components** belongs to [`dependency-fence`](../dependency-fence/SKILL.md): which component may depend on which, and the invert/interface/split repairs for a violation. Cohesion decides membership; that island decides direction.
-- **Component coupling metrics** are the `stability-order` island (roster line 21, [`02-ROSTER-50.md`](../../02-ROSTER-50.md)): instability, abstractness, distance from the main sequence, ADP/SDP/SAP. *Clean Architecture* splits cohesion (Ch. 13) from coupling (Ch. 14), and so does this pack.
+- **Component coupling metrics** are the `stability-order` island (roster line 21, [`02-ROSTER-50.md`](../../docs/02-ROSTER-50.md)): instability, abstractness, distance from the main sequence, ADP/SDP/SAP. *Clean Architecture* splits cohesion (Ch. 13) from coupling (Ch. 14), and so does this pack.
 - **Plumbing stays plumbing.** Where the gate executes belongs to [`agent-guardrails`](../../COMPANION.md#agent-guardrails), loopback and ledgers to [`archipelago`](../../COMPANION.md#archipelago). The captured report becomes one rung of an [`evidence-packet`](../../COMPANION.md#evidence-packet) rather than a second evidence format.
 
 ## Enforced vs advisory

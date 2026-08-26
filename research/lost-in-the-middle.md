@@ -12,7 +12,7 @@ LLMs do not use their context window uniformly. Liu et al. showed that when the 
 
 ## What holds up in 2026 for agent-directed engineering
 
-The transcript (`../source/transcript.txt`) shows Robert C. Martin independently converging on the research: agents "treat those rules in the Pirates of the Caribbean sense. They're more like guidelines"; his fix is to "trim that initial prompt down to its absolute minimum so that you can get as much of it as possible into its priority… and then do deterministic tools after the fact." The interviewer replies with "smart zone and the dumb zone… That's Dex Hardy's term" — verified as **Dex Horthy** (transcript mishears the name). The interviewer's identity as Matt Pocock is consistent with his public engagement with Martin ([X post: "Uncle Bob gets it"](https://x.com/mattpocockuk/status/2057933526759010783)) but the transcript never names him — **UNVERIFIED**. The interview itself is published and recorded in [`../source/README.md`](../source/README.md): https://www.youtube.com/live/zcLPGC-tvgk, retrieved 2026-08-19. This line previously said no URL was found, which contradicted the repository's own source metadata; the URL was never the unverified part — the interviewer's *name* is.
+The transcript (`../source/transcript.txt`) shows Robert C. Martin independently converging on the research: agents "treat those rules in the Pirates of the Caribbean sense. They're more like guidelines"; his fix is to "trim that initial prompt down to its absolute minimum so that you can get as much of it as possible into its priority… and then do deterministic tools after the fact." The interviewer replies with "smart zone and the dumb zone… That's Dex Hardy's term" — verified as **Dex Horthy** (transcript mishears the name). The recording's primary [YouTube metadata](https://www.youtube.com/live/zcLPGC-tvgk) identifies both the channel and uploader as **Matt Pocock**, even though the transcript never names him. The interview is recorded in [`../source/README.md`](../source/README.md), retrieved 2026-08-19. This line previously said no URL was found and later left the interviewer's identity unverified; both claims were contradicted by the source metadata.
 
 Evidence-based split:
 - **Prompt (priority zone):** identity, task, the 3–10 constraints that must shape *generation* (style direction, architecture intent). Small, front-loaded — exploits primacy (Liu; IFScale).
@@ -37,5 +37,4 @@ Evidence-based split:
 - https://arxiv.org/abs/2507.11538
 - https://newsletter.pragmaticengineer.com/p/context-engineering-with-dex-horthy · https://linearb.io/dev-interrupted/podcast/dex-horthy-humanlayer-rpi-methodology-ralph-loop
 - https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents
-- https://x.com/mattpocockuk/status/2057933526759010783
 - Local transcript: ../source/transcript.txt

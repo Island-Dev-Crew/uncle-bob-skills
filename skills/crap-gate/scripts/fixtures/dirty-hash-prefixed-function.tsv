@@ -1,0 +1,8 @@
+# dirty fixture: a coverage join carrying an ES2022 private method, which JavaScript
+# spells `#validate` and istanbul reports under that exact name.
+# What decides a `#` line here is the line's shape, not the name's: the row below
+# carries tabs, so it is data and gets scored. This header spells its separators as
+# the text `<TAB>`, carries none, and stays a comment.
+# function<TAB>complexity<TAB>coverage_pct
+safe_lookup	1	100
+#validate	9	40

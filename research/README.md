@@ -1,6 +1,6 @@
 # Research briefs — how to read the labels
 
-Seven briefs. They carry the claims that go **beyond** the conversation: history, primary papers, what has and has not been replicated. Claims about the conversation itself belong to [`../01-CONCEPT-LEDGER.md`](../01-CONCEPT-LEDGER.md) instead.
+Seven briefs. They carry the claims that go **beyond** the conversation: history, primary papers, what has and has not been replicated. Claims about the conversation itself belong to [`../docs/01-CONCEPT-LEDGER.md`](../docs/01-CONCEPT-LEDGER.md) instead.
 
 ## The transcript these briefs cite
 

@@ -1,14 +1,14 @@
 # Wave 1 — fusion and gauntlet record
 
-**Built:** 2026-08-19 · **Islands:** 20 of 20 · **Location:** [`skills/`](skills/) · **Status:** all 20 mechanically green (240/240 checks); 19 cleared a blind critic; `arch-lens` failed three rounds before its true root cause was found — a defect in the validator itself, not the island.
+**Built:** 2026-08-19 · **Islands:** 20 of 20 · **Location:** [`skills/`](../skills/) · **Status:** all 20 mechanically green (240/240 checks); 19 cleared a blind critic; `arch-lens` failed three rounds before its true root cause was found — a defect in the validator itself, not the island.
 
 Every island was authored by a builder seat under the authoring canon, then judged by a **blind critic** that never saw the build prompt — only the island's roster contract and the evaluation spec. Critics were instructed to falsify, and did.
 
 ## The gate that judged the gates
 
-[`scripts/validate-island.py`](scripts/validate-island.py) enforces 12 mechanical checks per island (F1–F11): frontmatter parses, `name` matches folder, no angle brackets, description within 60–1024 chars, sidecar interface complete, body cites the ledger, body states enforced-vs-advisory, body ≤250 lines, scripts pass `bash -n` / `py_compile`.
+[`scripts/validate-island.py`](../scripts/validate-island.py) enforces 12 mechanical checks per island (F1–F11): frontmatter parses, `name` matches folder, no angle brackets, description within 60–1024 chars, sidecar interface complete, body cites the ledger, body states enforced-vs-advisory, body ≤250 lines, scripts pass `bash -n` / `py_compile`.
 
-Per the pack's own `known-dirty-fixture` doctrine, the validator was not trusted until it failed: it goes **red with 6 failures** on [`scripts/fixtures/bad-island`](scripts/fixtures/) and **green** on `good-island`. Both fixtures ship. Final sweep: **240 checks, 0 failed, 20 islands.**
+Per the pack's own `known-dirty-fixture` doctrine, the validator was not trusted until it failed: it goes **red with 6 failures** on [`scripts/fixtures/bad-island`](../scripts/fixtures/) and **green** on `good-island`. Both fixtures ship. Final sweep: **240 checks, 0 failed, 20 islands.**
 
 ## Verdict per island
 
@@ -29,7 +29,7 @@ Per the pack's own `known-dirty-fixture` doctrine, the validator was not trusted
 
 The gauntlet earned its keep — every defect below is one a self-review would have missed, and each was verified fixed against the files, not taken on the fixer's word:
 
-- **`steering-audit` — laundered evidence (S4).** The body claimed its checks were "demonstrated against a known-bad fixture in this island's own construction." No fixture existed anywhere. The critic proved the absence by search, noting the script's behavior was genuinely correct — but *a completed demonstration written as fact when it never happened* is the exact laundering [`CONTEXT.md`](CONTEXT.md) forbids. Fixed by actually shipping the fixtures ([`skills/steering-audit/scripts/fixtures/`](skills/steering-audit/scripts/fixtures/), 3 files), which the round-2 critic re-ran independently.
+- **`steering-audit` — laundered evidence (S4).** The body claimed its checks were "demonstrated against a known-bad fixture in this island's own construction." No fixture existed anywhere. The critic proved the absence by search, noting the script's behavior was genuinely correct — but *a completed demonstration written as fact when it never happened* is the exact laundering [`CONTEXT.md`](../CONTEXT.md) forbids. Fixed by actually shipping the fixtures ([`skills/steering-audit/scripts/fixtures/`](../skills/steering-audit/scripts/fixtures/), 3 files), which the round-2 critic re-ran independently.
 - **`crap-gate` — invented provenance (S5).** Claimed the "Alberg" misattribution came from auto-caption garbling. Grep proved "Alberg" appears nowhere in the transcript, SRT, or the ledger's garble registry. The correction was right; the *story about where the error came from* was fabricated. Now states only what the research grounds.
 - **`seat-relay` — over-broad enforcement claim (S4).** Asserted every seat's exit gate is decided by a tool's exit code, while its own table showed seat 1's gate is partly prose judgment (the QA procedure only becomes executable at seat 5). Now scoped honestly. The same critic also caught that the island flagged two user-invoked neighbors but silently routed to a third (`gauntlet-loop`) that no agent can fire — a silent no-op under the authoring canon.
 - **`mutant-hunt` — dead link + overstated research (S8, S5).** Linked twice to `gate-toolchain`, an unbuilt Wave-2 island, and claimed universally that "the mutation tool mutates only covered code" — true for PIT's default, false for Stryker, which reports uncovered mutants as survivors and would have produced false blocks under this gate's zero-survivor rule.
@@ -47,7 +47,7 @@ Independent verification after the workflow surfaced three issues no round-1 cri
 
 The `arch-lens` round-3 critic failed the island again, and was right. My cache fix — delete the folders, add a `.gitignore` — was **structurally incapable of working**, and the critic proved it three ways:
 
-- **It regenerates.** [`scripts/validate-island.py`](scripts/validate-island.py) ran `python -m py_compile` for check F11, which *writes bytecode into the island it is validating*. Every validation run recreated what I had deleted. Confirmed independently: sweep to 0, one validator run, back to 14 artifacts.
+- **It regenerates.** [`scripts/validate-island.py`](../scripts/validate-island.py) ran `python -m py_compile` for check F11, which *writes bytecode into the island it is validating*. Every validation run recreated what I had deleted. Confirmed independently: sweep to 0, one validator run, back to 14 artifacts.
 - **`.gitignore` was the wrong lever.** The fleet installer copies from the filesystem, not from git — and the whole pack is untracked, so git was never the leak path.
 - **The installer does not filter.** `scripts/install.py` calls `shutil.copytree` at lines 749, 1237, 1276 with no `ignore=` argument.
 

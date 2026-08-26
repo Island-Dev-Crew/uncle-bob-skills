@@ -13,3 +13,8 @@ A gate that answers 1 when watched and 0 when not (C4). closed-stream-check.py m
 ```bash
 python3 scripts/flip-gate.py   # exit 1
 ```
+
+Two neighbours carry the shapes this one does not. [`fail-open-3/`](fail-open-3/SKILL.md) hides the
+breach in exit 3 borrowed from a separate, honestly documented empty-input command, and
+[`quoted-status/`](quoted-status/SKILL.md) hides this very gate from the probe behind a quoted
+argument.

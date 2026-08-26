@@ -25,3 +25,7 @@ The five, in order: a bare island-relative script with an inline code; the same 
 whose code sits on a report line two lines below its output; a candidate carrying no code
 at all (PENDING); a usage template with a `<placeholder>` (TEMPLATE); an off-allowlist
 leading token that still states a code (SKIPPED).
+
+Two proofs run here, so the PENDING is not the only thing `--strict` has to weigh.
+[`pending-only/`](pending-only/SKILL.md) is the island where it is, and where the two answers
+compete.

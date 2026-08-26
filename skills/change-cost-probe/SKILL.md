@@ -5,7 +5,7 @@ description: Measure what a change actually costs in your repo - minutes or toke
 
 # Change Cost Probe: test the $1 house against your own repo
 
-This island serves an economic claim: *"the cost of change has plummeted to as close to zero as I think we're ever going to get it… why would you do this upfront planning because that's expensive. Why wouldn't you just fiddle fiddle fiddle fiddle until it looks right?"* ([C21](../../01-CONCEPT-LEDGER.md)). It is a good argument. In your repo it is also an unverified one, and the pack's first law does not exempt arguments it likes ([CONTEXT.md](../../CONTEXT.md)). So measure what a change costs here, watch which way the number moves, and let it decide instead of the parable.
+This island serves an economic claim: *"the cost of change has plummeted to as close to zero as I think we're ever going to get it… why would you do this upfront planning because that's expensive. Why wouldn't you just fiddle fiddle fiddle fiddle until it looks right?"* ([C21](../../docs/01-CONCEPT-LEDGER.md)). It is a good argument. In your repo it is also an unverified one, and the pack's first law does not exempt arguments it likes ([CONTEXT.md](../../CONTEXT.md)). So measure what a change costs here, watch which way the number moves, and let it decide instead of the parable.
 
 Two questions come back from one measurement:
 
