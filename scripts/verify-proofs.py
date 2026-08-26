@@ -1146,7 +1146,13 @@ def mask_noncommand_contexts(syntax):
                 mask_span(chars, index, end + 1)
                 index = end + 1
                 continue
-        array_match = ARRAY_ASSIGNMENT.match(syntax, index)
+        array_word_start = (
+            syntax[index] in "_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            and (index == 0 or not (
+                syntax[index - 1].isalnum() or syntax[index - 1] == "_"
+            ))
+        )
+        array_match = ARRAY_ASSIGNMENT.match(syntax, index) if array_word_start else None
         if array_match is not None:
             opening = array_match.end() - 1
             end = matching_data_paren(syntax, opening)
