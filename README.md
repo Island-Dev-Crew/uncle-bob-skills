@@ -23,7 +23,7 @@ ln -s "$PWD/uncle-bob-skills/skills" ~/.claude/skills/uncle-bob
 
 The islands are plain `SKILL.md` files with an `agents/openai.yaml` sidecar, so they load in Claude Code, Codex, Pi, and Hermes alike. There is no runtime, no package, and no install step — the gate scripts need only `python3` and `bash`.
 
-Copying one island out on its own is not supported, and the reason is mechanical rather than stylistic: **all fifty link outside their own directory** — 442 distinct relative targets across the pack, and 42 islands cite the pack validator or `prove-gate.sh` as the evidence for their only `enforced` claim. Lift one island out and those links resolve to nothing: the two laws in [CONTEXT.md](CONTEXT.md), the ledger concept its every quote rests on, the boundary in [COMPANION.md](COMPANION.md) that says what it refuses, its sibling islands, and the validator that proves it. What survives is the prose; what is severed is the evidence graph the prose points at — which is the one thing this pack asks to be judged on. A single-island copy is a reading copy, not a working one.
+Copying one island out on its own is not supported, and the reason is mechanical rather than stylistic: **all fifty link outside their own directory** — 64 distinct outside-island targets across the pack, and 42 islands cite the pack validator or `prove-gate.sh` as the evidence for their only `enforced` claim. (Both numbers re-derivable from the committed tree; an earlier figure here, 442, could not be reproduced by any counting method and is retired rather than defended.) Lift one island out and those links resolve to nothing: the two laws in [CONTEXT.md](CONTEXT.md), the ledger concept its every quote rests on, the boundary in [COMPANION.md](COMPANION.md) that says what it refuses, its sibling islands, and the validator that proves it. What survives is the prose; what is severed is the evidence graph the prose points at — which is the one thing this pack asks to be judged on. A single-island copy is a reading copy, not a working one.
 
 ## The founding layer (v1.0)
 
@@ -88,6 +88,8 @@ python3 scripts/verify-proofs.py scripts/fixtures/proof-grammar-island          
 python3 scripts/verify-proofs.py --strict scripts/fixtures/proof-grammar-island   # exit 4 — 1 PENDING
 python3 scripts/verify-proofs.py scripts/fixtures/hostile-proof-island            # exit 1 — REFUSED
 python3 scripts/verify-proofs.py scripts/fixtures/good-island                     # exit 3 — nothing ran
+python3 scripts/verify-proofs.py scripts/fixtures/unsafe-export-island            # exit 1 — a poisoned PATH export is refused, never replayed
+python3 scripts/closed-stream-check.py scripts/fixtures/verdict-flip-island       # exit 1 — a gate whose documented 1 flips to a clean 0 on a dead pipe is a LEAK
 ```
 
 Exit 3 is the one that matters: a verifier that executed nothing has verified nothing, and reporting that as a pass is the same failure as a gate that scans zero files.

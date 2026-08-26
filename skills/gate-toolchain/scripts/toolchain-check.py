@@ -52,8 +52,13 @@ Exit:   0 every row mapped and diff-scoped (also: --help printed usage)
         2 usage / IO / closed or unflushable stdout / closed stdin / undecodable
           / malformed or empty manifest / any other internal error (fail closed
           — no error path may borrow the verdict codes)
-      130 interrupted — KeyboardInterrupt is caught only to re-signal it as 130,
-          so a kill reads as a kill and never as a verdict.
+      130 interrupted — KeyboardInterrupt is caught and CONVERTED to a normal exit
+          carrying the shell's convention for SIGINT (128+2). It is not re-raised: a
+          waitpid parent sees an ordinary exit status of 130, never a signal death.
+          Saying "re-signal" here once claimed the opposite of what the code does,
+          and the distinction is exactly the one that blinded this pack's own
+          closed-stream harness to 14 real signal deaths. 130 is still never a
+          verdict — it is named in the table so no caller mistakes it for one.
         These four are the only codes this script returns: the tail below seals
         every exit, including argparse's SystemExit and the interpreter's own
         shutdown flush, so a dead output pipe cannot swap in CPython's 120.
@@ -434,7 +439,7 @@ if __name__ == "__main__":
         _code = main()
     except SystemExit as _exc:            # argparse's usage exit and --help land here
         _code = _exc.code if isinstance(_exc.code, int) else (0 if _exc.code is None else 1)
-    except KeyboardInterrupt:             # caught only to re-signal it: a kill reads as a kill
+    except KeyboardInterrupt:             # converted to the shell's 130, not re-raised
         _code = 130
     except BrokenPipeError:               # IO, never a verdict
         _code = 2

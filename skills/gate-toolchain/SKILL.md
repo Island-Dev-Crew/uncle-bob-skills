@@ -69,8 +69,9 @@ python3 scripts/toolchain-check.py [manifest.tsv]   # stdin when no file
 # exit 1 verdict, a row breaches
 # exit 2 usage / IO / closed or unflushable stdout / closed stdin / undecodable /
 #        malformed or empty / any other internal error (fail closed) · exit 130
-#        interrupted (Ctrl-C, caught only to re-signal it, so a kill reads as a
-#        kill). 0, 1, 2, 130 — no other code, and that is sealed rather than
+#        interrupted (Ctrl-C, converted to the shell's convention 130 by a normal
+#        exit — not re-raised, so a waitpid parent sees an ordinary status, never a
+#        signal death). 0, 1, 2, 130 — no other code, and that is sealed rather than
 #        assumed: the tail catches argparse's own SystemExit and flushes both
 #        streams itself, so a dead output pipe cannot swap CPython's shutdown
 #        code 120 in over the verdict. Both spellings are probed below.
@@ -102,7 +103,7 @@ python3 scripts/toolchain-check.py scripts/fixtures/clean-diff-scoped.tsv >&-  #
 # the two paths that used to exit 120, plus the interrupt — returncode captured, not piped:
 python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);print(subprocess.run([sys.executable,"scripts/toolchain-check.py","--nope"],stderr=w,stdout=subprocess.DEVNULL).returncode)'    # 2 — usage error onto a dead stderr, not 120
 python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);print(subprocess.run([sys.executable,"scripts/toolchain-check.py","--help"],stdout=w,stderr=subprocess.DEVNULL).returncode)'    # 2 — --help onto a dead stdout, not 120
-python3 -c 'import signal,subprocess,sys,time;p=subprocess.Popen([sys.executable,"scripts/toolchain-check.py"],stdin=subprocess.PIPE,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);time.sleep(0.6);p.send_signal(signal.SIGINT);print(p.wait())'  # 130 — a kill reads as a kill
+python3 -c 'import signal,subprocess,sys,time;p=subprocess.Popen([sys.executable,"scripts/toolchain-check.py"],stdin=subprocess.PIPE,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);time.sleep(0.6);p.send_signal(signal.SIGINT);print(p.wait())'  # 130 — the shell convention for SIGINT, by normal exit, never a verdict
 ```
 
 The dirty fixture fails for sixteen distinct right reasons, while its first row passes: a `--whole-repo` scope, its `--all=true` spelling, `crap4java` declared as Go's scorer, a `--incremental` claim absent from the Stryker command, one hidden behind a `#`, one negated as `--incremental=false`, one negated in the scope column itself, one negated by `=00`, one carrying *both* spellings at once, a *valued* `--incremental=true` answered by `--incremental=false`, a clean `--incremental` declared over a command that still runs `--whole-repo`, the same breach in quotes (`"--whole-repo"`), the same breach hidden behind the `'\''` escape idiom and a `#`, the same breach after a mid-word `fix#123`, an `echo --changed` that never invokes the tool it declares, and an `echo --changed -Dcapital=1` that declares `pit` and only buries those letters inside `capital`.

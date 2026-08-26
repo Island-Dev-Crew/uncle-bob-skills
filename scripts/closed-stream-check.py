@@ -36,14 +36,30 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Every exit code any island in this pack documents, measured rather than assumed: 0, 1, 2, 3
-# and 4 (the last is verify-proofs' --strict). A probed command may legitimately return a
-# different one of these than it returns normally — closing its output is a real condition and
-# refusing is the correct answer to it. What it may NOT do is return a code no table names.
+# What a probe is allowed to return when its output stream is dead. Two things are fine, and
+# nothing else is.
 #
-# This used to be `LEAKED = {120, 141}`: two hard-coded examples instead of a rule. Everything
-# else passed, including a TIMEOUT and any code a gate invented on its way out.
-DOCUMENTED = {0, 1, 2, 3, 4}
+#   - the code the command DOCUMENTS: its verdict survived the closed stream intact.
+#   - a NON-VERDICT code: the gate could not emit its report and fail-closed instead. A report
+#     nobody received is not a verdict, so declining to claim one is correct.
+#
+# Everything else is a leak: a shutdown code (CPython's 120, a shell's 141), a signal, a
+# TIMEOUT — OR, the dangerous one this check exists for, a DIFFERENT verdict than documented.
+# A gate that documents 1 (a breach) and returns 0 (a clean pass) when its pipe dies is a
+# breach silently reported as clean, and the previous rule — membership in a pack-wide union
+# {0,1,2,3,4} — passed it, because 0 was in the set. The union was also justified as "measured",
+# which was false: three islands document 130. This compares against the command's own code.
+VERDICT = {0, 1}          # green / red — a real answer about the code under test
+NON_VERDICT = {2, 3, 4}   # usage / IO / fail-closed / strict — explicitly "no answer"
+
+
+def leaked(rc, expected):
+    """A probe result is a leak unless the verdict survived or the gate fail-closed."""
+    if rc == expected:
+        return False
+    if rc in NON_VERDICT:
+        return False
+    return True
 
 
 def load_grammar():
@@ -96,6 +112,7 @@ def main(argv):
     leaks = []
     refused = 0
     examined = 0
+    own_probes = 0
     explicit = bool(argv[1:])
     for arg in args:
         d = Path(arg)
@@ -118,7 +135,10 @@ def main(argv):
                     continue
                 # A command that already closes a stream on purpose is the island's own
                 # probe of this very defect; re-closing it would test the harness, not it.
+                # Counted and printed, not pruned in silence — a quiet prune is the same
+                # false green this pack names elsewhere, and 19 candidates land here today.
                 if ">&-" in cmd or "$?" in cmd:
+                    own_probes += 1
                     continue
                 script = "; ".join(setup + [cmd]) if setup else cmd
                 # The refusal has to cover the whole script that will actually run. Testing only
@@ -132,13 +152,16 @@ def main(argv):
                 for stream in (1, 2):
                     probed += 1
                     rc = probe(script, d, stream)
-                    if rc not in DOCUMENTED:
-                        leaks.append((d.name, "stdout" if stream == 1 else "stderr", rc, cmd))
-    for name, which, rc, cmd in leaks:
-        print(f"LEAK {name}: exit {rc} with {which} closed — no island names that code")
+                    if leaked(rc, expected):
+                        leaks.append((d.name, "stdout" if stream == 1 else "stderr",
+                                      rc, expected, cmd))
+    for name, which, rc, expected, cmd in leaks:
+        print(f"LEAK {name}: exit {rc} with {which} closed — documented {expected}, "
+              f"and {rc} is neither that verdict nor a fail-closed non-verdict")
         print(f"      {cmd}")
     tail = f", {refused} refused" if refused else ""
-    print(f"\n{probed} closed-stream probes over {examined} island(s), {len(leaks)} leak(s){tail}")
+    print(f"\n{probed} closed-stream probes over {examined} island(s), {len(leaks)} leak(s){tail}"
+          f" ({own_probes} candidate(s) not re-probed: they close a stream themselves)")
     if leaks:
         return 1
     if probed == 0:

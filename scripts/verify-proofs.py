@@ -72,6 +72,7 @@ a heredoc that only prints it. Both were real islands here; both now reproduce.
 A mismatch is still a prompt to go look before it is a verdict — check it by running the
 block as a whole.
 """
+import os
 import re
 import shlex
 import subprocess
@@ -208,6 +209,24 @@ PLACEHOLDER = re.compile(r"<[a-z][a-z0-9._-]*>", re.IGNORECASE)
 # `export NAME=value` sets the environment and runs nothing, so it is replayed verbatim rather
 # than treated as a step this tool had to skip.
 EXPORT = re.compile(r"^\s*export\s+([A-Za-z_][A-Za-z0-9_]*)=(\S.*?)\s*$")
+# A documented `export` is replayed into the shell that runs the proof, so it is the one thing
+# a proof block can put into the environment of an allowlisted command. That is safe only for
+# variables that change the INPUT/decoding channel (a locale, a Python encoding) — never one
+# that redirects which code runs. `export PATH=./fake` in a SKILL.md forged a verified proof by
+# shimming the very `python3` the block then invoked; the allowlist the docstring names as
+# mitigation #1 was bypassed because `export` is off it. So: replay a safe name with a safe
+# (metacharacter-free) value; REFUSE anything else and report it.
+SAFE_ENV = frozenset("""
+LANG LANGUAGE LC_ALL LC_CTYPE LC_COLLATE LC_MESSAGES LC_NUMERIC LC_TIME LC_MONETARY
+PYTHONUTF8 PYTHONIOENCODING PYTHONLEGACYWINDOWSFSENCODING
+""".split())
+SAFE_EXPORT_VALUE = re.compile(r"^[A-Za-z0-9_.:@=+/-]*$")
+REFUSE = "__REFUSE__"      # sentinel in the `expected` slot: main refuses and reports it
+
+
+def safe_export(name, value):
+    """Only a locale/encoding export with a plain value may enter a proof's environment."""
+    return name in SAFE_ENV and bool(SAFE_EXPORT_VALUE.match(value))
 
 # Words that make a line a COMMAND even though its leading token is off the run allowlist.
 # Two different bugs needed this. A report line's lookahead walked straight PAST `node setup.js`
@@ -286,7 +305,8 @@ def commands(block):
         # proof stops being checked with nothing in the output to say so.
         claims = ANNOT.search(split_comment(raw)[1]) and not raw.startswith(" ")
         cmd = m.group(1) if m else (
-            raw if runnable or claims or ASSIGN.match(split_comment(bare)[0]) else None)
+            raw if runnable or claims or ASSIGN.match(split_comment(bare)[0])
+            or EXPORT.match(split_comment(bare)[0]) else None)
         if not cmd or not cmd.strip():
             # Dropping a line here used to be silent, so a bare `cd scripts` — a real step, with
             # no annotation and an unlisted leading token — left no trace, and the command after
@@ -312,8 +332,17 @@ def commands(block):
         # A bare assignment is context for what follows, not a command to check.
         exported = EXPORT.match(split_comment(cmd)[0])
         if exported:
-            yield f"export {exported.group(1)}={exported.group(2)}", None, list(setup), gapped
-            setup.append(f"export {exported.group(1)}={exported.group(2)}")
+            name, value = exported.group(1), exported.group(2)
+            step = f"export {name}={value}"
+            if safe_export(name, value):
+                yield step, None, list(setup), gapped
+                setup.append(step)
+            else:
+                # Not replayed. Refused and reported, and everything after it is gapped, because
+                # a block that tried to poison the environment is not a block whose later proofs
+                # can be trusted to have run in the environment they document.
+                yield step, REFUSE, list(setup), gapped
+                gapped = True
             i += 1
             continue
         assigned = ASSIGN.match(split_comment(cmd)[0])
@@ -352,16 +381,37 @@ def main() -> int:
     if unknown:
         print(f"verify-proofs: unknown option(s): {' '.join(unknown)}", file=sys.stderr)
         return 2
+    explicit = bool(args)
     args = args or sorted(str(p) for p in Path("skills").glob("*/"))
     total = ran = mismatched = pending = refused = template = skipped = 0
-    unsequenced = 0
+    unsequenced = examined = 0
     for arg in args:
         d = Path(arg)
         skill = d / "SKILL.md"
         if not skill.is_file():
+            # A path the caller NAMED that is not an island is usage (exit 2), not a silent
+            # skip that leaves the run reporting success over the other arguments — the same
+            # certified-a-scope-it-never-opened defect closed-stream-check.py already fixed.
+            # A default sweep may pass over a non-island directory; an explicit target may not.
+            if explicit:
+                print(f"verify-proofs: not an island (no SKILL.md): {d}", file=sys.stderr)
+                return 2
             continue
-        for block in blocks(skill.read_text(encoding="utf-8")):
+        examined += 1
+        try:
+            skill_text = skill.read_text(encoding="utf-8", errors="replace")
+        except OSError as exc:
+            # An unreadable island is not a failed proof. Exit 1 is this tool's MISMATCH code,
+            # so borrowing it here would report the island as broken; 2 is "no verdict".
+            print(f"verify-proofs: cannot read {skill}: {exc}", file=sys.stderr)
+            return 2
+        for block in blocks(skill_text):
             for cmd, expected, setup, gapped in commands(block):
+                if expected == REFUSE:
+                    refused += 1
+                    print(f"REFUSED {d.name}: unsafe environment export, not replayed")
+                    print(f"         {cmd}")
+                    continue
                 if not is_runnable(cmd):
                     # Off the allowlist. Reported, not dropped: an invisible skip is how a
                     # documented proof stops being checked without anyone noticing.
@@ -388,7 +438,7 @@ def main() -> int:
                     continue
                 ran += 1
                 try:
-                    p = subprocess.run(script, shell=True, cwd=d, capture_output=True, timeout=120)
+                    p = subprocess.run(["bash", "-c", script], cwd=d, capture_output=True, timeout=120)
                     actual = p.returncode
                 except subprocess.TimeoutExpired:
                     actual = "TIMEOUT"
@@ -406,7 +456,7 @@ def main() -> int:
                     print(f"UNSEQUENCED {d.name}: matched {expected}, but an earlier step "
                           f"in this block could not be replayed")
                     print(f"         {cmd}")
-    print(f"\n{total} candidates, {ran} proofs run, {pending} pending, "
+    print(f"\n{examined} island(s): {total} candidates, {ran} proofs run, {pending} pending, "
           f"{template} templates, {skipped} skipped, {refused} refused, "
           f"{unsequenced} unsequenced, {mismatched} mismatched")
     if mismatched or refused:
@@ -431,4 +481,28 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    # The exit-code contract has to survive the interpreter's own shutdown and any internal
+    # fault. This tool exits 1 for a MISMATCH, so a dead-stdout flush leaking CPython's 120 or
+    # an uncaught exception exiting 1 would both be read as verdicts about the code under
+    # review. 2 is the non-verdict code the other three tools already seal to.
+    try:
+        _code = main()
+    except SystemExit as _exc:
+        _code = _exc.code if isinstance(_exc.code, int) else (0 if _exc.code is None else 1)
+    except KeyboardInterrupt:
+        _code = 2
+    except BaseException as _exc:
+        print(f"error: internal failure: {type(_exc).__name__}: {_exc}", file=sys.stderr)
+        _code = 2
+    for _stream, _fd in ((sys.stdout, 1), (sys.stderr, 2)):
+        try:
+            if _stream is not None:
+                _stream.flush()
+        except BaseException:
+            if _code in (0, 1):
+                _code = 2
+            try:
+                os.dup2(os.open(os.devnull, os.O_WRONLY), _fd)
+            except BaseException:
+                pass
+    sys.exit(_code)
