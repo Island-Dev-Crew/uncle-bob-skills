@@ -135,6 +135,10 @@ The thinking is Robert C. Martin's, from a conversation with Matt Pocock ([video
 
 Built with the IDC Forge methodology. Boundaries in [COMPANION.md](COMPANION.md).
 
+## License
+
+[MIT](LICENSE) © 2026 Island Development Crew. The license covers this pack's own work — the islands, their gate scripts, the ledger, the research, and the tooling. It does not cover the Martin–Pocock conversation, which is cited here and not redistributed; the full transcript and captions are deliberately absent (see [source/README.md](source/README.md)).
+
 **No authority without evidence.**
 
 Roll Tide · Island Development Crew · Huntsville, AL

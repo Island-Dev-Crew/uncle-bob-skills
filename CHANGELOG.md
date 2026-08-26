@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased — toward 2.0
+## v2.0.0 — 2026-08-26
+
+**The hardening release.** Fifty islands, five deterministic pack gates, and a doctrine that every published number is re-derivable from the committed tree by a command. What separates 2.0 from the 1.x line is not new islands — the roster was complete at v1.2 — but that the pack was turned on itself: four independent OpenAI Codex reviews across three frozen heads (`0eb75eb`, `5ddf557`, and a pre-seat-3 survey of `5a5b6c2`), each returning CHANGES REQUIRED, each reproduced here before anything changed. The most valuable findings were in the pack's own certifying tools — a proof verifier that executed truncated commands, a closed-stream harness blind to the signal death it was built to catch, an exit-code check that never compared against the code it documented — and closing them is what earns the release its own first law. Ships with an [MIT license](LICENSE) and `scripts/link-check.py`, the instrument the pack's link count previously lacked. A third independent seat reviews this exact head next; its receipt, when it lands, is the last gate.
 
 Hardening. Phases 1–3 of [07-HARDENING-PLAN-2.0.md](07-HARDENING-PLAN-2.0.md) are complete; phase 4 opened with an independent non-Anthropic review (OpenAI Codex) of the frozen `0eb75eb` head, which returned CHANGES REQUIRED on five pack-level findings. Each was reproduced here before anything was changed.
 

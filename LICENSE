@@ -19,3 +19,13 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+Scope note. This license covers Island Development Crew's own work: the skill
+islands, their gate scripts, the concept ledger, the research briefs, and the
+tooling. It does NOT cover the underlying conversation between Robert C. Martin
+and Matt Pocock, which is their work and is cited here, not redistributed — the
+full transcript and captions are deliberately absent from this repository (see
+source/README.md). The short attributed quotations throughout are ordinary
+citation of that source, not licensed by Island Development Crew.
