@@ -415,14 +415,20 @@ def self_probe(cmd, depth=0):
     return False
 
 
-def probe(script, cwd, stream):
+def probe(bash_executable, bash_environment, script, cwd, stream):
     """Run one invocation with `stream` (1 or 2) already closed; return its exit code."""
     r, w = os.pipe()
     os.close(r)                                   # the reader is gone before the write
     kw = {"stdout": w, "stderr": subprocess.DEVNULL} if stream == 1 else \
          {"stderr": w, "stdout": subprocess.DEVNULL}
     try:
-        rc = subprocess.run(["bash", "-c", script], cwd=cwd, timeout=60, **kw).returncode
+        rc = subprocess.run(
+            [bash_executable, "-c", script],
+            cwd=cwd,
+            env=bash_environment,
+            timeout=60,
+            **kw,
+        ).returncode
     except subprocess.TimeoutExpired:
         return "TIMEOUT"
     finally:
@@ -441,6 +447,10 @@ def probe(script, cwd, stream):
 
 def main(argv):
     vp = load_grammar()
+    if vp.BASH_EXECUTABLE is None:
+        print("closed-stream-check: cannot resolve an executable Bash at startup",
+              file=sys.stderr)
+        return 2
     args = argv[1:] or sorted(str(p) for p in Path("skills").glob("*/"))
     probed = 0
     leaks = []
@@ -507,7 +517,13 @@ def main(argv):
                     continue
                 for stream in (1, 2):
                     probed += 1
-                    rc = probe(script, d, stream)
+                    rc = probe(
+                        vp.BASH_EXECUTABLE,
+                        vp.BASH_REPLAY_ENV,
+                        script,
+                        d,
+                        stream,
+                    )
                     if leaked(rc, expected):
                         leaks.append((d.name, "stdout" if stream == 1 else "stderr",
                                       rc, expected, cmd))

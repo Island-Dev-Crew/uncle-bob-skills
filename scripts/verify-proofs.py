@@ -87,11 +87,16 @@ command lookup or inject interpreter startup (`PATH`,
 `*PATH`, loader variables, and the named shell/interpreter hooks below) are refused whether or
 not the author wrote `export`. A function definition (`name ()` or `function name`) masquerading
 as an allowlisted invocation is refused whether or not it carries an exit annotation, including
-inside executable substitutions and literal Bash/sh `-c` source. Actual command-position
-`eval`, `source`, `.`, state-setting `trap`, imported `BASH_FUNC_*%%` environment entries, and
-Bash/sh invocations that read their program from stdin are refused too: runtime-provided source
-can establish the same state, so a literal-only scan could not certify them. Those words remain
-ordinary data when they are arguments to another command, and no-exec/immediate-exit shell
+inside executable substitutions and literal Bash/sh `-c` source. Literal child commands exposed
+through recognized BSD/GNU `xargs` options are inspected on the same boundary; unknown or
+runtime-computed launcher grammar is refused, as is an `xargs`-supplied shell option or source
+operand. Function-shaped text passed only as ordinary data remains ordinary data. Actual
+command-position `eval`, `source`, `.`, state-setting `trap`, imported `BASH_FUNC_*%%`
+environment entries, and
+Bash/sh invocations that read their program from stdin, environment hooks, interactive/login
+profiles, explicit startup files, or the debugger profile are refused too: externally provided
+source can establish the same state, so a literal-only scan could not certify them. Those words
+remain ordinary data when they are arguments to another command, and no-exec/immediate-exit shell
 options do not pretend to execute their `-c` operands. Literal child-shell source containing an
 active heredoc is refused as unsupported: the payload is data, but this deliberately small static
 reader cannot promise to separate every delimiter form from later commands. Here strings, quoted
@@ -126,6 +131,7 @@ block as a whole.
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -943,9 +949,6 @@ FUNCTION_KEYWORD_SETUP = re.compile(
     + r"(?:\s*\{|\s*[(]|\s*\[\[|\s*if\b|\s*while\b|\s*until\b|\s*for\b|"
     + r"\s*select\b|\s*case\b)"
 )
-ARRAY_ASSIGNMENT = re.compile(
-    r"(?:[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\n]*\])?)(?:\+?=)[ \t]*\("
-)
 PRINTF_FLAGS = frozenset("-+ #0'")
 PRINTF_LENGTH_MODIFIERS = frozenset("hlLjzt")
 PRINTF_CONVERSIONS = frozenset("diouxXfFeEgGaAcsbqTn")
@@ -1095,30 +1098,152 @@ def mask_span(chars, start, end):
             chars[index] = " "
 
 
-def matching_data_paren(text, opening):
-    """Closing parenthesis for an already identified array/arithmetic data context."""
-    depth = 0
-    for index in range(opening, len(text)):
-        if text[index] == "(":
-            depth += 1
-        elif text[index] == ")":
-            depth -= 1
-            if depth == 0:
-                return index
-    return None
+def data_closer_tables(text):
+    """Precompute every data-context closer used by the shell masker in linear time."""
+    paired = {opener: [None] * len(text) for opener in "({["}
+    openings = {opener: [] for opener in paired}
+    closer_to_opener = {")": "(", "}": "{", "]": "["}
+    for index, char in enumerate(text):
+        if char in openings:
+            openings[char].append(index)
+        elif char in closer_to_opener:
+            opener = closer_to_opener[char]
+            if openings[opener]:
+                paired[opener][openings[opener].pop()] = index
+
+    line_brackets = [None] * len(text)
+    exact_double_brackets = [None] * len(text)
+    next_line_bracket = None
+    next_double_bracket = None
+    for index in range(len(text) - 1, -1, -1):
+        if text[index] == "\n":
+            next_line_bracket = None
+        elif text[index] == "]":
+            next_line_bracket = index
+        line_brackets[index] = next_line_bracket
+        if index + 1 < len(text) and text[index:index + 2] == "]]":
+            next_double_bracket = index
+        exact_double_brackets[index] = next_double_bracket
+
+    paired["line]"] = line_brackets
+    paired["]]"] = exact_double_brackets
+    return paired
 
 
-def matching_data_delimiter(text, opening, opener, closer):
-    """Closing delimiter for a parameter/legacy-arithmetic data expansion."""
-    depth = 0
-    for index in range(opening, len(text)):
-        if text[index] == opener:
-            depth += 1
-        elif text[index] == closer:
-            depth -= 1
-            if depth == 0:
-                return index
-    return None
+COMMAND_PREFIX_TOKENS = (
+    "if", "elif", "while", "until", "then", "else", "do", "!", "time", "{",
+)
+COMMAND_PREFIX_INITIAL = frozenset({"between"})
+FOR_PREFIX_INITIAL = "leading"
+
+
+def advance_command_prefix(states, char):
+    """Advance the finite recognizer for ``COMMAND_POSITION`` by one character.
+
+    A regex over the whole suffix made every unmatched ``[[`` rescan all preceding bytes.
+    The prefix language is regular, so retaining its possible states makes each position an
+    O(1) update.  ``time`` has two live interpretations after whitespace: a completed prefix
+    token, or the start of its optional ``-p`` operand.
+    """
+    advanced = set()
+    for state in states:
+        if state == "between":
+            if char in " \t":
+                advanced.add("between")
+                continue
+            for token in COMMAND_PREFIX_TOKENS:
+                if char != token[0]:
+                    continue
+                if len(token) == 1:
+                    advanced.add("needs-space")
+                else:
+                    advanced.add((token, 1))
+        elif isinstance(state, tuple):
+            token, offset = state
+            if char == token[offset]:
+                offset += 1
+                if offset == len(token):
+                    advanced.add(
+                        "time-needs-space" if token == "time" else "needs-space"
+                    )
+                else:
+                    advanced.add((token, offset))
+        elif state == "needs-space":
+            if char in " \t":
+                advanced.add("between")
+        elif state == "time-needs-space":
+            if char in " \t":
+                advanced.update({"between", "time-option-space"})
+        elif state == "time-option-space":
+            if char in " \t":
+                advanced.add("time-option-space")
+            elif char == "-":
+                advanced.add("time-option-dash")
+        elif state == "time-option-dash" and char == "p":
+            advanced.add("needs-space")
+    return frozenset(advanced)
+
+
+def advance_for_prefix(state, char):
+    """Advance the finite recognizer for ``FOR_ARITHMETIC_POSITION``."""
+    if state == "leading":
+        if char in " \t":
+            return state
+        return "f" if char == "f" else "dead"
+    if state == "f":
+        return "fo" if char == "o" else "dead"
+    if state == "fo":
+        return "done" if char == "r" else "dead"
+    if state == "done":
+        return state if char in " \t" else "dead"
+    return "dead"
+
+
+def advance_command_context(command_states, for_state, char):
+    """Advance both command-prefix recognizers, restarting after a shell boundary."""
+    if char in ";\n()&|":
+        return COMMAND_PREFIX_INITIAL, FOR_PREFIX_INITIAL
+    return (
+        advance_command_prefix(command_states, char),
+        advance_for_prefix(for_state, char),
+    )
+
+
+def advance_masked_context(command_states, for_state, chars, start, end):
+    """Advance prefix recognizers across an already blanked non-command region."""
+    for index in range(start, end):
+        command_states, for_state = advance_command_context(
+            command_states, for_state, chars[index]
+        )
+    return command_states, for_state
+
+
+def array_assignment_opening(text, start, closing_brackets):
+    """Opening ``(`` for an array assignment beginning at ``start``, or None.
+
+    This is the bounded equivalent of matching ``NAME[anything]+=(...``. Looking for a missing
+    subscript closer from every word start made ``a[a[a[...``
+    rescan the whole remaining line at each ``a``. The precomputed closer table keeps every
+    lookup constant-time while preserving the old first-``]`` and same-line grammar.
+    """
+    index = start + 1
+    while index < len(text) and (
+            text[index] == "_" or (text[index].isascii() and text[index].isalnum())):
+        index += 1
+    if index < len(text) and text[index] == "[":
+        closing = closing_brackets[index]
+        if closing is None:
+            return None
+        index = closing + 1
+    if text.startswith("+=", index):
+        index += 2
+    elif index < len(text) and text[index] == "=":
+        index += 1
+    else:
+        return None
+    while index < len(text) and text[index] in " \t":
+        index += 1
+    return index if index < len(text) and text[index] == "(" else None
 
 
 def mask_noncommand_contexts(syntax):
@@ -1131,19 +1256,27 @@ def mask_noncommand_contexts(syntax):
     refused while leaving subshell and case-branch boundaries visible.
     """
     chars = list(syntax)
-    command_boundary = 0
+    closers = data_closer_tables(syntax)
+    command_states = COMMAND_PREFIX_INITIAL
+    for_state = FOR_PREFIX_INITIAL
     index = 0
     while index < len(chars):
         if syntax.startswith("${", index):
-            end = matching_data_delimiter(syntax, index + 1, "{", "}")
+            end = closers["{"][index + 1]
             if end is not None:
                 mask_span(chars, index, end + 1)
+                command_states, for_state = advance_masked_context(
+                    command_states, for_state, chars, index, end + 1
+                )
                 index = end + 1
                 continue
         if syntax.startswith("$[", index):
-            end = matching_data_delimiter(syntax, index + 1, "[", "]")
+            end = closers["["][index + 1]
             if end is not None:
                 mask_span(chars, index, end + 1)
+                command_states, for_state = advance_masked_context(
+                    command_states, for_state, chars, index, end + 1
+                )
                 index = end + 1
                 continue
         array_word_start = (
@@ -1152,10 +1285,12 @@ def mask_noncommand_contexts(syntax):
                 syntax[index - 1].isalnum() or syntax[index - 1] == "_"
             ))
         )
-        array_match = ARRAY_ASSIGNMENT.match(syntax, index) if array_word_start else None
-        if array_match is not None:
-            opening = array_match.end() - 1
-            end = matching_data_paren(syntax, opening)
+        opening = (
+            array_assignment_opening(syntax, index, closers["line]"])
+            if array_word_start else None
+        )
+        if opening is not None:
+            end = closers["("][opening]
             if end is not None:
                 mask_span(chars, opening, end + 1)
                 index = end + 1
@@ -1163,37 +1298,40 @@ def mask_noncommand_contexts(syntax):
                 # Treat the resolved assignment as the start boundary for that command's
                 # position; declaration builtins merely make the same conservative masking
                 # classify their later operands as data.
-                command_boundary = index
+                command_states = COMMAND_PREFIX_INITIAL
+                for_state = FOR_PREFIX_INITIAL
                 continue
         if (index + 1 < len(chars) and syntax[index] in "?*+@!"
                 and syntax[index + 1] == "("):
-            end = matching_data_paren(syntax, index + 1)
+            end = closers["("][index + 1]
             if end is not None:
                 mask_span(chars, index, end + 1)
+                command_states, for_state = advance_masked_context(
+                    command_states, for_state, chars, index, end + 1
+                )
                 index = end + 1
                 continue
-        command_prefix = None
-        if syntax.startswith(("[[", "(("), index):
-            command_prefix = "".join(chars[command_boundary:index])
         if (syntax.startswith("[[", index)
-                and COMMAND_POSITION.search(command_prefix)):
-            end = syntax.find("]]", index + 2)
-            if end >= 0:
+                and "between" in command_states):
+            end = closers["]]"][index + 2] if index + 2 < len(syntax) else None
+            if end is not None:
                 mask_span(chars, index, end + 2)
                 index = end + 2
-                command_boundary = index
+                command_states = COMMAND_PREFIX_INITIAL
+                for_state = FOR_PREFIX_INITIAL
                 continue
         if (syntax.startswith("((", index)
-                and (COMMAND_POSITION.search(command_prefix)
-                     or FOR_ARITHMETIC_POSITION.search(command_prefix))):
-            end = matching_data_paren(syntax, index)
+                and ("between" in command_states or for_state == "done")):
+            end = closers["("][index]
             if end is not None:
                 mask_span(chars, index, end + 1)
                 index = end + 1
-                command_boundary = index
+                command_states = COMMAND_PREFIX_INITIAL
+                for_state = FOR_PREFIX_INITIAL
                 continue
-        if syntax[index] in ";\n()&|":
-            command_boundary = index + 1
+        command_states, for_state = advance_command_context(
+            command_states, for_state, chars[index]
+        )
         index += 1
     return "".join(chars)
 
@@ -1239,8 +1377,159 @@ COMMAND_PREFIX_WORDS = frozenset({
     "{", "if", "elif", "while", "until", "then", "else", "do", "!", "coproc",
 })
 DYNAMIC_SHELL_CHARS = frozenset("$`*?[]{}~()")
+BRACE_SEQUENCE_CHARS = frozenset(
+    ",.+-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+)
 SHELL_MARKER_ESCAPE = "\ue000"
-SHELL_MARKER_CODES = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+SHELL_MARKER_CODES = tuple(chr(0xE100 + index) for index in range(256))
+BRACE_SEQUENCE_BASIC = re.compile(
+    r"(?:[+-]?[0-9]+\.\.[+-]?[0-9]+|[A-Za-z]\.\.[A-Za-z])\Z"
+)
+BRACE_SEQUENCE_INCREMENT = re.compile(
+    r"(?:[+-]?[0-9]+\.\.[+-]?[0-9]+|[A-Za-z]\.\.[A-Za-z])"
+    r"\.\.[+-]?[0-9]+\Z"
+)
+
+
+def resolve_shell_executable(name):
+    """Absolute shell invocation path selected at startup, or ``None``.
+
+    Validate the resolved target but preserve the selected pathname. Invocation basename can
+    change shell compatibility behavior (notably Bash reached as ``sh``), so replacing a
+    startup-selected symlink with its target would probe a different mode than replay uses.
+    """
+    selected = shutil.which(name)
+    if selected is None or not os.path.isabs(selected):
+        return None
+    # Preserve the exact absolute spelling that the OS will execute. Textual normalization of
+    # ``alias/../bash`` is not execution-equivalent when ``alias`` is a symlink: the kernel
+    # resolves the symlink before ``..``. Collapsing it here can bind the probe to one shell and
+    # later classify a different shell as exact.
+    invocation = selected
+    try:
+        resolved = Path(invocation).resolve(strict=True)
+    except (OSError, RuntimeError):
+        return None
+    if not resolved.is_file() or not os.access(resolved, os.X_OK):
+        return None
+    return invocation
+
+
+BASH_EXECUTABLE = resolve_shell_executable("bash")
+SH_EXECUTABLE = resolve_shell_executable("sh")
+
+
+def replay_bash_environment():
+    """Environment shared by the semantic probe and every proof-shell execution.
+
+    Inherited startup hooks or exported functions can rewrite a non-interactive Bash before
+    the repository command runs. Interpreter/module search variables can similarly replace a
+    proof executable without appearing in the document. Preserve the caller's executable PATH
+    and ordinary inputs, but remove ambient code-injection channels so the fixed probe and the
+    replay have the same clean startup boundary.
+    """
+    blocked = {
+        "BASHOPTS", "BASH_COMPAT", "BASH_ENV", "BASH_XTRACEFD", "CDPATH", "ENV",
+        "GLOBIGNORE", "NODE_OPTIONS", "PERL5OPT", "POSIXLY_CORRECT", "PYTHONHOME",
+        "RUBYOPT", "SHELLOPTS",
+    }
+    environment = {}
+    for name, value in os.environ.items():
+        if name in blocked or name.startswith(("BASH_FUNC_", "LD_", "DYLD_")):
+            continue
+        if name != "PATH" and name.endswith("PATH"):
+            continue
+        environment[name] = value
+    return environment
+
+
+BASH_REPLAY_ENV = replay_bash_environment()
+
+
+def probe_shell_brace_profile(executable):
+    """Measure fixed brace semantics for one startup-bound shell executable.
+
+    Bash releases disagree at two security-relevant boundaries. Legacy releases stop the
+    entire word at the first malformed sequence candidate; intermediate releases continue in
+    its postamble; newer releases validate a candidate before selecting it and can therefore
+    reach a nested candidate. Bash 3.2 also predates sequence increments. Version strings do
+    not describe those boundaries reliably, so a fixed, data-independent probe is stronger
+    than a version table and never evaluates repository-supplied text.
+
+    ``unknown`` is a conservative profile used only if an interpreter cannot be measured safely.
+    The classifier takes the union of the three known policies rather than risk a false clean.
+    Normal proof execution uses the exact probed executable and scrubbed environment.
+    """
+    script = (
+        "printf 'A:%s\\n' {foo..bar}{1..2}; "
+        "printf 'B:%s\\n' {foo..{1..2}}; "
+        "printf 'C:%s\\n' {1..3..2}; "
+        "printf 'D:%s\\n' {a,b}"
+    )
+    if executable is None:
+        return "unknown", True
+    try:
+        completed = subprocess.run(
+            [executable, "-c", script],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=BASH_REPLAY_ENV,
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return "unknown", True
+    if completed.returncode != 0 or completed.stderr:
+        return "unknown", True
+    try:
+        rows = completed.stdout.decode("utf-8").splitlines()
+    except UnicodeError:
+        return "unknown", True
+    if any(len(row) < 2 or row[0] not in "ABCD" or row[1] != ":" for row in rows):
+        return "unknown", True
+    groups = {
+        label: [row[2:] for row in rows if row.startswith(label + ":")]
+        for label in "ABCD"
+    }
+    legacy_a = ["{foo..bar}{1..2}"]
+    expanded_a = ["{foo..bar}1", "{foo..bar}2"]
+    literal_b = ["{foo..{1..2}}"]
+    expanded_b = ["{foo..1}", "{foo..2}"]
+    if groups["D"] == ["{a,b}"]:
+        if (groups["A"] == legacy_a and groups["B"] == literal_b
+                and groups["C"] == ["{1..3..2}"]):
+            return "disabled", False
+        return "unknown", True
+    if groups["D"] != ["a", "b"]:
+        return "unknown", True
+    if groups["A"] == legacy_a and groups["B"] == literal_b:
+        mode = "legacy"
+    elif groups["A"] == expanded_a:
+        if groups["B"] == literal_b:
+            mode = "postamble"
+        elif groups["B"] == expanded_b:
+            mode = "validated"
+        else:
+            mode = "unknown"
+    else:
+        mode = "unknown"
+    increment = groups["C"] == ["1", "3"]
+    if groups["C"] not in (["1", "3"], ["{1..3..2}"]):
+        mode = "unknown"
+        increment = True
+    if mode == "unknown":
+        increment = True
+    return mode, increment
+
+
+def probe_bash_brace_profile():
+    """Compatibility entry point for the fixed proof-shell brace probe."""
+    return probe_shell_brace_profile(BASH_EXECUTABLE)
+
+
+BASH_BRACE_MODE, BASH_BRACE_INCREMENT = probe_bash_brace_profile()
+SH_BRACE_MODE, SH_BRACE_INCREMENT = probe_shell_brace_profile(SH_EXECUTABLE)
 
 
 class ShellWord(str):
@@ -1253,17 +1542,35 @@ class ShellWord(str):
 
 
 def shell_marker_maps():
-    """Return escaped marker sequences and their one-character decode table."""
-    originals = "<>|" + "".join(sorted(DYNAMIC_SHELL_CHARS))
-    if len(originals) > len(SHELL_MARKER_CODES):
+    """Return quoted/escaped sentinels, their decode table, and the empty-quote marker."""
+    originals = "<>|" + "".join(sorted(DYNAMIC_SHELL_CHARS | BRACE_SEQUENCE_CHARS))
+    needed = 2 * len(originals) + 1
+    if needed > len(SHELL_MARKER_CODES):
         raise RuntimeError("shell-token provenance alphabet is too small")
-    codes = SHELL_MARKER_CODES[:len(originals)]
-    protected = {
+    quoted_codes = SHELL_MARKER_CODES[:len(originals)]
+    escaped_codes = SHELL_MARKER_CODES[len(originals):2 * len(originals)]
+    protected_quoted = {
         original: SHELL_MARKER_ESCAPE + code
+        for original, code in zip(originals, quoted_codes)
+    }
+    protected_escaped = {
+        original: SHELL_MARKER_ESCAPE + code
+        for original, code in zip(originals, escaped_codes)
+    }
+    restored = {
+        code: original
+        for codes in (quoted_codes, escaped_codes)
         for original, code in zip(originals, codes)
     }
-    restored = {code: original for original, code in zip(originals, codes)}
-    return protected, restored
+    quote_code = SHELL_MARKER_CODES[2 * len(originals)]
+    restored[quote_code] = ""
+    return (
+        protected_quoted,
+        protected_escaped,
+        restored,
+        SHELL_MARKER_ESCAPE + quote_code,
+        frozenset(quoted_codes),
+    )
 
 
 def protect_quoted_redirections(text, protected_redirections):
@@ -1278,19 +1585,23 @@ def protect_quoted_redirections(text, protected_redirections):
     return "".join(out)
 
 
-def protect_inert_shell_expansions(text, protected_dynamic):
-    """Hide quoted/escaped expansion punctuation while leaving active spelling visible.
+def protect_inert_shell_expansions(
+        text, protected_quoted, protected_escaped, protected_quote):
+    """Hide quoted/escaped expansion grammar while leaving active spelling visible.
 
     ``shlex`` returns the correct resolved characters but discards the very quote and escape
     provenance needed to distinguish a literal ``'/dev/std?n'`` from the glob ``/dev/std?n``.
-    Private-use sentinels preserve that one bit through tokenization. ANSI-C words have already
-    been normalized to static single-quoted text; locale words have become double-quoted text,
-    whose dollar and backtick expansions correctly remain active.
+    Brace sequences need the same bit for their comma, dots, signs, digits, endpoints, and even
+    an empty quote boundary: ``{a\",\"b}``, ``{1..'3'}``, and ``{a''..z}`` are data, not
+    expansions. Private-use sentinels preserve that provenance through tokenization and restore
+    the empty-quote marker to no output bytes. ANSI-C words have already been normalized to
+    static single-quoted text; locale words have become double-quoted text, whose dollar and
+    backtick expansions correctly remain active.
     """
     out = []
     quote = None
+    brace_depth = 0
     index = 0
-    double_inert = DYNAMIC_SHELL_CHARS - frozenset("$`")
     while index < len(text):
         char = text[index]
         if quote == "single":
@@ -1298,7 +1609,10 @@ def protect_inert_shell_expansions(text, protected_dynamic):
                 quote = None
                 out.append(char)
             else:
-                out.append(protected_dynamic.get(char, char))
+                inert = DYNAMIC_SHELL_CHARS
+                if brace_depth:
+                    inert |= BRACE_SEQUENCE_CHARS
+                out.append(protected_quoted[char] if char in inert else char)
             index += 1
             continue
         if quote == "double":
@@ -1310,41 +1624,55 @@ def protect_inert_shell_expansions(text, protected_dynamic):
             if char == "\\" and index + 1 < len(text):
                 escaped = text[index + 1]
                 if escaped in "$`":
-                    out.append(protected_dynamic[escaped])
+                    out.append(protected_escaped[escaped])
                     index += 2
                     continue
+                double_inert = DYNAMIC_SHELL_CHARS - frozenset("$`")
+                if brace_depth:
+                    double_inert |= BRACE_SEQUENCE_CHARS
                 if escaped in double_inert:
                     # In double quotes Bash preserves this backslash as data. Protect the
                     # following punctuation without changing the resolved word itself.
-                    out.extend((char, protected_dynamic[escaped]))
+                    out.extend((char, protected_escaped[escaped]))
                     index += 2
                     continue
                 out.extend((char, escaped))
                 index += 2
                 continue
-            out.append(protected_dynamic[char] if char in double_inert else char)
+            double_inert = DYNAMIC_SHELL_CHARS - frozenset("$`")
+            if brace_depth:
+                double_inert |= BRACE_SEQUENCE_CHARS
+            out.append(protected_quoted[char] if char in double_inert else char)
             index += 1
             continue
         if char == "\\" and index + 1 < len(text):
             escaped = text[index + 1]
-            if escaped in DYNAMIC_SHELL_CHARS:
-                out.append(protected_dynamic[escaped])
+            if (escaped in DYNAMIC_SHELL_CHARS
+                    or (brace_depth and escaped in BRACE_SEQUENCE_CHARS)):
+                out.append(protected_escaped[escaped])
             else:
                 out.extend((char, escaped))
             index += 2
             continue
         if char == "'":
+            if brace_depth:
+                out.append(protected_quote)
             quote = "single"
         elif char == '"':
+            if brace_depth:
+                out.append(protected_quote)
             quote = "double"
+        elif char == "{":
+            brace_depth += 1
+        elif char == "}" and brace_depth:
+            brace_depth -= 1
         out.append(char)
         index += 1
     return "".join(out)
 
 
-def restore_shell_word(word, restored_markers):
-    """Restore protected data and retain whether the source word expands at runtime."""
-    dynamic = any(char in DYNAMIC_SHELL_CHARS for char in word)
+def restore_shell_markers(word, restored_markers):
+    """Decode provenance sentinels without deciding whether the source word is dynamic."""
     restored = []
     index = 0
     while index < len(word):
@@ -1363,7 +1691,166 @@ def restore_shell_word(word, restored_markers):
             # output. Preserve an unexpected pair instead of deleting source bytes.
             restored.extend((SHELL_MARKER_ESCAPE, code))
         index += 2
-    return ShellWord("".join(restored), dynamic=dynamic)
+    return "".join(restored)
+
+
+def shell_word_has_brace_expansion(
+        word, restored_markers, quoted_marker_codes,
+        brace_mode=None, brace_increment=None):
+    """Whether an unquoted shell word contains Bash brace-expansion grammar.
+
+    Bare balanced braces are ordinary data: ``{X}``, ``{{}}``, and the conventional xargs
+    replacement words ``-I{X}``/``-I{{}}`` do not expand. Bash first *selects* a candidate whose
+    own level contains an unquoted comma or an active ``..`` pair. Only then does it validate a
+    sequence. That ordering is load-bearing: on Bash 3.2, ``{foo..bar}{1..3}`` is one literal
+    word because the malformed first candidate blocks the later valid one, while
+    ``{a'.'.c}{1..3}`` expands the later range because its protected dot never formed an active
+    delimiter. Quoted/escaped braces and sequence characters have already become provenance
+    markers before this scan.
+
+    The fixed startup probe records which of Bash's three shipped continuation policies the
+    local interpreter implements and whether it supports sequence increments. Candidate
+    metadata and body slices are collected in one pass; every body is sliced at most once and
+    every candidate is visited once, preserving the regression suite's linear bound.
+    """
+    brace_mode = BASH_BRACE_MODE if brace_mode is None else brace_mode
+    brace_increment = (
+        BASH_BRACE_INCREMENT if brace_increment is None else brace_increment
+    )
+
+    # A command invoked as ``sh`` follows the POSIX shell contract and does not perform
+    # Bash-style brace expansion. Keep this as an explicit profile instead of borrowing the
+    # outer Bash release or the conservative cross-Bash union: both choices can turn inert
+    # ``sh -c`` data into a false refusal.
+    if brace_mode == "disabled":
+        return False
+
+    # After Bash has selected a sequence-shaped candidate, older releases inspect its complete
+    # amble for a comma after quote removal. A quoted comma therefore counts there, while an
+    # escaped comma remains escaped and does not. Prefix counts make that whole-span question
+    # constant-time without copying nested bodies.
+    postquote_comma_prefix = [0] * (len(word) + 1)
+    comma_count = 0
+    marker_index = 0
+    while marker_index < len(word):
+        char = word[marker_index]
+        comma = char == ","
+        if (char == SHELL_MARKER_ESCAPE and marker_index + 1 < len(word)):
+            code = word[marker_index + 1]
+            comma = (
+                code in quoted_marker_codes
+                and restored_markers.get(code) == ","
+            )
+        if comma:
+            comma_count += 1
+        postquote_comma_prefix[marker_index + 1] = comma_count
+        marker_index += 1
+    for marker_index in range(1, len(postquote_comma_prefix)):
+        if postquote_comma_prefix[marker_index] == 0:
+            postquote_comma_prefix[marker_index] = postquote_comma_prefix[marker_index - 1]
+
+    stack = []
+    candidates = {}
+    opening_order = []
+    index = 0
+    while index < len(word):
+        char = word[index]
+        if char == "{":
+            opening_order.append(index)
+            if stack:
+                stack[-1]["nested"] = True
+            stack.append({
+                "open": index,
+                "start": index + 1,
+                "comma": False,
+                "nested": False,
+                "dots": None,
+            })
+        elif char == "}" and stack:
+            candidate = stack.pop()
+            candidate["close"] = index
+            if not candidate["nested"]:
+                candidate["body"] = word[candidate["start"]:index]
+            candidate["sequence"] = (
+                candidate["dots"] is not None
+                and candidate["dots"] + 2 != index
+            )
+            candidate["postquote_comma"] = (
+                postquote_comma_prefix[index]
+                > postquote_comma_prefix[candidate["start"]]
+            )
+            candidates[candidate["open"]] = candidate
+        elif stack and char == ",":
+            stack[-1]["comma"] = True
+        elif (stack and char == "." and index + 1 < len(word)
+                and word[index + 1] == "." and stack[-1]["dots"] is None):
+            stack[-1]["dots"] = index
+        index += 1
+
+    def sequence_is_valid(candidate, increment_supported):
+        body = candidate.get("body")
+        if body is None:
+            return False
+        if BRACE_SEQUENCE_BASIC.fullmatch(body):
+            return True
+        return bool(
+            increment_supported
+            and BRACE_SEQUENCE_INCREMENT.fullmatch(body)
+        )
+
+    def evaluate(mode, increment_supported):
+        minimum_opening = -1
+        for opening in opening_order:
+            if opening <= minimum_opening or opening not in candidates:
+                continue
+            candidate = candidates[opening]
+            if candidate["comma"]:
+                return True
+            if not candidate["sequence"]:
+                continue
+            # Validated-candidate Bash tests the sequence before selecting it. Older releases
+            # select first; once selected, even a nested or quoted comma in the amble changes
+            # the word before an invalid sequence can block it.
+            if mode != "validated" and candidate["postquote_comma"]:
+                return True
+            if sequence_is_valid(candidate, increment_supported):
+                return True
+            if mode == "legacy":
+                return False
+            if mode == "postamble":
+                # Intermediate Bash releases resume only after the malformed candidate's
+                # closing brace; nested candidates are part of the literal prefix.
+                minimum_opening = candidate["close"]
+            # Validated Bash continues at the next opening, including a nested one.
+        return False
+
+    if brace_mode == "unknown":
+        # Unknown child interpreters are evaluated as the union of the three measured Bash
+        # policies. This refuses a word that any supported family could expand without turning
+        # every isolated malformed sequence into a false positive.
+        return any(
+            evaluate(mode, True)
+            for mode in ("legacy", "postamble", "validated")
+        )
+    return evaluate(brace_mode, brace_increment)
+
+
+def restore_shell_word(
+        word, restored_markers, quoted_marker_codes,
+        brace_mode=None, brace_increment=None):
+    """Restore protected data and retain whether the source word expands at runtime."""
+    non_brace_dynamic = DYNAMIC_SHELL_CHARS - frozenset("{}")
+    dynamic = (
+        any(char in non_brace_dynamic for char in word)
+        or shell_word_has_brace_expansion(
+            word,
+            restored_markers,
+            quoted_marker_codes,
+            brace_mode,
+            brace_increment,
+        )
+    )
+    return ShellWord(restore_shell_markers(word, restored_markers), dynamic=dynamic)
 
 
 def skip_leading_redirection(words, index):
@@ -1406,21 +1893,40 @@ def without_shell_redirections(words):
     return out
 
 
-def shell_segment_argv(segment):
-    """The executable-position argv in one outer shell segment, or an empty list."""
+def shell_segment_argv(
+        segment, preserve_assignments=False, brace_mode=None, brace_increment=None):
+    """The executable-position argv in one outer shell segment, or an empty list.
+
+    Leading assignment words normally are shell syntax rather than child argv. The unsafe-state
+    evaluator can ask to retain them long enough to inspect names such as ``BASH_ENV`` and
+    ``PATH``; wrapper unwrapping removes them again before interpreting the child command.
+    """
     try:
         normalized = normalize_ansi_c_quotes(segment)
-        protected_markers, restored_markers = shell_marker_maps()
+        (
+            protected_quoted,
+            protected_escaped,
+            restored_markers,
+            protected_quote,
+            quoted_marker_codes,
+        ) = shell_marker_maps()
         protected_redirections = {
-            char: protected_markers[char] for char in "<>|"
+            char: protected_quoted[char] for char in "<>|"
         }
-        protected_dynamic = {
-            char: protected_markers[char] for char in DYNAMIC_SHELL_CHARS
+        protected_quoted_inert = {
+            char: protected_quoted[char]
+            for char in DYNAMIC_SHELL_CHARS | BRACE_SEQUENCE_CHARS
+        }
+        protected_escaped_inert = {
+            char: protected_escaped[char]
+            for char in DYNAMIC_SHELL_CHARS | BRACE_SEQUENCE_CHARS
         }
         escaped = normalized.replace(SHELL_MARKER_ESCAPE, SHELL_MARKER_ESCAPE * 2)
         protected = protect_inert_shell_expansions(
             protect_quoted_redirections(escaped, protected_redirections),
-            protected_dynamic,
+            protected_quoted_inert,
+            protected_escaped_inert,
+            protected_quote,
         )
         lexer = shlex.shlex(
             protected,
@@ -1433,9 +1939,12 @@ def shell_segment_argv(segment):
     except ValueError:
         return []
     index = 0
+    leading_assignments = []
     while index < len(words):
         word = words[index]
         if ASSIGN.fullmatch(word):
+            if preserve_assignments:
+                leading_assignments.append(word)
             index += 1
             continue
         if word in COMMAND_PREFIX_WORDS:
@@ -1451,12 +1960,189 @@ def shell_segment_argv(segment):
             index = redirected
             continue
         break
-    argv = without_shell_redirections(words[index:])
-    return [restore_shell_word(word, restored_markers) for word in argv]
+    argv = leading_assignments + without_shell_redirections(words[index:])
+    return [
+        restore_shell_word(
+            word,
+            restored_markers,
+            quoted_marker_codes,
+            brace_mode,
+            brace_increment,
+        )
+        for word in argv
+    ]
+
+
+XARGS_SHORT_FLAGS = frozenset("0oprtx")
+XARGS_SHORT_VALUES = frozenset("adEIJLnPRSs")
+XARGS_SHORT_OPTIONAL_VALUES = frozenset("eil")
+XARGS_LONG_FLAGS = frozenset({
+    "--exit", "--interactive", "--no-run-if-empty", "--null", "--open-tty",
+    "--show-limits", "--verbose",
+})
+XARGS_LONG_VALUES = frozenset({
+    "--arg-file", "--delimiter", "--max-args", "--max-chars", "--max-procs",
+    "--process-slot-var",
+})
+XARGS_LONG_OPTIONAL_VALUES = frozenset({"--eof", "--max-lines", "--replace"})
+XARGS_TERMINAL_OPTIONS = frozenset({"--help", "--version"})
+XARGS_REPLACEMENT_FLAGS = frozenset({"I", "J", "i"})
+XARGS_SAFE_LEAF_PROGRAMS = frozenset({"dirname", "printf"})
+
+
+def xargs_child_argv(argv):
+    """Return xargs' literal child argv, or None when its launcher grammar is ambiguous.
+
+    The accepted finite grammar is the union of current BSD and GNU xargs options. Required
+    short-option values may be joined or separate; GNU's legacy ``-e``, ``-i``, and ``-l``
+    values are optional only when joined. Long required values may use ``=`` or the next word,
+    while the three documented optional long values are accepted only with ``=``. Unknown
+    options, missing values, and runtime-expanded option words fail closed as ambiguous.
+
+    Only direct Bash/sh children and finite inert data leaves are admitted. In ordinary append
+    mode, a direct shell must already have an executable literal ``-c`` operand: an unbounded
+    runtime tail can otherwise satisfy a pending ``-O``/``-o``/startup-file option and then
+    toggle noexec before supplying source. Child-launching wrappers have the same ambiguity and
+    fail closed. Replacement modes retain dynamic provenance on affected words so the
+    shell-source classifier refuses a computed script operand.
+    """
+    argv = list(argv)
+    index = 1
+    replacement = None
+    while index < len(argv):
+        option = argv[index]
+        if getattr(option, "dynamic", False):
+            return None
+        option = str(option)
+        if option == "--":
+            index += 1
+            break
+        if option == "-" or not option.startswith("-"):
+            break
+        if option.startswith("--"):
+            name, joined, value = option.partition("=")
+            if name in XARGS_TERMINAL_OPTIONS:
+                return [] if not joined else None
+            if name in XARGS_LONG_FLAGS:
+                if joined:
+                    return None
+                index += 1
+                continue
+            if name in XARGS_LONG_OPTIONAL_VALUES:
+                if name == "--replace":
+                    marker = value if joined else "{}"
+                    if not marker:
+                        return None
+                    replacement = ("substring", marker)
+                index += 1
+                continue
+            if name not in XARGS_LONG_VALUES:
+                return None
+            if joined:
+                index += 1
+            else:
+                if index + 1 >= len(argv) or getattr(argv[index + 1], "dynamic", False):
+                    return None
+                index += 2
+            continue
+
+        cluster = option[1:]
+        offset = 0
+        consumed = False
+        while offset < len(cluster):
+            flag = cluster[offset]
+            if flag in XARGS_SHORT_FLAGS:
+                offset += 1
+                continue
+            if flag in XARGS_SHORT_OPTIONAL_VALUES:
+                value = cluster[offset + 1:]
+                if flag == "i":
+                    marker = value or "{}"
+                    replacement = ("substring", marker)
+                index += 1
+                consumed = True
+                break
+            if flag not in XARGS_SHORT_VALUES:
+                return None
+            value = cluster[offset + 1:]
+            if value:
+                index += 1
+            else:
+                if index + 1 >= len(argv) or getattr(argv[index + 1], "dynamic", False):
+                    return None
+                value = str(argv[index + 1])
+                index += 2
+            if flag in XARGS_REPLACEMENT_FLAGS:
+                if not value:
+                    return None
+                replacement = (
+                    "distinct-first" if flag == "J" else "substring",
+                    value,
+                )
+            consumed = True
+            break
+        if not consumed:
+            index += 1
+
+    child = argv[index:]
+    if not child:
+        return []
+    if getattr(child[0], "dynamic", False):
+        return None
+    affected = set()
+    appends_runtime = replacement is None
+    if replacement is not None:
+        mode, marker = replacement
+        if mode == "substring":
+            affected = {
+                child_index for child_index, word in enumerate(child)
+                if marker in str(word)
+            }
+        else:
+            matched = next(
+                (child_index for child_index, word in enumerate(child)
+                 if str(word) == marker),
+                None,
+            )
+            if matched is None:
+                # BSD -J appends input when its marker is absent as a distinct argument.
+                appends_runtime = True
+            else:
+                affected.add(matched)
+    if 0 in affected:
+        return None
+    child_program = os.path.basename(str(child[0]))
+    if (child_program not in SHELL_INTERPRETERS
+            and child_program not in XARGS_SAFE_LEAF_PROGRAMS):
+        return None
+    transformed = [
+        ShellWord(
+            str(word),
+            dynamic=(
+                getattr(word, "dynamic", False)
+                or child_index in affected
+            ),
+        )
+        for child_index, word in enumerate(child)
+    ]
+    if child_program in SHELL_INTERPRETERS:
+        mode, _source, has_c = shell_c_invocation(transformed)
+        if mode in {"execute", "terminal"}:
+            return transformed
+        if mode == "noexec" and (has_c or not appends_runtime):
+            return transformed
+        if mode == "missing" and not appends_runtime:
+            return transformed
+        return None
+    if appends_runtime:
+        # Ordinary append mode and BSD -J without a distinct marker add runtime data after the
+        # fixed argv. Preserve one representative dynamic word for admitted inert leaves.
+        transformed.append(ShellWord("__xargs_input__", dynamic=True))
+    return transformed
 
 
 def unwrap_shell_command(argv, shell_context=True):
-    """Remove literal wrappers that preserve the command they are handed."""
+    """Remove literal wrappers, returning None argv for ambiguous launcher grammar."""
     argv = list(argv)
     while True:
         while shell_context and argv and ASSIGN.fullmatch(argv[0]):
@@ -1479,6 +2165,8 @@ def unwrap_shell_command(argv, shell_context=True):
             while index < len(argv) and argv[index].startswith("-") and argv[index] != "-":
                 if "v" in argv[index][1:] or "V" in argv[index][1:]:
                     return [], shell_context
+                if "p" in argv[index][1:]:
+                    return None, shell_context
                 index += 1
             argv = argv[index:]
             shell_context = True
@@ -1487,45 +2175,15 @@ def unwrap_shell_command(argv, shell_context=True):
             index = 1
             while index < len(argv) and argv[index].startswith("-") and argv[index] != "-":
                 if argv[index] == "-a":
-                    index += 2
+                    return None, shell_context
                 else:
                     index += 1
             argv = argv[index:]
             continue
         if program == "env":
-            index = 1
-            while index < len(argv):
-                word = argv[index]
-                if word == "--":
-                    index += 1
-                    break
-                split_source = None
-                split_consumed = 0
-                if word in {"-S", "--split-string"} and index + 1 < len(argv):
-                    split_source = argv[index + 1]
-                    split_consumed = 2
-                elif word.startswith("--split-string="):
-                    split_source = word.split("=", 1)[1]
-                    split_consumed = 1
-                elif word.startswith("-S") and word != "-S":
-                    split_source = word[2:]
-                    split_consumed = 1
-                if split_source is not None:
-                    try:
-                        split_words = shlex.split(split_source)
-                    except ValueError:
-                        return [], shell_context
-                    argv[index:index + split_consumed] = split_words
-                    continue
-                if word.startswith("-") and word != "-":
-                    # Values for these options are not commands.
-                    index += 2 if word in {"-u", "--unset", "-C", "--chdir", "-P"} else 1
-                    continue
-                if ASSIGN.fullmatch(word):
-                    index += 1
-                    continue
-                break
-            argv = argv[index:]
+            argv = env_child_argv(argv)
+            if argv is None:
+                return None, shell_context
             shell_context = False
             continue
         if program == "nice":
@@ -1545,73 +2203,272 @@ def unwrap_shell_command(argv, shell_context=True):
             shell_context = False
             continue
         if program == "nohup":
-            if any(word in {"--help", "--version"} for word in argv[1:]):
+            if argv[1:2] and argv[1] in {"--help", "--version"}:
                 return [], shell_context
             argv = argv[2:] if len(argv) > 1 and argv[1] == "--" else argv[1:]
+            shell_context = False
+            continue
+        if program == "xargs":
+            argv = xargs_child_argv(argv)
+            if argv is None:
+                return None, shell_context
             shell_context = False
             continue
         break
     return argv, shell_context
 
 
-def literal_c_operand(argv):
-    """Literal Bash/sh ``-c`` operand when invocation options actually execute it."""
+def shell_c_invocation(argv):
+    """Classify Bash/sh ``-c`` execution and return ``(mode, source, has_c)``.
+
+    ``-O`` and ``-o`` each consume one following word even when combined with ``-c`` (for
+    example ``-Oc`` and ``-co``). Both ``-c`` and ``+c`` designate a command string. ``-n`` and
+    ``-D`` suppress execution, while ``+n`` can restore it. A runtime-built option or source is
+    ambiguous rather than literal.
+    """
     index = 1
     noexec_n = False
     noexec_dump = False
     while index < len(argv):
         option = argv[index]
-        if option in {"+O", "+o"}:
-            index += 2
-            continue
-        if option.startswith("+") and option != "+":
-            flags = option[1:]
-            if "n" in flags:
-                noexec_n = False
-            noexec_dump = noexec_dump or "D" in flags
-            index += 1
-            continue
-        if option == "--" or option == "-" or not option.startswith("-"):
-            return None
+        if getattr(option, "dynamic", False):
+            return "ambiguous", None, False
+        option = str(option)
+        if option in {"--", "-"} or not option.startswith(("-", "+")):
+            return (
+                ("noexec", None, False)
+                if (noexec_n or noexec_dump)
+                else ("no-c", None, False)
+            )
         if option in {"--help", "--version"}:
-            return None
+            return "terminal", None, False
         if option in {"--dump-strings", "--dump-po-strings"}:
             noexec_dump = True
             index += 1
             continue
         if option.startswith("--"):
-            index += 2 if option in {"--rcfile", "--init-file"} else 1
+            if option in {"--rcfile", "--init-file"}:
+                if index + 1 >= len(argv):
+                    return "ambiguous", None, False
+                index += 2
+            else:
+                index += 1
             continue
+        sign = option[0]
         flags = option[1:]
-        noexec_n = noexec_n or "n" in flags
+        if "n" in flags:
+            noexec_n = sign == "-"
         noexec_dump = noexec_dump or "D" in flags
+        value_count = flags.count("O") + flags.count("o")
+        value_end = index + 1 + value_count
+        if value_end > len(argv):
+            return "ambiguous", None, "c" in flags
+        if any(getattr(word, "dynamic", False) for word in argv[index + 1:value_end]):
+            return "ambiguous", None, "c" in flags
         if "c" in flags:
-            return (argv[index + 1]
-                    if (index + 1 < len(argv)
-                        and not getattr(argv[index + 1], "dynamic", False)
-                        and not (noexec_n or noexec_dump)) else None)
-        index += 2 if option in {"-O", "-o"} else 1
-    return None
+            if noexec_n or noexec_dump:
+                return "noexec", None, True
+            if value_end >= len(argv):
+                return "missing", None, True
+            source = argv[value_end]
+            if getattr(source, "dynamic", False):
+                return "ambiguous", None, True
+            return "execute", source, True
+        index = value_end
+    return (
+        ("noexec", None, False)
+        if (noexec_n or noexec_dump)
+        else ("no-c", None, False)
+    )
 
 
-def literal_shell_sources(text):
-    """Yield literal source that an actual command-position Bash/sh ``-c`` executes."""
+def literal_c_operand(argv):
+    """Literal Bash/sh ``-c`` operand when invocation options actually execute it."""
+    mode, source, _has_c = shell_c_invocation(argv)
+    return source if mode == "execute" else None
+
+
+def literal_shell_brace_profile(program, brace_mode, brace_increment):
+    """Brace profile used by a statically identified literal child shell.
+
+    A bare ``bash`` is resolved by the same frozen PATH used for replay; environment wrappers
+    that can redirect that lookup are rejected before this point. The exact startup-bound Bash
+    path is likewise the measured interpreter. Bare or exact ``sh`` uses its own startup-bound
+    probe because shells—including Bash invoked under that name—do not share one universal
+    brace policy. A different absolute shell is not executed merely to identify it and therefore
+    keeps the conservative cross-release profile.
+    """
+    spelling = str(program)
+    basename = os.path.basename(spelling)
+    if basename not in SHELL_INTERPRETERS:
+        return "unknown", True
+    if basename == "bash":
+        executable = BASH_EXECUTABLE
+        profile = (BASH_BRACE_MODE, BASH_BRACE_INCREMENT)
+    else:
+        executable = SH_EXECUTABLE
+        profile = (SH_BRACE_MODE, SH_BRACE_INCREMENT)
+    if not os.path.isabs(spelling):
+        # Only an unqualified name is selected through the frozen startup PATH. ``./sh`` and
+        # ``subdir/bash`` bypass PATH and may name a different interpreter, so they must remain
+        # on the conservative profile just like alternate absolute paths.
+        if os.sep not in spelling and (os.altsep is None or os.altsep not in spelling):
+            return profile
+        return "unknown", True
+    if executable is not None and spelling == executable:
+        return profile
+    return "unknown", True
+
+
+def literal_shell_sources(text, brace_mode=None, brace_increment=None):
+    """Yield literal source and profile for command-position Bash/sh ``-c`` execution."""
     for segment in shell_command_segments(text):
-        argv, _shell_context = unwrap_shell_command(shell_segment_argv(segment))
+        argv, _shell_context = unwrap_shell_command(shell_segment_argv(
+            segment,
+            brace_mode=brace_mode,
+            brace_increment=brace_increment,
+        ))
         if argv and os.path.basename(argv[0]) in SHELL_INTERPRETERS:
             source = literal_c_operand(argv)
             if source is not None:
-                yield source
+                mode, increment = literal_shell_brace_profile(
+                    argv[0], brace_mode, brace_increment
+                )
+                yield source, mode, increment
 
 
 IMPORTED_FUNCTION_ENV = re.compile(
     r"^(?:BASH_FUNC_[^=]+%%|[A-Za-z_][A-Za-z0-9_]*)=\(\)[ \t]*\{"
 )
+ENV_INERT_SHORT_FLAGS = frozenset("iv")
+ENV_INERT_LONG_FLAGS = frozenset({"--debug", "--ignore-environment"})
+ENV_INERT_SHORT_VALUES = frozenset("u")
+ENV_INERT_LONG_VALUES = frozenset({"--unset"})
+ENV_UNSAFE_SHORT_OPTIONS = frozenset("PCaS")
+ENV_UNSAFE_LONG_OPTIONS = frozenset({
+    "--argv0", "--chdir", "--path", "--split-string",
+})
+ENV_TERMINAL_OPTIONS = frozenset({"--help", "--version"})
+
+
+def env_child_argv(argv):
+    """Return a statically bounded env child argv, or None for unsafe/ambiguous grammar.
+
+    Environment clearing also removes PATH: a later bare child is then searched on the platform
+    default rather than the frozen replay path, so that combination fails closed. Removing an
+    ordinary variable (or clearing the environment before an absolute child) only subtracts
+    ambient state. Explicit search path, chdir, argv0, and split-string options can change which
+    program/source is reached and fail closed with unknown or runtime-built option grammar.
+    """
+    argv = list(argv)
+    index = 1
+    clears_environment = False
+    while index < len(argv):
+        option = argv[index]
+        if getattr(option, "dynamic", False):
+            return None
+        option = str(option)
+        if option == "--":
+            index += 1
+            break
+        if option == "-":
+            # BSD's historical alias for -i clears PATH as well as ambient hooks. A later bare
+            # utility is therefore searched on the platform default path, not the frozen replay
+            # path. Defer the final decision until the literal child is known.
+            clears_environment = True
+            index += 1
+            continue
+        if not option.startswith("-"):
+            break
+        if option in ENV_TERMINAL_OPTIONS:
+            return []
+        if option.startswith("--"):
+            name, joined, value = option.partition("=")
+            if name in ENV_UNSAFE_LONG_OPTIONS:
+                return None
+            if name in ENV_INERT_LONG_FLAGS:
+                if joined:
+                    return None
+                if name == "--ignore-environment":
+                    clears_environment = True
+                index += 1
+                continue
+            if name not in ENV_INERT_LONG_VALUES:
+                return None
+            if joined:
+                if not value:
+                    return None
+                if name == "--unset" and value == "PATH":
+                    return None
+                index += 1
+            else:
+                if index + 1 >= len(argv):
+                    return None
+                if name == "--unset" and str(argv[index + 1]) == "PATH":
+                    return None
+                index += 2
+            continue
+
+        cluster = option[1:]
+        offset = 0
+        consumed = False
+        while offset < len(cluster):
+            flag = cluster[offset]
+            if flag in ENV_INERT_SHORT_FLAGS:
+                if flag == "i":
+                    clears_environment = True
+                offset += 1
+                continue
+            if flag in ENV_UNSAFE_SHORT_OPTIONS:
+                return None
+            if flag not in ENV_INERT_SHORT_VALUES:
+                return None
+            value = cluster[offset + 1:]
+            if value:
+                if flag == "u" and value == "PATH":
+                    return None
+                index += 1
+            else:
+                if index + 1 >= len(argv):
+                    return None
+                if flag == "u" and str(argv[index + 1]) == "PATH":
+                    return None
+                index += 2
+            consumed = True
+            break
+        if not consumed:
+            index += 1
+
+    while index < len(argv):
+        word = argv[index]
+        if IMPORTED_FUNCTION_ENV.match(word):
+            return None
+        assignment = ASSIGN.fullmatch(word)
+        if not assignment:
+            break
+        if unsafe_assignment(assignment.group(1)):
+            return None
+        index += 1
+    child = argv[index:]
+    if child and getattr(child[0], "dynamic", False):
+        return None
+    if clears_environment and child and not os.path.isabs(str(child[0])):
+        return None
+    return child
 
 
 def unsafe_env_command(argv):
-    """Whether actual env syntax imports function state or uses dynamic split-string argv."""
+    """Whether command/environment syntax can redirect lookup or import executable state."""
     argv = list(argv)
+    index = 0
+    while index < len(argv):
+        assignment = ASSIGN.fullmatch(argv[index])
+        if not assignment:
+            break
+        if unsafe_assignment(assignment.group(1)):
+            return True
+        index += 1
+    argv = argv[index:]
     while argv:
         program = os.path.basename(argv[0])
         if program == "command":
@@ -1619,13 +2476,17 @@ def unsafe_env_command(argv):
             while index < len(argv) and argv[index].startswith("-") and argv[index] != "-":
                 if "v" in argv[index][1:] or "V" in argv[index][1:]:
                     return False
+                if "p" in argv[index][1:]:
+                    return True
                 index += 1
             argv = argv[index:]
             continue
         if program == "exec":
             index = 1
             while index < len(argv) and argv[index].startswith("-") and argv[index] != "-":
-                index += 2 if argv[index] == "-a" else 1
+                if argv[index] == "-a":
+                    return True
+                index += 1
             argv = argv[index:]
             continue
         if program in {"nice", "stdbuf"}:
@@ -1641,50 +2502,39 @@ def unsafe_env_command(argv):
             continue
         if program != "env":
             return False
-        index = 1
-        while index < len(argv):
-            word = argv[index]
-            if word == "--":
-                index += 1
-                break
-            split_source = None
-            consumed = 0
-            if word in {"-S", "--split-string"} and index + 1 < len(argv):
-                split_source, consumed = argv[index + 1], 2
-            elif word.startswith("--split-string="):
-                split_source, consumed = word.split("=", 1)[1], 1
-            elif word.startswith("-S") and word != "-S":
-                split_source, consumed = word[2:], 1
-            if split_source is not None:
-                # BSD/GNU env -S has its own escape and substitution grammar (`\_`, `\c`,
-                # `${VAR}`, ...), distinct from Bash and shlex. Refuse the command position
-                # instead of claiming a partial decoder knows which executable it constructs.
-                return True
-            if word.startswith("-") and word != "-":
-                index += 2 if word in {"-u", "--unset", "-C", "--chdir", "-P"} else 1
-                continue
-            break
-        while index < len(argv):
-            word = argv[index]
-            if IMPORTED_FUNCTION_ENV.match(word):
-                return True
-            if ASSIGN.fullmatch(word):
-                index += 1
-                continue
-            break
-        argv = argv[index:]
+        argv = env_child_argv(argv)
+        if argv is None:
+            return True
+        if not argv:
+            return False
     return False
 
 
 def shell_reads_stdin_source(argv):
-    """Whether Bash/sh takes runtime source from stdin or a computed script operand."""
+    """Whether Bash/sh takes runtime source from stdin, startup hooks, or a computed operand."""
     index = 1
     forced_stdin = False
     noexec_n = False
     noexec_dump = False
+    interactive = False
+    login = False
+    no_rc = False
+    no_profile = False
+    explicit_startup = False
+    debugger = False
 
     def executable():
         return not (noexec_n or noexec_dump)
+
+    def startup_source():
+        # Explicit startup paths and debugger profiles are executable source hooks in their own
+        # right. Login and interactive defaults are suppressible only by their documented
+        # switches. All are gated by executable() at the return sites so -n/-D stay inert.
+        if explicit_startup or debugger:
+            return True
+        if login:
+            return not no_profile
+        return interactive and not no_rc
 
     def stdin_path(word):
         if getattr(word, "dynamic", False):
@@ -1698,50 +2548,108 @@ def shell_reads_stdin_source(argv):
 
     while index < len(argv):
         option = argv[index]
-        if option in {"+O", "+o"}:
-            index += 2
-            continue
+        if getattr(option, "dynamic", False):
+            # A runtime-built word can be either a script operand or an option such as -c/+n.
+            # Its effect on execution cannot be established from the literal command.
+            return True
         if option.startswith("+") and option != "+":
             flags = option[1:]
+            value_count = flags.count("O") + flags.count("o")
+            value_end = index + 1 + value_count
+            if value_end > len(argv):
+                return False
+            if any(getattr(word, "dynamic", False) for word in argv[index + 1:value_end]):
+                return True
             if "n" in flags:
                 noexec_n = False
             noexec_dump = noexec_dump or "D" in flags
             if "s" in flags:
                 forced_stdin = False
-            index += 1
+            if "i" in flags:
+                interactive = False
+            if "l" in flags:
+                login = False
+            if "c" in flags:
+                return bool(
+                    executable()
+                    and value_end < len(argv)
+                    and (
+                        startup_source()
+                        or getattr(argv[value_end], "dynamic", False)
+                    )
+                )
+            index = value_end
             continue
         if option == "--":
             if index + 1 >= len(argv):
                 return executable()
-            return executable() and (forced_stdin or stdin_path(argv[index + 1]))
+            return executable() and (
+                startup_source() or forced_stdin or stdin_path(argv[index + 1])
+            )
         if option == "-":
             return executable()
         if not option.startswith("-"):
-            return executable() and (forced_stdin or stdin_path(option))
+            return executable() and (startup_source() or forced_stdin or stdin_path(option))
         if option in {"--help", "--version"}:
             return False
         if option in {"--dump-strings", "--dump-po-strings"}:
             noexec_dump = True
             index += 1
             continue
+        if option in {"--rcfile", "--init-file"}:
+            explicit_startup = index + 1 < len(argv)
+            index += 2
+            continue
+        if option.startswith(("--rcfile=", "--init-file=")):
+            explicit_startup = True
+            index += 1
+            continue
+        if option == "--debugger":
+            debugger = True
+            index += 1
+            continue
+        if option == "--login":
+            login = True
+            index += 1
+            continue
+        if option == "--norc":
+            no_rc = True
+            index += 1
+            continue
+        if option == "--noprofile":
+            no_profile = True
+            index += 1
+            continue
         if option.startswith("--"):
-            index += 2 if option in {"--rcfile", "--init-file"} else 1
+            index += 1
             continue
         flags = option[1:]
+        value_count = flags.count("O") + flags.count("o")
+        value_end = index + 1 + value_count
+        if value_end > len(argv):
+            return False
+        if any(getattr(word, "dynamic", False) for word in argv[index + 1:value_end]):
+            return True
         noexec_n = noexec_n or "n" in flags
         noexec_dump = noexec_dump or "D" in flags
+        interactive = interactive or "i" in flags
+        login = login or "l" in flags
         if "c" in flags:
             return bool(
                 executable()
-                and index + 1 < len(argv)
-                and getattr(argv[index + 1], "dynamic", False)
+                and value_end < len(argv)
+                and (
+                    startup_source()
+                    or getattr(argv[value_end], "dynamic", False)
+                )
             )
         forced_stdin = forced_stdin or "s" in flags
-        index += 2 if option in {"-O", "-o"} else 1
+        index = value_end
     return executable()
 
 
-def has_dynamic_shell_state_evaluator(text):
+def has_dynamic_shell_state_evaluator(
+        text, brace_mode=None, brace_increment=None):
     """Whether an actual command position evaluates source in the current shell.
 
     Eval/source/trap, imported Bash functions, and shell programs supplied over stdin or a
@@ -1750,10 +2658,17 @@ def has_dynamic_shell_state_evaluator(text):
     these command positions rather than pretending a literal-only scan covers them.
     """
     for segment in shell_command_segments(text):
-        raw_argv = shell_segment_argv(segment)
+        raw_argv = shell_segment_argv(
+            segment,
+            preserve_assignments=True,
+            brace_mode=brace_mode,
+            brace_increment=brace_increment,
+        )
         if unsafe_env_command(raw_argv):
             return True
         argv, shell_context = unwrap_shell_command(raw_argv)
+        if argv is None:
+            return True
         if not argv:
             continue
         if shell_context and argv[0] in {"eval", "source", "."}:
@@ -1767,7 +2682,7 @@ def has_dynamic_shell_state_evaluator(text):
 
 
 def unsafe_setup_state(cmd):
-    """Whether replaying this unannotated runnable would persist unsafe Bash state."""
+    """Whether any execution of this runnable can persist unsafe Bash state."""
     if shell_function_definition(cmd):
         return True
     try:
@@ -1801,22 +2716,39 @@ def unsafe_setup_state(cmd):
     return True in roles
 
 
-def shell_function_definition(cmd, seen=None):
+def shell_function_definition(
+        cmd, seen=None, brace_mode=None, brace_increment=None):
     """Whether this source can establish function state before an apparent proof command."""
+    brace_mode = BASH_BRACE_MODE if brace_mode is None else brace_mode
+    brace_increment = (
+        BASH_BRACE_INCREMENT if brace_increment is None else brace_increment
+    )
     seen = set() if seen is None else seen
-    if cmd in seen:
+    identity = (cmd, brace_mode, brace_increment)
+    if identity in seen:
         return False
-    seen.add(cmd)
+    seen.add(identity)
     source = mask_shell_comments(remove_shell_line_continuations(cmd))
     if has_active_heredoc(source):
         return True
     syntax = mask_noncommand_contexts(shell_syntax_view(source))
     if FUNCTION_SETUP.search(syntax) or FUNCTION_KEYWORD_SETUP.search(syntax):
         return True
-    if has_dynamic_shell_state_evaluator(source):
+    if has_dynamic_shell_state_evaluator(source, brace_mode, brace_increment):
         return True
-    children = list(executable_substitutions(source)) + list(literal_shell_sources(source))
-    return any(shell_function_definition(body, seen) for body in children)
+    if any(shell_function_definition(
+            body, seen, brace_mode, brace_increment)
+            for body in executable_substitutions(source)):
+        return True
+    # Bare or exact startup-bound Bash and sh each inherit their independently measured profile;
+    # an alternate absolute shell stays on the conservative union. No child is executed merely
+    # to identify its release.
+    return any(shell_function_definition(body, seen, mode, increment)
+               for body, mode, increment in literal_shell_sources(
+                   source,
+                   brace_mode,
+                   brace_increment,
+               ))
 
 
 def proof_script(setup, cmd):
@@ -2067,10 +2999,10 @@ def commands(block):
         if expected is None:
             expected = reported_code(lines[i + 1:])
         if cmd:
-            # A row beginning `python3 ()` is a Bash function definition, not an invocation of
-            # the allowlisted Python executable. Even with an exit annotation, counting it as a
-            # proof would make "ran nothing" pass. Refuse it independently of setup status.
-            if shell_function_definition(cmd):
+            # A function definition, executable startup hook, or variable-writing printf can
+            # change what a later allowlisted command reaches. Refuse that state mutation even
+            # when this row carries its own exit annotation.
+            if unsafe_setup_state(cmd):
                 yield cmd, REFUSE, list(setup), frozenset(gap_causes)
                 gap_causes.add("refused")
                 i += 1
@@ -2078,10 +3010,7 @@ def commands(block):
             # An unannotated step states no code, so it verifies nothing - but the block
             # needs it to build what the next command is pointed at.
             if expected is None and is_runnable(cmd) and not PLACEHOLDER.search(cmd):
-                if unsafe_setup_state(cmd):
-                    yield cmd, REFUSE, list(setup), frozenset(gap_causes)
-                    gap_causes.add("refused")
-                elif replayable(cmd):
+                if replayable(cmd):
                     yield cmd, expected, list(setup), frozenset(gap_causes)
                     setup.append(cmd)
                 else:
@@ -2104,6 +3033,9 @@ def main() -> int:
     unknown = [a for a in args if a.startswith("-")]
     if unknown:
         print(f"verify-proofs: unknown option(s): {' '.join(unknown)}", file=sys.stderr)
+        return 2
+    if BASH_EXECUTABLE is None:
+        print("verify-proofs: cannot resolve an executable Bash at startup", file=sys.stderr)
         return 2
     explicit = bool(args)
     args = args or sorted(str(p) for p in Path("skills").glob("*/"))
@@ -2162,7 +3094,13 @@ def main() -> int:
                     continue
                 ran += 1
                 try:
-                    p = subprocess.run(["bash", "-c", script], cwd=d, capture_output=True, timeout=120)
+                    p = subprocess.run(
+                        [BASH_EXECUTABLE, "-c", script],
+                        cwd=d,
+                        capture_output=True,
+                        env=BASH_REPLAY_ENV,
+                        timeout=120,
+                    )
                     actual = p.returncode
                 except subprocess.TimeoutExpired:
                     actual = "TIMEOUT"
