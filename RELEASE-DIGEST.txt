@@ -4,4 +4,4 @@
 # are intentionally out of band; use a signed tag or authenticated release asset.
 format: uncle-bob-skills-release-digest-v1
 files: 742
-manifest-sha256: 04bb456dffe36f6570200eba60ce66500d649b89176290ae72cfa9929772c384
+manifest-sha256: bcd61c8ab3660dd561ba78689030d99bf9cc2468e7d79e9cd6a12c24c830be53
