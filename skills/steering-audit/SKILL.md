@@ -85,6 +85,8 @@ python3 scripts/readonly-probe.py --red=symlink                                 
 python3 scripts/self-test-readonly-probe.py                                                           # exit 0  (all five verdicts survive a read-only source tree)
 ```
 
+**Ctrl-C.** A Ctrl-C (SIGINT) arriving mid-run is not a verdict. The seal maps `KeyboardInterrupt` to exit `2` — this island's non-verdict code — never to `0` or `1`, so an interrupted run cannot read as a pass or a finding. Pack policy: [CONTEXT.md — Interrupts are not verdicts](../../CONTEXT.md). A signal the interpreter never sees (`SIGKILL`, `SIGTERM`) is reported by the shell as `137`/`143` and is outside this table too.
+
 ## Done when
 
 - The ask was classified REPORT or REPAIR before step 1 ran, and a REPORT run ended at the table with the audited *tree* byte-identical — the before-copy in scratch, and a sibling copy only where the human asked for one (advisory for the agent; `readonly-probe.py` enforces it for the tools).

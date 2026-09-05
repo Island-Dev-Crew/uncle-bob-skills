@@ -1,5 +1,26 @@
 # Changelog
 
+## v2.2.0 — 2026-08-27
+
+**Evidence release on top of `v2.1.0`.** `v2.1.0` (`fac576a`) carries an independent exact-head ACCEPT receipt; this release adds evidence surface to that head and changes no gate's verdict logic. It has **no independent receipt of its own yet** — `v2.1.0`'s receipt binds `fac576a` and is void for this head by design — and its tag is unsigned. It is the candidate the next seat reviews, stated as such rather than dressed as accepted.
+
+### Verdicts made individually load-bearing (attack-plan target 05)
+
+A survey found that deleting a gate's *named* verdict could leave every pack tool green: `coupling-budget`'s own `OVER-BUDGET` line was neutered and `verify-proofs.py` still reported 9/9, 0 mismatched. Cause: the verifier compares exit codes, never reason text, and every dirty fixture tripped more than one verdict, so any single deletion stayed red through its neighbours. The fix is not logic but evidence — one *isolating* fixture per verdict, in which that verdict is the only violation, so deleting its emission flips a documented `1` to `0`. Each was watched failing the same way: neuter the emitting line in the real tree, run the verifier, read the MISMATCH, restore byte-for-byte.
+
+- `coupling-budget`: `OVER-BUDGET` and `UNJUSTIFIED` gained isolating fixtures; `THIN-REASON` was already isolated and the island now says so rather than shipping a redundant file.
+- `measurement-humility`: `DUPLICATE`, `REVIEWED`, `UNGUARDED` — deletion yields 1, 6 and 1 mismatches respectively.
+- `comment-as-spec`: shipped 15 fixtures and **0 proofs run** — its proof block was outside the grammar, so nothing verified any of them. It now runs 24, with `only-leaks`/`only-missing`/`only-restates`/`only-unjudged` fixtures; deletion yields 3, 5, 1 and 1 mismatches.
+- `gherkin-gate`: nine refusal reasons pinned by nine fixtures; seven flip a documented code on deletion. The two that cannot (a missing `# STORY:` header, a ledger binding no record) necessarily co-occur with "no valid red/green evidence" and are pinned by message only — disclosed in the island as a limit of exit-code verification.
+
+### Dead-stream proofs that could not fail, made real (target 06)
+
+Twenty documented dead-pipe "proofs" across nine islands had the shape `print(subprocess.run(...).returncode)` with a `# 2 — was 120` comment: the wrapper printed the child's code and itself exited 0, and with no `exit N` token the verifier classed every one PENDING and never ran it. They were the pack's stated evidence for the 120/141 leak class and none was executed by anything. All twenty now `sys.exit` with the child's code and carry a real `# exit N`; the mechanism was proven with a stub child returning 7 (wrapper now 7; the old form gave 0). Executed proofs rose from 364 to 430 and closed-stream probes from 696 to 826 across the pack (the per-verdict fixtures above account for the rest of the rise), at 0 mismatched and 0 leaks.
+
+### Interrupts are not verdicts (target 08)
+
+Sixteen gate scripts catch `KeyboardInterrupt` three different ways, with no policy stated and eleven islands silent about it while claiming a closed exit-code set. The policy is now in `CONTEXT.md`: an interrupt never returns `0` or `1`; the default arm is the island's own non-verdict code (twelve scripts → `2`; `margin-ledger` and `strategic-ledger` → their cannot-read `3`); `gate-toolchain` deliberately exits the shell's `130` and `interface-budget` deliberately re-raises so a kill reads as a kill — both already said so. The eight islands that were silent each gained the one true sentence naming their arm. Signals the interpreter never sees (`SIGKILL`, `SIGTERM`, shell `137`/`143`) are stated as outside every table.
+
 ## v2.1.0 — 2026-08-26
 
 **Corrective successor to `v2.0.0`.** The independent Seat 3 review of `v2.0.0` returned **CHANGES REQUIRED** at commit `7956a2a` / tree `a37578f7`. This entry records the successor's content; its acceptance and publication are established outside this file by an exact-head receipt and either a signed tag or a human-authorized authenticated release bound to that same head.

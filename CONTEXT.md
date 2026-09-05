@@ -62,6 +62,17 @@ Auto-caption garbles are corrected once, in the ledger, and never re-introduced:
 
 This pack was built under the IDC Forge methodology and deliberately refuses concerns the Forge already owns. Those refusals are recorded in [COMPANION.md](COMPANION.md) — twenty-two named boundaries, each saying what the pack does *not* do and who does. **Every local gate, fixture and validator here runs from a fresh clone without another repository**, using Python 3.10+ with the pinned gate dependencies in [`requirements.txt`](requirements.txt), Bash, Git, standard POSIX utilities, and UTF-8-capable output. That is the whole of the standalone claim: it covers the tools, not every step of every protocol. Most of the twenty-two are boundary statements — the concern is somebody else's and this pack keeps its hands off it. A named few are workflow hand-offs, where an island's own protocol routes a required step to an island this repository does not ship. COMPANION.md marks which is which.
 
+## Interrupts are not verdicts
+
+Sixteen gate scripts catch `KeyboardInterrupt`, and a survey found them answering it three different ways with no policy stated anywhere and eleven of their islands silent about it while claiming a closed set of exit codes. The policy, stated once here so an island only has to name which arm it takes:
+
+- **An interrupt never produces a verdict.** Ctrl-C arriving mid-run means no answer was reached about the code under test, and a gate must not return `0` or `1` for it — those are the pass and fail verdicts a fix-until-green loop acts on.
+- **The default arm is the island's own non-verdict code** — `2` for most gates, `3` where an island reserves `3` for "could not read at all" (`margin-ledger`, `strategic-ledger`). Twelve of the sixteen do this. It is fail-closed and needs no new code in the table.
+- **Two islands take a different arm on purpose, and say so.** `gate-toolchain` converts the interrupt to a normal exit `130` — the shell's convention, and a code its table names — so a caller reading `$?` sees the conventional number. `interface-budget` re-raises it, so the process dies by signal and a `waitpid` parent sees `-2`, not a number: a kill reads as a kill. Either is acceptable; what is not acceptable is silence.
+- **The rule for an island:** whatever arm your gate takes, your `SKILL.md` exit table must name it. A table that lists `0, 1, 2` as "the whole set" over a script that returns `130` on Ctrl-C is the same laundered claim this pack refuses everywhere else.
+
+What this policy cannot cover, stated rather than implied: a signal the interpreter never sees. `SIGKILL` and `SIGTERM` end the process before any handler runs, so the shell reports `137` / `143` and no gate here can map those — they are not verdicts either, and no table should pretend to own them.
+
 ## Verification
 
 ```bash

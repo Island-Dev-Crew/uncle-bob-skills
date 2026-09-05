@@ -1,0 +1,11 @@
+# acceptance ledger for checkout.feature - the first red was captured against the
+# revision whose first Then read "Cart is empty" (that revision's real sha256); everything
+# was then re-run against the current bytes, so only that one record is stale
+# phase	exit_code	story	feature_sha256	scenario
+red	1	STORY-42	98c5c43454fca1e06132274bf867f36a982235a62c74d3fa9f151f31cd5c49e7	Empty cart shows the empty state
+red	1	STORY-42	5cbb55ab1368e8f39e7f0d60c6bc9a91f2f9a1f60436465bdb3a322a01bea51e	Empty cart shows the empty state
+red	1	STORY-42	5cbb55ab1368e8f39e7f0d60c6bc9a91f2f9a1f60436465bdb3a322a01bea51e	Two items at $5.00 total $10.00
+red	1	STORY-42	5cbb55ab1368e8f39e7f0d60c6bc9a91f2f9a1f60436465bdb3a322a01bea51e	Removing the last item empties the cart
+green	0	STORY-42	5cbb55ab1368e8f39e7f0d60c6bc9a91f2f9a1f60436465bdb3a322a01bea51e	Empty cart shows the empty state
+green	0	STORY-42	5cbb55ab1368e8f39e7f0d60c6bc9a91f2f9a1f60436465bdb3a322a01bea51e	Two items at $5.00 total $10.00
+green	0	STORY-42	5cbb55ab1368e8f39e7f0d60c6bc9a91f2f9a1f60436465bdb3a322a01bea51e	Removing the last item empties the cart

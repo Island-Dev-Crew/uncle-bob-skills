@@ -67,6 +67,8 @@ python3 scripts/zone-lint.py scripts/fixtures/unclosed-fence-claude.md --max-lin
 
 - `advisory`: the default numbers (100 lines / 1500 tokens / 40-line head window); which 3-10 constraints deserve the head slots; lowercase or paraphrased directives, which the UPPERCASE regex deliberately does not chase (a deterministic proxy, not a semantic judge); and wiring the script into a hook or CI. Until a hook runs it, running it at all is on you.
 
+**Ctrl-C.** A Ctrl-C (SIGINT) arriving mid-run is not a verdict. The seal maps `KeyboardInterrupt` to exit `2` — this island's non-verdict code — never to `0` or `1`, so an interrupted run cannot read as a pass or a finding. Pack policy: [CONTEXT.md — Interrupts are not verdicts](../../CONTEXT.md). A signal the interpreter never sees (`SIGKILL`, `SIGTERM`) is reported by the shell as `137`/`143` and is outside this table too.
+
 ## Done when
 
 - [ ] The invocation was read as audit or repair — an audit ended at the reported verdict, with no file rewritten to chase exit 0.

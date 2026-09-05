@@ -123,15 +123,16 @@ The clean fixture carries the boundary cases that must *not* trip: `pytest.raise
 
 ```bash
 python3 scripts/assertless-scan.py scripts/fixtures/test_gamed_suite.py 1>&-   # exit 2 — closed stdout, never a silent verdict
-(set -o pipefail; python3 scripts/assertless-scan.py scripts/fixtures/test_gamed_suite.py | true)  # exit 2 — broken pipe, not a dirty verdict
+bash -c 'python3 scripts/assertless-scan.py scripts/fixtures/test_gamed_suite.py | true; exit ${PIPESTATUS[0]}'  # exit 2 — broken pipe, not a dirty verdict
 python3 scripts/assertless-scan.py scripts/fixtures/ scripts/fixtures/test_gamed_suite.py     # exit 1 — 51 scanned, not 85: one key per file
 python3 scripts/assertless-scan.py scripts/fixtures/test_gamed_suite.py --assert-helper "a b" # exit 2 — a helper must be an identifier
 python3 scripts/assertless-scan.py --help                                                     # exit 2 — usage is not a clean verdict
 
 # The shutdown seal: a dead pipe under the two paths that write before the seal can run.
-# These print the CHILD's exit status directly, so no shell `$?` can be lost on the way back.
-python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);print(subprocess.run([sys.executable,"scripts/assertless-scan.py","--help"],stdout=w,stderr=subprocess.DEVNULL).returncode)'  # 2, not 120
-python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);print(subprocess.run([sys.executable,"scripts/assertless-scan.py","--nope"],stderr=w,stdout=subprocess.DEVNULL).returncode)'  # 2, not 120
+# Each probe exits with the CHILD's status and prints nothing, so no shell `$?` can be lost on the way back
+# and the probe never depends on the stream it is testing; a wrapper that only printed the code exited 0 itself.
+python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);sys.exit(subprocess.run([sys.executable,"scripts/assertless-scan.py","--help"],stdout=w,stderr=subprocess.DEVNULL).returncode)'  # exit 2 — not 120
+python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);sys.exit(subprocess.run([sys.executable,"scripts/assertless-scan.py","--nope"],stderr=w,stdout=subprocess.DEVNULL).returncode)'  # exit 2 — not 120
 
 D=$(mktemp -d)
 printf '\xef\xbb\xbfdef test_bom_gamed():\r\n    charge_card(1)\r\n' > "$D/Test_Bom.py"

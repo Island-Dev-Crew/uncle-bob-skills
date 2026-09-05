@@ -171,7 +171,7 @@ dropped wherever it sat, so it counted **1**, and the positional rule counts **4
 stdout on a *passing* run exits 2 rather than 0:
 
 ```bash
-python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);print(subprocess.run([sys.executable,"scripts/density-cap.py","scripts/fixtures/capped-prompt.md","--cap","12"],stdout=w,stderr=subprocess.DEVNULL).returncode)'
+python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);sys.exit(subprocess.run([sys.executable,"scripts/density-cap.py","scripts/fixtures/capped-prompt.md","--cap","12"],stdout=w,stderr=subprocess.DEVNULL).returncode)'   # exit 2 — the consent could not be written, so no verdict; not 0, not 120
 ```
 
 ### The limits this island did not close

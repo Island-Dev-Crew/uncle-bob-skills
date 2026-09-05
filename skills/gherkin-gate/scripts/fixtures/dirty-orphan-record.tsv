@@ -1,0 +1,10 @@
+# acceptance ledger for checkout.feature - every scenario is red-then-green, plus one
+# record naming a scenario the file no longer contains (renamed after the run)
+# phase	exit_code	story	feature_sha256	scenario
+red	1	STORY-42	5cbb55ab1368e8f39e7f0d60c6bc9a91f2f9a1f60436465bdb3a322a01bea51e	Empty cart shows the empty state
+red	1	STORY-42	5cbb55ab1368e8f39e7f0d60c6bc9a91f2f9a1f60436465bdb3a322a01bea51e	Two items at $5.00 total $10.00
+red	1	STORY-42	5cbb55ab1368e8f39e7f0d60c6bc9a91f2f9a1f60436465bdb3a322a01bea51e	Removing the last item empties the cart
+green	0	STORY-42	5cbb55ab1368e8f39e7f0d60c6bc9a91f2f9a1f60436465bdb3a322a01bea51e	Empty cart shows the empty state
+green	0	STORY-42	5cbb55ab1368e8f39e7f0d60c6bc9a91f2f9a1f60436465bdb3a322a01bea51e	Two items at $5.00 total $10.00
+green	0	STORY-42	5cbb55ab1368e8f39e7f0d60c6bc9a91f2f9a1f60436465bdb3a322a01bea51e	Removing the last item empties the cart
+green	0	STORY-42	5cbb55ab1368e8f39e7f0d60c6bc9a91f2f9a1f60436465bdb3a322a01bea51e	Removing the last item shows the empty state

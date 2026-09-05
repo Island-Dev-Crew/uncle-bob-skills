@@ -84,6 +84,8 @@ python3 <this-skill-dir>/scripts/check-graph.py tools/arch-lens/graph.json <repo
 4. **Walk.** Open the page from `file://` and walk one full drill-down: top diagram → a module → a submodule → the source on screen. A failed hop is an extract or render bug. Fix it and re-walk until the whole path lands. Advisory - witnessed by human or agent eyes; state which hop was walked.
 5. **Re-verify on change** (instrument shape). After the next code move, regenerate and re-run step 2. A standing instrument that has drifted red is worse than none. Enforced when run - step 2's exit code is the same gate. Advisory that anyone remembers to run it at all, until a hook or CI job schedules the regeneration.
 
+**Ctrl-C.** A Ctrl-C (SIGINT) arriving mid-run is not a verdict. The seal maps `KeyboardInterrupt` to exit `2` — this island's non-verdict code — never to `0` or `1`, so an interrupted run cannot read as a pass or a finding. Pack policy: [CONTEXT.md — Interrupts are not verdicts](../../CONTEXT.md). A signal the interpreter never sees (`SIGKILL`, `SIGTERM`) is reported by the shell as `137`/`143` and is outside this table too.
+
 ## Done when
 
 - `check-destination.py <mode> <dest> <repo-root>` exited 0 before anything was written (enforced).

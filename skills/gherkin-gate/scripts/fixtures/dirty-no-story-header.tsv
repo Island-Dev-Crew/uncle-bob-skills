@@ -1,0 +1,5 @@
+# acceptance ledger for dirty-no-story-header.feature - the runs are sound; the file never
+# declared which story it binds to
+# phase	exit_code	story	feature_sha256	scenario
+red	1	STORY-19	584103eadeffe6aaf3dbb1d28f79b3d03c8d115a2049cab0021098d3d7280b12	A placed order appears in the history
+green	0	STORY-19	584103eadeffe6aaf3dbb1d28f79b3d03c8d115a2049cab0021098d3d7280b12	A placed order appears in the history

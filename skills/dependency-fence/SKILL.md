@@ -82,6 +82,8 @@ The dirty run exits 1, printing all three violations the gate can raise: two `OU
 
 - **Advisory**: everything feeding the checker. Edge extraction per language, wiring the run into CI or the agent harness (this island installs no hook), the spec's fidelity to the architecture you actually want, and the choice among the three repairs. Until a hook or CI job runs the checker on every change, the end-of-loop run is a practice you keep, not a gate the machine keeps for you. Say which one your repo has.
 
+**Ctrl-C.** A Ctrl-C (SIGINT) arriving mid-run is not a verdict. The seal maps `KeyboardInterrupt` to exit `2` — this island's non-verdict code — never to `0` or `1`, so an interrupted run cannot read as a pass or a finding. Pack policy: [CONTEXT.md — Interrupts are not verdicts](../../CONTEXT.md). A signal the interpreter never sees (`SIGKILL`, `SIGTERM`) is reported by the shell as `137`/`143` and is outside this table too.
+
 ## Done means green
 
 The fence is standing when all four hold:

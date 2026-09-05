@@ -95,14 +95,23 @@ python3 $G STORY-58 $F/dirty-localized-head.feature $F/dirty-localized-head.tsv 
 python3 $G STORY-35 $F/dirty-feff-language.feature $F/dirty-feff-language.tsv      # exit 1 — same, on a U+FEFF-prefixed directive at line 2
 python3 $G STORY-63 $F/dirty-two-story-headers.feature $F/dirty-two-story-headers.tsv  # exit 1 — "declares conflicting stories"
 python3 $G STORY-42 $F/checkout.feature            $F/dirty-tail-sha.tsv           # exit 1 — both 64-hex digests printed, differing only at char 64
+python3 $G STORY-31 $F/dirty-duplicate-head.feature $F/dirty-duplicate-head.tsv  # exit 1 — "duplicate Scenario name", 1 refusals
+python3 $G STORY-27 $F/dirty-unnamed-head.feature $F/dirty-unnamed-head.tsv      # exit 1 — "scenario head with no name", 1 refusals
+python3 $G STORY-42 $F/dirty-no-story-header.feature $F/dirty-no-story-header.tsv  # exit 1 — "carries no '# STORY: id' header", 3 refusals: the unbound file also yields no record and no evidence
+python3 $G STORY-42 $F/checkout.feature            $F/dirty-green-exited-nonzero.tsv  # exit 1 — "green record exited 3 - not green", 1 refusals
+python3 $G STORY-42 $F/checkout.feature            $F/dirty-green-then-red.tsv     # exit 1 — "last run is red", 1 refusals
+python3 $G STORY-42 $F/checkout.feature            $F/dirty-orphan-record.tsv      # exit 1 — "orphan record for unknown scenario", 1 refusals
+python3 $G STORY-42 $F/checkout.feature            $F/dirty-red-exited-zero.tsv    # exit 1 — "red record exited 0 - it never went red", 1 refusals
+python3 $G STORY-42 $F/checkout.feature            $F/dirty-stale-then-rerun.tsv   # exit 1 — "stale evidence", 1 refusals
+python3 $G STORY-42 $F/checkout.feature            $F/dirty-story-mismatch.tsv     # exit 1 — "no ledger record binds story", 4 refusals: nothing binds, so every scenario also reports no evidence
 python3 $G STORY-46 $F/limit-bidi-head.feature     $F/limit-bidi-head.tsv          # exit 0 — LIMIT: the U+202A head is dropped, "1 scenarios"
 python3 $G STORY-42 $F/undecodable.feature         $F/clean-red-then-green.tsv     # exit 2 — "input-error: cannot read feature file"
 python3 $G STORY-42 $F/checkout.feature $F/clean-red-then-green.tsv 1>&-           # exit 2 — "stdout is closed"
-bash -c 'python3 scripts/gherkin-gate.py STORY-42 scripts/fixtures/checkout.feature scripts/fixtures/clean-red-then-green.tsv | true; echo ${PIPESTATUS[0]}'  # 2 — was 120
-# the three dead-STDERR forms, each 120 until the tail flushed both streams. rc printed by the probe itself:
-python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);print(subprocess.run([sys.executable,"'"$G"'","--nope"],stderr=w,stdout=subprocess.DEVNULL).returncode)'                                    # 2 — usage error, hung-up stderr
-python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);print(subprocess.run([sys.executable,"'"$G"'","STORY-42","'"$F"'/undecodable.feature","'"$F"'/clean-red-then-green.tsv"],stderr=w,stdout=subprocess.DEVNULL).returncode)'  # 2 — die() into a hung-up stderr
-python3 -c 'import os,subprocess,sys;a,w=os.pipe();os.close(a);b,w2=os.pipe();os.close(b);print(subprocess.run([sys.executable,"'"$G"'","STORY-42","'"$F"'/checkout.feature","'"$F"'/clean-red-then-green.tsv"],stdout=w,stderr=w2).returncode)'  # 2 — both streams hung up
+bash -c 'python3 scripts/gherkin-gate.py STORY-42 scripts/fixtures/checkout.feature scripts/fixtures/clean-red-then-green.tsv | true; exit ${PIPESTATUS[0]}'  # exit 2 — was 120
+# the three dead-STDERR forms, each 120 until the tail flushed both streams. Each probe exits with the gate's code:
+python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);sys.exit(subprocess.run([sys.executable,"'"$G"'","--nope"],stderr=w,stdout=subprocess.DEVNULL).returncode)'                                    # exit 2 — usage error, hung-up stderr
+python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);sys.exit(subprocess.run([sys.executable,"'"$G"'","STORY-42","'"$F"'/undecodable.feature","'"$F"'/clean-red-then-green.tsv"],stderr=w,stdout=subprocess.DEVNULL).returncode)'  # exit 2 — die() into a hung-up stderr
+python3 -c 'import os,subprocess,sys;a,w=os.pipe();os.close(a);b,w2=os.pipe();os.close(b);sys.exit(subprocess.run([sys.executable,"'"$G"'","STORY-42","'"$F"'/checkout.feature","'"$F"'/clean-red-then-green.tsv"],stdout=w,stderr=w2).returncode)'  # exit 2 — both streams hung up
 python3 -c "import hashlib,runpy,sys; hashlib.sha256=lambda *a: 1/0; sys.argv=['g','STORY-42','$F/checkout.feature','$F/clean-red-then-green.tsv']; runpy.run_path('$G',run_name='__main__')"  # exit 2 — injected fault is not a refusal
 ```
 
@@ -133,6 +142,7 @@ Every fixture is a realistic near-miss, not garbage. `dirty-green-only` holds tw
 - Contradictions: a `red` record that exited 0, or a `green` record that exited non-zero, is refused rather than counted.
 - Ledger parsing: record-shape is tested before the `#`-comment skip, so no evidence row is dropped silently.
 - The acceptance bar must be a file. The gate takes a path and exits 2 without one it can read and decode. Exit 2 is isolated from exit 1 on every error path the fixtures and probes above reach, including unexpected exceptions, a closed stdout, a hung-up stdout pipe and a hung-up stderr pipe.
+- Per-verdict evidence. Nine refusal reasons each have a fixture that trips that reason and no other, wired into the proof block above. For seven of them (unnamed head, duplicate scenario name, orphan record, stale evidence, red-exited-0, green-exited-nonzero, last-run-red) deleting the emitting line makes `verify-proofs.py` report a MISMATCH — measured, one site at a time, then restored. The other two cannot be isolated by exit code: a feature with no `# STORY:` header, and a ledger that binds no record, each *necessarily* also yield "no valid red/green evidence" for every scenario, so deleting their own line leaves the exit at 1 through the consequent refusals. Those two are pinned by their message text, which the pack verifier does not compare — a disclosed limit of exit-code verification, not a claim that they are watched failing.
 - This island's own shape is enforced by the pack validator (`scripts/validate-island.py` at the pack root).
 
 `advisory` at v0, meaning required by this doc but checked by no script yet:

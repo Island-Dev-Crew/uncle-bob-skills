@@ -1,0 +1,14 @@
+{
+  "note": "Isolates UNJUSTIFIED: two added edges inside a budget of two, one carrying a reason above the floor and one carrying no entry at all, so the exit code rests on the missing entry alone.",
+  "budget": 2,
+  "modules": ["web", "billing", "domain"],
+  "baseline": [["web", "domain"]],
+  "current": [
+    ["web", "domain"],
+    ["web", "billing"],
+    ["billing", "domain"]
+  ],
+  "justifications": [
+    {"edge": ["web", "billing"], "reason": "the checkout page renders live invoice state from billing"}
+  ]
+}

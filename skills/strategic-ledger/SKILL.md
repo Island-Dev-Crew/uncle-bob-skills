@@ -80,6 +80,8 @@ printf 'bad\377name\tstrategic\t100\tcrap_max=14->5\n' | python3 scripts/strateg
 
 The verdict pair's exit codes were observed on the shipped fixtures. The dirty fixture parses cleanly and fails on the *claim*, not on syntax. The clean fixture lands exactly on the 10% floor, so the pair proves discrimination at the boundary. The two overflow fixtures and invalid-stdin proof are refusal controls: aggregate-sum overflow, cross-product overflow, and non-UTF-8 stdin must never wear a green verdict. The pack ritual ([`known-dirty-fixture`](../known-dirty-fixture/SKILL.md)) agrees on the verdict pair, from the pack root: `skills/known-dirty-fixture/scripts/prove-gate.sh skills/strategic-ledger/scripts/fixtures/dirty-tactical-drift.tsv skills/strategic-ledger/scripts/fixtures/clean-at-floor.tsv -- python3 skills/strategic-ledger/scripts/strategic-share.py` → `ACCEPTED`, exit 0. Deleting the pair returns this gate to `unverified`.
 
+**Ctrl-C.** A Ctrl-C (SIGINT) arriving mid-run is not a verdict. The seal maps `KeyboardInterrupt` to exit `3` — this island's cannot-read code, the same one an unreadable input takes — never to `0` or `1`, so an interrupted run cannot read as a pass or a finding. Pack policy: [CONTEXT.md — Interrupts are not verdicts](../../CONTEXT.md). A signal the interpreter never sees (`SIGKILL`, `SIGTERM`) is reported by the shell as `137`/`143` and is outside this table too.
+
 ## Done means
 
 - [ ] Every unit shipped this cycle appears exactly once, tagged `tactical` or `strategic`, minutes booked

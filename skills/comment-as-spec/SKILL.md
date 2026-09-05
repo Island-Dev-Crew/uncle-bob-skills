@@ -77,83 +77,81 @@ Exit codes carry distinct meanings, never sharing one:
 
 Then it is Bob's loop: *"you must change the code until this tool says that it's okay"* (C4). A verdict has a closed set of repairs. Write the comment, delete the leaking phrase, say something the name did not, or give the re-exported name a definition this module owns. Then re-run.
 
-**Red/green proof.** The lint earns its `enforced` line by having been watched failing, the [`known-dirty-fixture`](../known-dirty-fixture/SKILL.md) ritual. All fifteen fixtures ship beside it. Recompute from this island's directory, reading the exit code as `rc=$?` on the line after the run, never through a pipe or a command substitution, since both clobber it:
+**Red/green proof.** The lint earns its `enforced` line by having been watched failing, the [`known-dirty-fixture`](../known-dirty-fixture/SKILL.md) ritual. All nineteen fixtures ship beside it. Recompute from this island's directory, reading the exit code as `rc=$?` on the line after the run, never through a pipe or a command substitution, since both clobber it. Output rows are marked `| `, the pack verifier's explicit output prefix, so each report line is read as the code of the command above it instead of being left unverified. Every dirty fixture trips more than one verdict, so the last four rows isolate one verdict each; silence that verdict's emission in the lint and its row reports a mismatch (expected 1, got 0), silence any other and it does not:
 
 ```bash
 $ python3 scripts/interface-comment-lint.py scripts/fixtures/dirty-exports.py
-MISSING   scripts/fixtures/dirty-exports.py:11:render_invoice — no interface comment
-LEAKS     scripts/fixtures/dirty-exports.py:18:load_config — names private-symbol, internally
-RESTATES  scripts/fixtures/dirty-exports.py:23:parse_row — adds no word beyond the symbol name
-MISSING   scripts/fixtures/dirty-exports.py:34:settle_trade — no interface comment
-MISSING   scripts/fixtures/dirty-exports.py:44:InvoiceBook.Entry.total — no interface comment
-7 judged (5 exported, 2 nested), 5 without a usable interface comment
+| MISSING   scripts/fixtures/dirty-exports.py:11:render_invoice — no interface comment
+| LEAKS     scripts/fixtures/dirty-exports.py:18:load_config — names private-symbol, internally
+| RESTATES  scripts/fixtures/dirty-exports.py:23:parse_row — adds no word beyond the symbol name
+| MISSING   scripts/fixtures/dirty-exports.py:34:settle_trade — no interface comment
+| MISSING   scripts/fixtures/dirty-exports.py:44:InvoiceBook.Entry.total — no interface comment
+| 7 judged (5 exported, 2 nested), 5 without a usable interface comment
 $ rc=$?; echo "EXIT=$rc"   # → EXIT=1
 
 $ python3 scripts/interface-comment-lint.py scripts/fixtures/augmented-exports.py
-LEAKS     scripts/fixtures/augmented-exports.py:14:read_all — names private-symbol
-LEAKS     scripts/fixtures/augmented-exports.py:20:scan — names private-symbol, loop-shape
-MISSING   scripts/fixtures/augmented-exports.py:25:settle — no interface comment
-3 judged (3 exported, 0 nested), 3 without a usable interface comment
+| LEAKS     scripts/fixtures/augmented-exports.py:14:read_all — names private-symbol
+| LEAKS     scripts/fixtures/augmented-exports.py:20:scan — names private-symbol, loop-shape
+| MISSING   scripts/fixtures/augmented-exports.py:25:settle — no interface comment
+| 3 judged (3 exported, 0 nested), 3 without a usable interface comment
 $ rc=$?; echo "EXIT=$rc"   # → EXIT=1
 
 $ python3 scripts/interface-comment-lint.py scripts/fixtures/gated-members.py
-MISSING   scripts/fixtures/gated-members.py:25:Engine.rollback — no interface comment
-LEAKS     scripts/fixtures/gated-members.py:30:Engine.flush — names private-symbol
-MISSING   scripts/fixtures/gated-members.py:40:warmup — no interface comment
-5 judged (2 exported, 3 nested), 3 without a usable interface comment
+| MISSING   scripts/fixtures/gated-members.py:25:Engine.rollback — no interface comment
+| LEAKS     scripts/fixtures/gated-members.py:30:Engine.flush — names private-symbol
+| MISSING   scripts/fixtures/gated-members.py:40:warmup — no interface comment
+| 5 judged (2 exported, 3 nested), 3 without a usable interface comment
 $ rc=$?; echo "EXIT=$rc"   # → EXIT=1
 
 $ python3 scripts/interface-comment-lint.py scripts/fixtures/alias-fallback.py
-MISSING   scripts/fixtures/alias-fallback.py:21:render_invoice — no interface comment
-UNJUDGED  scripts/fixtures/alias-fallback.py:decode_payload — exported name is bound to an import — a re-export this lint cannot judge
-3 judged (3 exported, 0 nested), 2 without a usable interface comment
+| MISSING   scripts/fixtures/alias-fallback.py:21:render_invoice — no interface comment
+| UNJUDGED  scripts/fixtures/alias-fallback.py:decode_payload — exported name is bound to an import — a re-export this lint cannot judge
+| 3 judged (3 exported, 0 nested), 2 without a usable interface comment
 $ rc=$?; echo "EXIT=$rc"   # → EXIT=1
 
 $ python3 scripts/interface-comment-lint.py scripts/fixtures/class-alias-members.py
-MISSING   scripts/fixtures/class-alias-members.py:20:Engine.render — no interface comment
-MISSING   scripts/fixtures/class-alias-members.py:27:Engine.warm — no interface comment
-3 judged (1 exported, 2 nested), 2 without a usable interface comment
-$ rc=$?; echo "EXIT=$rc"   # → EXIT=1   (was EXIT=0 / "1 judged (1 exported, 0 nested)" before the class body
-                           #   followed aliases — a false green over two public undocumented attributes.
-                           #   `wrapped = staticmethod(_render)` is the stated limit and never appears)
+| MISSING   scripts/fixtures/class-alias-members.py:20:Engine.render — no interface comment
+| MISSING   scripts/fixtures/class-alias-members.py:27:Engine.warm — no interface comment
+| 3 judged (1 exported, 2 nested), 2 without a usable interface comment
+$ rc=$?; echo "EXIT=$rc"   # → EXIT=1   (was EXIT=0 / "1 judged (1 exported, 0 nested)" before the class body followed aliases — a false green over two public undocumented attributes. `wrapped = staticmethod(_render)` is the stated limit and never appears)
 
 $ python3 scripts/interface-comment-lint.py scripts/fixtures/wrapped-leaks.py
-LEAKS     scripts/fixtures/wrapped-leaks.py:14:scan — names under-the-hood
-LEAKS     scripts/fixtures/wrapped-leaks.py:21:read_all — names implementation-detail
-LEAKS     scripts/fixtures/wrapped-leaks.py:28:settle — names behind-the-scenes
-LEAKS     scripts/fixtures/wrapped-leaks.py:35:price — names loop-shape
-4 judged (4 exported, 0 nested), 4 without a usable interface comment
+| LEAKS     scripts/fixtures/wrapped-leaks.py:14:scan — names under-the-hood
+| LEAKS     scripts/fixtures/wrapped-leaks.py:21:read_all — names implementation-detail
+| LEAKS     scripts/fixtures/wrapped-leaks.py:28:settle — names behind-the-scenes
+| LEAKS     scripts/fixtures/wrapped-leaks.py:35:price — names loop-shape
+| 4 judged (4 exported, 0 nested), 4 without a usable interface comment
 $ rc=$?; echo "EXIT=$rc"   # → EXIT=1   (all four printed green before the fold: three line-wrapped, one U+FEFF)
 
 $ python3 scripts/interface-comment-lint.py scripts/fixtures/branch-order-exports.py
-MISSING   scripts/fixtures/branch-order-exports.py:16:warmup — no interface comment
-MISSING   scripts/fixtures/branch-order-exports.py:34:settle — no interface comment
-2 judged (2 exported, 0 nested), 2 without a usable interface comment
+| MISSING   scripts/fixtures/branch-order-exports.py:16:warmup — no interface comment
+| MISSING   scripts/fixtures/branch-order-exports.py:34:settle — no interface comment
+| 2 judged (2 exported, 0 nested), 2 without a usable interface comment
 $ rc=$?; echo "EXIT=$rc"   # → EXIT=1   (undocumented branch first, then second — order changes nothing)
 
 $ python3 scripts/interface-comment-lint.py scripts/fixtures/shadowed-fallback.py
-MISSING   scripts/fixtures/shadowed-fallback.py:20:warmup — no interface comment
-MISSING   scripts/fixtures/shadowed-fallback.py:29:render — no interface comment
-2 judged (2 exported, 0 nested), 2 without a usable interface comment
+| MISSING   scripts/fixtures/shadowed-fallback.py:20:warmup — no interface comment
+| MISSING   scripts/fixtures/shadowed-fallback.py:29:render — no interface comment
+| 2 judged (2 exported, 0 nested), 2 without a usable interface comment
 $ rc=$?; echo "EXIT=$rc"   # → EXIT=1
 
 $ python3 scripts/interface-comment-lint.py scripts/fixtures/unreducible-all.py
-error: scripts/fixtures/unreducible-all.py:11: __all__ is not a list of string literals — surface cannot be reduced to a fixed list of names
+| error: scripts/fixtures/unreducible-all.py:11: __all__ is not a list of string literals — surface cannot be reduced to a fixed list of names
 $ rc=$?; echo "EXIT=$rc"   # → EXIT=2
 
 $ python3 scripts/interface-comment-lint.py scripts/fixtures/gated-mutation-all.py
-error: scripts/fixtures/gated-mutation-all.py:13: __all__ mutated in place — surface cannot be reduced to a fixed list of names
+| error: scripts/fixtures/gated-mutation-all.py:13: __all__ mutated in place — surface cannot be reduced to a fixed list of names
 $ rc=$?; echo "EXIT=$rc"   # → EXIT=2
 
 $ python3 scripts/interface-comment-lint.py scripts/fixtures/undecodable-exports.py
-error: cannot decode scripts/fixtures/undecodable-exports.py as UTF-8: 'utf-8' codec can't decode byte 0xff in position 386: invalid start byte
+| error: cannot decode scripts/fixtures/undecodable-exports.py as UTF-8: 'utf-8' codec can't decode byte 0xff in position 386: invalid start byte
 $ rc=$?; echo "EXIT=$rc"   # → EXIT=2
 
 $ python3 scripts/interface-comment-lint.py scripts/fixtures/clean-exports.py 1>&-
 $ rc=$?; echo "EXIT=$rc"   # → EXIT=2   (fd 1 closed at startup — a verdict that cannot be delivered is not a verdict)
 
 $ python3 -c "import os,subprocess,sys; r,w=os.pipe(); os.close(r); p=subprocess.Popen([sys.executable,'scripts/interface-comment-lint.py','scripts/fixtures/dirty-exports.py'],stdout=w); os.close(w); sys.exit(p.wait())"
-error: report could not be delivered — a verdict that cannot be delivered is not a verdict
+| error: report could not be delivered — a verdict that cannot be delivered is not a verdict
 $ rc=$?; echo "EXIT=$rc"   # → EXIT=2   (fd 1 OPEN but unwritable: the reader is gone. Was 120 before the flush guard)
 
 $ python3 -c "import os,subprocess,sys; r,w=os.pipe(); os.close(r); p=subprocess.Popen([sys.executable,'scripts/interface-comment-lint.py','--nope'],stderr=w,stdout=subprocess.DEVNULL); os.close(w); sys.exit(p.wait())"
@@ -163,37 +161,45 @@ $ python3 scripts/interface-comment-lint.py 2>/dev/null
 $ rc=$?; echo "EXIT=$rc"   # → EXIT=2   (no arguments — the usage verdict; the table's fourth exit-2 cause)
 
 $ python3 scripts/interface-comment-lint.py scripts/fixtures/facade-exports.py
-MISSING   scripts/fixtures/facade-exports.py:15:RiskEngine — no interface comment
-MISSING   scripts/fixtures/facade-exports.py:16:RiskEngine.price — no interface comment
-UNJUDGED  scripts/fixtures/facade-exports.py:__all__:JSONDecoder — exported name is bound to an import — a re-export this lint cannot judge
-UNJUDGED  scripts/fixtures/facade-exports.py:__all__:PORT — exported name is bound to a module-level value, not a def or class
-UNJUDGED  scripts/fixtures/facade-exports.py:__all__:settle_trade — exported name is not defined in this module
-5 judged (4 exported, 1 nested), 5 without a usable interface comment
+| MISSING   scripts/fixtures/facade-exports.py:15:RiskEngine — no interface comment
+| MISSING   scripts/fixtures/facade-exports.py:16:RiskEngine.price — no interface comment
+| UNJUDGED  scripts/fixtures/facade-exports.py:__all__:JSONDecoder — exported name is bound to an import — a re-export this lint cannot judge
+| UNJUDGED  scripts/fixtures/facade-exports.py:__all__:PORT — exported name is bound to a module-level value, not a def or class
+| UNJUDGED  scripts/fixtures/facade-exports.py:__all__:settle_trade — exported name is not defined in this module
+| 5 judged (4 exported, 1 nested), 5 without a usable interface comment
 $ rc=$?; echo "EXIT=$rc"   # → EXIT=1
 
 $ python3 scripts/interface-comment-lint.py scripts/fixtures/clean-exports.py ./scripts/fixtures/clean-exports.py
-6 judged (3 exported, 3 nested), 0 without a usable interface comment
+| 6 judged (3 exported, 3 nested), 0 without a usable interface comment
 $ rc=$?; echo "EXIT=$rc"   # → EXIT=0   (one file under two spellings, judged once)
 
 $ python3 scripts/interface-comment-lint.py scripts/fixtures/clean-exports.py scripts/fixtures/CLEAN-EXPORTS.PY
-6 judged (3 exported, 3 nested), 0 without a usable interface comment
-$ rc=$?; echo "EXIT=$rc"   # → EXIT=0   (two letter cases of one file on a case-insensitive volume — the
-                           #   run above printed 12 before the identity key. On a case-sensitive volume
-                           #   the second spelling is a different, missing file and this is EXIT=2)
+| 6 judged (3 exported, 3 nested), 0 without a usable interface comment
+$ rc=$?; echo "EXIT=$rc"   # → EXIT=0   (two letter cases of one file on a case-insensitive volume — the run above printed 12 before the identity key. On a case-sensitive volume the second spelling is a different, missing file and this is EXIT=2)
 
 $ python3 scripts/interface-comment-lint.py scripts/fixtures/inherited-members.py
-MISSING   scripts/fixtures/inherited-members.py:11:Engine.price — no interface comment
-MISSING   scripts/fixtures/inherited-members.py:14:Engine.settle — no interface comment
-3 judged (1 exported, 2 nested), 2 without a usable interface comment
-$ rc=$?; echo "EXIT=$rc"   # → EXIT=1   (extract-a-base-class: the inherited members are named under the
-                           #   SUBCLASS, since that is the name a caller holds. Before the bases walk
-                           #   this printed "1 judged (1 exported, 0 nested)" and exited 0 — the refactor
-                           #   itself turned the verdict green.)
+| MISSING   scripts/fixtures/inherited-members.py:11:Engine.price — no interface comment
+| MISSING   scripts/fixtures/inherited-members.py:14:Engine.settle — no interface comment
+| 3 judged (1 exported, 2 nested), 2 without a usable interface comment
+$ rc=$?; echo "EXIT=$rc"   # → EXIT=1   (extract-a-base-class: the inherited members are named under the SUBCLASS, since that is the name a caller holds. Before the bases walk this printed "1 judged (1 exported, 0 nested)" and exited 0 — the refactor itself turned the verdict green.)
 
 $ python3 scripts/interface-comment-lint.py scripts/fixtures/inherited-leak.py
-LEAKS     scripts/fixtures/inherited-leak.py:10:Engine.warm — names private-symbol, internally, under-the-hood, loop-shape
-2 judged (1 exported, 1 nested), 1 without a usable interface comment
+| LEAKS     scripts/fixtures/inherited-leak.py:10:Engine.warm — names private-symbol, internally, under-the-hood, loop-shape
+| 2 judged (1 exported, 1 nested), 1 without a usable interface comment
 $ rc=$?; echo "EXIT=$rc"   # → EXIT=1   (a leak does not become invisible by moving into a mixin)
+
+python3 scripts/interface-comment-lint.py scripts/fixtures/only-missing.py    # exit 1 — MISSING is the only verdict
+| MISSING   scripts/fixtures/only-missing.py:13:settle — no interface comment
+| 2 judged (2 exported, 0 nested), 1 without a usable interface comment
+python3 scripts/interface-comment-lint.py scripts/fixtures/only-leaks.py    # exit 1 — LEAKS is the only verdict
+| LEAKS     scripts/fixtures/only-leaks.py:13:settle — names under-the-hood
+| 2 judged (2 exported, 0 nested), 1 without a usable interface comment
+python3 scripts/interface-comment-lint.py scripts/fixtures/only-restates.py    # exit 1 — RESTATES is the only verdict
+| RESTATES  scripts/fixtures/only-restates.py:13:parse_row — adds no word beyond the symbol name
+| 2 judged (2 exported, 0 nested), 1 without a usable interface comment
+python3 scripts/interface-comment-lint.py scripts/fixtures/only-unjudged.py    # exit 1 — UNJUDGED is the only verdict
+| UNJUDGED  scripts/fixtures/only-unjudged.py:__all__:JSONDecoder — exported name is bound to an import — a re-export this lint cannot judge
+| 2 judged (2 exported, 0 nested), 1 without a usable interface comment
 ```
 
 Every fixture except `undecodable-exports.py` parses cleanly, so each fails for its surface or its comments and never for malformed input; that one exists precisely to prove an IO condition exits 2 rather than borrowing exit 1.
@@ -207,6 +213,7 @@ Every fixture except `undecodable-exports.py` parses cleanly, so each fails for 
 - `class-alias-members.py` pins the class-body twin of that rule, and the limit beside it. `render = _render` aliases a module-level private def, and `warm` aliases a different private def in each branch of a version gate. `Engine.render` and `Engine.warm` are public at runtime (on Python 3.14 here, `dir(m.Engine)` → `['render', 'warm', 'wrapped']`, all three `__doc__ is None`) and both now fire, where a def-only class walk printed green over the whole file. `wrapped = staticmethod(_render)` is a value bound by a call. It reaches no definition this lint follows and is absent from the printed count: the narrowing shown as a run rather than asserted as a sentence.
 - `unreducible-all.py` and `gated-mutation-all.py` pin both halves of the fail-closed surface, a computed `__all__` and one mutated in place inside an `if`, exiting 2 instead of printing green over a surface the lint never read.
 - `facade-exports.py` is the escape that used to work: an alias, a re-export, a constant, and a name that does not exist. All four of the declared names appear in the `4 exported` count.
+- `only-missing.py`, `only-leaks.py`, `only-restates.py` and `only-unjudged.py` each isolate one verdict beside one fully documented def: an undocumented def, a comment that says `under the hood`, `Parses a row.` over `parse_row`, and an `__all__` name bound to an import. Each prints one verdict line over `2 judged (2 exported, 0 nested), 1 without a usable interface comment`, so its exit 1 is that verdict's alone. `MISSING` was already isolated by `branch-order-exports`, `shadowed-fallback`, `class-alias-members` and `inherited-members`, and `LEAKS` by `wrapped-leaks` and `inherited-leak`; `RESTATES` and `UNJUDGED` were not, and until their two fixtures shipped, silencing either emission in the lint left every proof on this page reproducing.
 - `clean-exports.py` carries the discriminating cases. A private helper and a public name excluded by `__all__` are skipped, a public method and a public nested class are checked, and a PEP 257 docstring whose summary line restates the name over a body that carries the contract passes.
 
 Runtime check on Python 3.14: `shadowed-fallback` has `warmup.__doc__ is None` and `render.__doc__ is None`, both fired; `branch-order-exports` runs its documented `warmup` here and its undocumented `settle`, and the gate fires on both, because the branch this interpreter skipped is still someone's interface. Deleting any fixture returns the gate to `unverified`.
@@ -226,7 +233,7 @@ Runtime check on Python 3.14: `shadowed-fallback` has `warmup.__doc__ is None` a
   - Comment presence; the eight-pattern leak vocabulary read over a folded comment, so a line wrap or a zero-width character cannot break a phrasing; the whole-comment restatement check; and `UNJUDGED` on any exported name that reaches no definition.
   - A printed count split into export surface and nested members, so it can be checked against the declared `__all__`, deduplicated by the input file's kernel identity rather than by its spelling.
   - The fail-closed exit 2 on usage, unreadable/undecodable/unparseable input, an undeliverable report (closed or unwritable stdout), empty surface, irreducible-`__all__`, and any unexpected internal failure, so neither a surface the lint cannot read nor a crash can ever wear exit 1.
-  - A leading UTF-8 BOM stripped the way CPython's own source reader strips it, so a Windows-authored module is read rather than refused. The island's own shape is enforced by the pack validator (`scripts/validate-island.py` at the pack root).
+  - A leading UTF-8 BOM stripped the way CPython's own source reader strips it, so a Windows-authored module is read rather than refused. The island's own shape is enforced by the pack validator (`scripts/validate-island.py` at the pack root), and each of the four verdicts is load-bearing on its own: one fixture per verdict whose documented exit 1 depends on that verdict alone, re-run by the pack verifier (`scripts/verify-proofs.py` at the pack root), so silencing any single emission is a reported mismatch rather than a page that still reproduces.
 - `advisory`: the sufficiency test; the four content slots; every language other than Python (a Go/TS/Java doc-comment runner is a later wave, not a claim made here); and three residual holes in the surface rules, named rather than hidden:
   - One. Shrinking `__all__` shrinks what the gate checks, a design act visible in the diff, which no mechanical check stops today.
   - Two. A re-export is *reported*, never *judged*. The lint says `UNJUDGED` and exits 1, but it does not follow the name into the module that defines it, so proving that symbol's comment means running the lint there too.

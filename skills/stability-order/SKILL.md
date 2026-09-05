@@ -127,6 +127,8 @@ python3 scripts/stability-check.py scripts/fixtures/cycle-blind-spot.json   # ex
 
 A pure cycle `billing -> orders -> shipping -> billing`: each node `Ca=1 Ce=1` → `I=0.50` uniformly, `0 violations at max-distance 0.50`, exit `0`. The gate prints the metrics and consents. Read that green as "no stability disorder found", never as "acyclic". The cycle check is [`deep-modules`](../../COMPANION.md#deep-modules)' and has to be run separately.
 
+**Ctrl-C.** A Ctrl-C (SIGINT) arriving mid-run is not a verdict. The seal maps `KeyboardInterrupt` to exit `2` — this island's non-verdict code — never to `0` or `1`, so an interrupted run cannot read as a pass or a finding. Pack policy: [CONTEXT.md — Interrupts are not verdicts](../../CONTEXT.md). A signal the interpreter never sees (`SIGKILL`, `SIGTERM`) is reported by the shell as `137`/`143` and is outside this table too.
+
 ## Done means
 
 - [ ] `components.json` covers every component in the build, and the checker accepts it: no exit-2 spec errors, no undeclared endpoints

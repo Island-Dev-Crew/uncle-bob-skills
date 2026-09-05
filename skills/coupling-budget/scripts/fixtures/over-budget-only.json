@@ -1,0 +1,15 @@
+{
+  "note": "Isolates OVER-BUDGET: two added edges against a budget of one, both carrying reasons above the floor, so the exit code rests on the count alone. The same file at --budget 2 exits 0, which is the one lever the verdict answers to.",
+  "budget": 1,
+  "modules": ["web", "billing", "domain"],
+  "baseline": [["web", "domain"]],
+  "current": [
+    ["web", "domain"],
+    ["web", "billing"],
+    ["billing", "domain"]
+  ],
+  "justifications": [
+    {"edge": ["web", "billing"], "reason": "the checkout page renders live invoice state from billing"},
+    {"edge": ["billing", "domain"], "reason": "billing owns the invoice lifecycle and needs the domain entities directly"}
+  ]
+}

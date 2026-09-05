@@ -89,11 +89,11 @@ bash ../known-dirty-fixture/scripts/prove-gate.sh scripts/fixtures/bare-approval
 
 The last four fixtures are the smuggling closure, each of them text the eye reads as harmless. `smuggled-comment.md` is a single physical line, a `#` comment ending in "LGTM, ship it.", with a FORM FEED before a `FOUND`; `str.splitlines()` would score it as a comment *plus* a counted entry and exit 0. `smuggled-cr.md` does the same with a bare CR. `invisible-id.md` enumerates `R2` and `R⟨U+200B⟩2` as two entries that render as one id. `default-ignorable-id.md` does that with U+034F, the combining grapheme joiner, which is category Mn and walked straight through the earlier category-only rule. All four now exit `2`, named by byte offset or by line.
 
-Three probes cover the tail. The dead-pipe pair prints `2`; the SystemExit injection exits `2`:
+Three probes cover the tail, and each exits with the code it reports rather than printing it, so the pack verifier re-runs all three. The dead-pipe pair exits `2`; the SystemExit injection exits `2`:
 
 ```bash
-python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);print(subprocess.run([sys.executable,"scripts/review-record.py","--nope"],stderr=w,stdout=subprocess.DEVNULL).returncode)'   # prints 2
-python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);print(subprocess.run([sys.executable,"scripts/review-record.py","--help"],stdout=w,stderr=subprocess.DEVNULL).returncode)'    # prints 2
+python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);sys.exit(subprocess.run([sys.executable,"scripts/review-record.py","--nope"],stderr=w,stdout=subprocess.DEVNULL).returncode)'   # exit 2 — usage error into a hung-up stderr, not 120
+python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);sys.exit(subprocess.run([sys.executable,"scripts/review-record.py","--help"],stdout=w,stderr=subprocess.DEVNULL).returncode)'    # exit 2 — help text nobody received, hung-up stdout, not 120
 python3 -c 'import pathlib,subprocess,sys,tempfile;s=pathlib.Path("scripts/review-record.py").read_text().replace("def main():","def main():"+chr(10)+"    raise SystemExit(1)",1);p=pathlib.Path(tempfile.mkdtemp(),"probe.py");p.write_text(s);sys.exit(subprocess.run([sys.executable,str(p),"scripts/fixtures/hunted.md"],capture_output=True).returncode)'   # exit 2
 ```
 

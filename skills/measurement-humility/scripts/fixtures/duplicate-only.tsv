@@ -1,0 +1,6 @@
+# DUPLICATE, isolated. One clean row and its respelled twin, and nothing else
+# wrong: no evasion, no empty field, no past date. Exit 1 here rests on the
+# DUPLICATE verdict alone, so a gate that stopped emitting it would exit 0 on
+# this file, which is what makes that verdict watchable failing on its own.
+mutation score floor	100 percent of mutants killed	awkward mutants excused into the ledger instead of killed	2027-01-01
+Mutation-Score-Floor	100 percent of mutants killed	awkward mutants excused into the ledger instead of killed	2027-01-01

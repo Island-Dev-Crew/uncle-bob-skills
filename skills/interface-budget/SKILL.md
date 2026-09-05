@@ -128,7 +128,7 @@ load-ledger: cannot read scripts/fixtures/undecodable-latin1.tsv: 'utf-8' codec 
 $ echo $?   # → 2
 ```
 
-Six more forged rows follow, each a spelling that used to walk past `RE-READ` and now cannot be logged at all; the last is the reverse case, a spelling that used to fail and now gates. After them come the seven ways the *process* can fail without a ledger being at fault, which must borrow neither `1` nor `120`, and an eighth that only looks like one. The `→` annotation is the gate's own exit code, re-captured for every row. Most rows capture it with `cmd; rc=$?` on its own line, stdin redirected from a file rather than read after the pipe that would clobber it. The rows that must forge a dead stream read the child's own `returncode` instead, printed as the row's single output line:
+Six more forged rows follow, each a spelling that used to walk past `RE-READ` and now cannot be logged at all; the last is the reverse case, a spelling that used to fail and now gates. After them come the seven ways the *process* can fail without a ledger being at fault, which must borrow neither `1` nor `120`, and an eighth that only looks like one. The `→` annotation is the gate's own exit code, re-captured for every row. Most rows capture it with `cmd; rc=$?` on its own line, stdin redirected from a file rather than read after the pipe that would clobber it. The three rows that must forge a dead stream sit in their own `bash` fence in the middle, run under a wrapper that exits with the child's own `returncode` rather than printing it: they carry no output line, the annotation is the wrapper's exit code, and the pack verifier re-runs them as proofs.
 
 ```
 $ printf 'T-9\tsrc/a.pyi\tinterface\t1000\t-\nT-9\tsrc/a.py\timpl\t250\tediting\nT-9\t/repo/src/a.py\timpl\t250\tediting\n' | python3 scripts/load-ledger.py -
@@ -152,19 +152,22 @@ $ python3 -c "import subprocess,sys;p=subprocess.Popen([sys.executable,'scripts/
 load-ledger: stdout lost before the report finished: [Errno 32] Broken pipe                                 # → 2
 $ python3 -c "import sys;sys.argv=['load-ledger.py','scripts/fixtures/clean-budgeted.tsv'];exec(open('scripts/load-ledger.py').read().replace('def bp_text(bp):','def bp_text(bp):\n    raise RuntimeError(\"forged crash\")',1))"
 load-ledger: internal error, not a verdict: RuntimeError: forged crash                                      # → 2 (traceback kept on stderr)
-$ python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);print(subprocess.run([sys.executable,"scripts/load-ledger.py","--nope"],stderr=w,stdout=subprocess.DEVNULL).returncode)'
-2                                                           # → 2 — a usage error onto a dead stderr: argparse's exit is caught, not left to shutdown, which used to re-code it 120
-$ python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);print(subprocess.run([sys.executable,"scripts/load-ledger.py","--help"],stdout=w,stderr=subprocess.DEVNULL).returncode)'
-2                                                           # → 2 — help text that cannot land is a lost report, not the pass a working --help earns (0); this too was 120
-$ python3 -c 'import os,subprocess,sys;s=open("scripts/load-ledger.py").read().replace("os.devnull","\"/nonexistent\"");open("/tmp/nodevnull.py","w").write(s);r,w=os.pipe();os.close(r);print(subprocess.run([sys.executable,"/tmp/nodevnull.py","scripts/fixtures/clean-budgeted.tsv"],stdout=w,stderr=subprocess.DEVNULL).returncode)'
-2                                                           # → 2 — /dev/null forged unavailable, so the last door (os._exit) carries the code; delete that guard and the same run prints 120
+```
+
+```bash
+python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);sys.exit(subprocess.run([sys.executable,"scripts/load-ledger.py","--nope"],stderr=w,stdout=subprocess.DEVNULL).returncode)'   # exit 2 — a usage error onto a dead stderr: argparse's exit is caught, not left to shutdown, which used to re-code it 120
+python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);sys.exit(subprocess.run([sys.executable,"scripts/load-ledger.py","--help"],stdout=w,stderr=subprocess.DEVNULL).returncode)'   # exit 2 — help text that cannot land is a lost report, not the pass a working --help earns (0); this too was 120
+python3 -c 'import os,subprocess,sys;s=open("scripts/load-ledger.py").read().replace("os.devnull","\"/nonexistent\"");open("/tmp/nodevnull.py","w").write(s);r,w=os.pipe();os.close(r);sys.exit(subprocess.run([sys.executable,"/tmp/nodevnull.py","scripts/fixtures/clean-budgeted.tsv"],stdout=w,stderr=subprocess.DEVNULL).returncode)'   # exit 2 — /dev/null forged unavailable, so the last door (os._exit) carries the code; delete that guard and the same run exits 120
+```
+
+```
 $ PYTHONIOENCODING=ascii python3 scripts/load-ledger.py scripts/fixtures/dodge-unicode-nfd.tsv
 task T-51: 4 loads, 900 tokens, impl share 22.23%
 VIOLATION [RE-READ] task T-51: scripts/fixtures/dodge-unicode-nfd.tsv:10 src/orders/panier-cafe\u0301.py impl already loaded as impl at scripts/fixtures/dodge-unicode-nfd.tsv:9 (spelt 'src/orders/panier-caf\xe9.py', same body in a different Unicode form)
 4 loads, 1 violations, ceiling 35.00% impl share            # → 1 — an ASCII pipeline escapes the path, it does not truncate the report
 ```
 
-Those last two rows are the pair a gate must not confuse: each starts from a report that will not go out as written. A report the gate **cannot** write is an input failure (`2`) even when the ledger was clean; a report it can only write in escaped form is still a report, so the verdict survives (`1`) instead of the run aborting on the character.
+The forged-`/dev/null` row and the ASCII-pipeline row are the pair a gate must not confuse: each starts from a report that will not go out as written. A report the gate **cannot** write is an input failure (`2`) even when the ledger was clean; a report it can only write in escaped form is still a report, so the verdict survives (`1`) instead of the run aborting on the character.
 
 **The disclosed limit, run rather than asserted.** The path fold is textual, so a second spelling that is one body only *on disk* is not folded and the over-read passes:
 

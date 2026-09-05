@@ -94,12 +94,12 @@ bash -c 'python3 scripts/cost-trend.py --order oldest-first --unit minutes scrip
 bash -c 'python3 scripts/cost-trend.py --help >&-'                                                              # exit 2 — checked before argparse
 ```
 
-Three more probes reach codes a shell cannot easily produce. The first two matter because a dead pipe at interpreter shutdown replaces the status with 120, and `except SystemExit: raise` would let argparse's usage exit leak past a seal; the third is the interrupt. All three printed `2`:
+Three more probes reach codes a shell cannot easily produce. The first two matter because a dead pipe at interpreter shutdown replaces the status with 120, and `except SystemExit: raise` would let argparse's usage exit leak past a seal; the third is the interrupt. All three exit with the child's code and print nothing themselves, so a probe of a dead stream never depends on a live one and the pack verifier re-runs each of them:
 
 ```bash
-python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);print(subprocess.run([sys.executable,"scripts/cost-trend.py","--nope"],stderr=w,stdout=subprocess.DEVNULL).returncode)'   # prints 2, not 120
-python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);print(subprocess.run([sys.executable,"scripts/cost-trend.py","--help"],stdout=w,stderr=subprocess.DEVNULL).returncode)'    # prints 2, not 120
-python3 -c 'import os,signal,subprocess,sys,time;r,w=os.pipe();p=subprocess.Popen([sys.executable,"scripts/cost-trend.py","--order","oldest-first","--unit","minutes"],stdin=r,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);os.close(r);time.sleep(0.6);os.kill(p.pid,signal.SIGINT);print(p.wait())'  # prints 2 - SIGINT while blocked on stdin
+python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);sys.exit(subprocess.run([sys.executable,"scripts/cost-trend.py","--nope"],stderr=w,stdout=subprocess.DEVNULL).returncode)'   # exit 2 — not 120
+python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);sys.exit(subprocess.run([sys.executable,"scripts/cost-trend.py","--help"],stdout=w,stderr=subprocess.DEVNULL).returncode)'    # exit 2 — not 120
+python3 -c 'import os,signal,subprocess,sys,time;r,w=os.pipe();p=subprocess.Popen([sys.executable,"scripts/cost-trend.py","--order","oldest-first","--unit","minutes"],stdin=r,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);os.close(r);time.sleep(0.6);os.kill(p.pid,signal.SIGINT);sys.exit(p.wait())'  # exit 2 — SIGINT while blocked on stdin
 ```
 
 Each dirty fixture isolates one hole. Five are reproducible by removing the named guard(s) from the script: **four false greens and one false alarm**. One more, `limit-subunit-rounding`, is a boundary this island discloses rather than closes:

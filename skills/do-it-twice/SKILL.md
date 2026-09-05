@@ -71,11 +71,11 @@ python3 scripts/pilot-gate.py scripts/fixtures/spelling/variant.txt     # exit 1
 
 `dirty/` is the archetype, and it fails for exactly one reason: `stage 'qa' declared but never walked`, everything else evidenced. It is a well-formed record, so it goes red on content, not on syntax. `shared/` fails on `one artifact cannot be evidence for two stages`, because one file is cited under two spellings of its path. That is an identity match, not a content match. `malformed-pilot.txt` carries a `#` line and is refused as malformed with code 2, never laundered into a verdict. `spelling/` ships both directions of the key function in one directory. `copied/` consents, on purpose: it is the limit fixture for the hole below.
 
-Dead-output-stream probes, captured (CPython would otherwise replace the status with 120):
+Dead-output-stream probes, captured (CPython would otherwise replace the status with 120). Each pipe probe exits with the gate's code rather than printing it, so the pack verifier re-runs it and a probe of a dead stream never depends on a live one:
 
 ```bash
-python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);print(subprocess.run([sys.executable,"scripts/pilot-gate.py","--nope"],stderr=w,stdout=subprocess.DEVNULL).returncode)'   # printed 2
-python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);print(subprocess.run([sys.executable,"scripts/pilot-gate.py","--help"],stdout=w,stderr=subprocess.DEVNULL).returncode)'    # printed 2
+python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);sys.exit(subprocess.run([sys.executable,"scripts/pilot-gate.py","--nope"],stderr=w,stdout=subprocess.DEVNULL).returncode)'   # exit 2 — usage error into a hung-up stderr, not 120
+python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);sys.exit(subprocess.run([sys.executable,"scripts/pilot-gate.py","--help"],stdout=w,stderr=subprocess.DEVNULL).returncode)'    # exit 2 — help text nobody received, hung-up stdout, not 120
 python3 scripts/pilot-gate.py scripts/fixtures/clean/pilot.txt >&- 2>/dev/null    # exit 2
 ```
 

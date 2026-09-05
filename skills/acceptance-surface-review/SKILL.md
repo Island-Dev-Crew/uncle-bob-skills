@@ -93,9 +93,11 @@ python3 scripts/surface-check.py --max-lines 24 scripts/fixtures/limit-blank-gly
 python3 scripts/surface-check.py --max-lines 24 scripts/fixtures/escaped-code-critical.manifest  # exit 2 - ERROR, code path climbs out of the root
 python3 scripts/surface-check.py --max-lines 24 --root scripts scripts/fixtures/escaped-code-critical.manifest  # exit 0 - same manifest, root declared deliberately
 
-# The seal - no run may exit anything but 0, 1 or 2. Both printed 120 before this round.
-python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);print(subprocess.run([sys.executable,"scripts/surface-check.py","--nope"],stderr=w,stdout=subprocess.DEVNULL).returncode)'   # 2 - usage error, dead stderr pipe
-python3 -c 'import os,subprocess,sys;r1,w1=os.pipe();os.close(r1);r2,w2=os.pipe();os.close(r2);print(subprocess.run([sys.executable,"scripts/surface-check.py","--max-lines","24","scripts/fixtures/clean-critical.manifest"],stdout=w1,stderr=w2).returncode)'  # 2 - both streams dead
+# The seal - no run may exit anything but 0, 1 or 2. Both returned 120 before this round. Each probe exits with the
+# child's code and prints nothing: a probe of a dead stream must not itself depend on a live one, and a wrapper that
+# only printed the code exited 0 itself, so no verifier could re-run it.
+python3 -c 'import os,subprocess,sys;r,w=os.pipe();os.close(r);sys.exit(subprocess.run([sys.executable,"scripts/surface-check.py","--nope"],stderr=w,stdout=subprocess.DEVNULL).returncode)'   # exit 2 - usage error, dead stderr pipe
+python3 -c 'import os,subprocess,sys;r1,w1=os.pipe();os.close(r1);r2,w2=os.pipe();os.close(r2);sys.exit(subprocess.run([sys.executable,"scripts/surface-check.py","--max-lines","24","scripts/fixtures/clean-critical.manifest"],stdout=w1,stderr=w2).returncode)'  # exit 2 - both streams dead
 ```
 
 The dirty manifest is a realistic near-miss, not garbage. The tier is honestly declared `critical`, the Gherkin is real, and it still fails: no `code:` path on a payment capture, and a QA doc that grew to 31 lines against a 24-line budget.

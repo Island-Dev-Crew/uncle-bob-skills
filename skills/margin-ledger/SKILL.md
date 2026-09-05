@@ -83,6 +83,8 @@ Every exit code above was observed on the shipped fixtures. The pair also passes
 
 - **Advisory at v0**: everything feeding the script. That means the honesty of the human baseline, the wall-clock capture method, the 2–4x band reading, the pre-add projection, and the choice of which gate to cut on a breach. Each is stated so a later wave can mechanize capture; claiming more would launder advisory into enforced.
 
+**Ctrl-C.** A Ctrl-C (SIGINT) arriving mid-run is not a verdict. The seal maps `KeyboardInterrupt` to exit `3` — this island's cannot-read code, the same one an unreadable input takes — never to `0` or `1`, so an interrupted run cannot read as a pass or a finding. Pack policy: [CONTEXT.md — Interrupts are not verdicts](../../CONTEXT.md). A signal the interpreter never sees (`SIGKILL`, `SIGTERM`) is reported by the shell as `137`/`143` and is outside this table too.
+
 ## Done means
 
 - [ ] The ledger holds one row per story shipped through the stack, each baseline with its source named

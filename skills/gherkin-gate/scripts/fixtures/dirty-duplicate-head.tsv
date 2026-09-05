@@ -1,0 +1,5 @@
+# acceptance ledger for dirty-duplicate-head.feature - red then green for the shared name;
+# the gate cannot tell which of the two heads that evidence belongs to
+# phase	exit_code	story	feature_sha256	scenario
+red	1	STORY-31	9a140bc8e82a17e80954af58b14c59f892c384670d6418c4d20069616982dc93	Gift wrap adds $2.00 to the total
+green	0	STORY-31	9a140bc8e82a17e80954af58b14c59f892c384670d6418c4d20069616982dc93	Gift wrap adds $2.00 to the total

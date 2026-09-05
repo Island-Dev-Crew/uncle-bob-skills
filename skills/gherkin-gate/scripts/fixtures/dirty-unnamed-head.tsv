@@ -1,0 +1,5 @@
+# acceptance ledger for dirty-unnamed-head.feature - the named head is sound; the second
+# head has no name, so no record could ever bind to it
+# phase	exit_code	story	feature_sha256	scenario
+red	1	STORY-27	cd4e9a7c5a139e312265ae5f11a80b0f5f47e59f6ed1ced5f1b4c95c8a302db9	A valid code reduces the total
+green	0	STORY-27	cd4e9a7c5a139e312265ae5f11a80b0f5f47e59f6ed1ced5f1b4c95c8a302db9	A valid code reduces the total

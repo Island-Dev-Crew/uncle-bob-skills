@@ -80,6 +80,8 @@ The dirty ledger fires all three verdict rules at once: an unexcused survivor, a
 
 - **Advisory** (honestly, unavoidably): the *truth* of an equivalence argument. No script can verify equivalence in general, which is the undecidability that put this ledger here in the first place. The character floor is a substance proxy standing in for the judgment call, not a truth check. A reviewer recomputing the packet judges the argument itself. Expect the excusal rate to land inside the 4–39% band from the research, and read a rate far above it as laundering pressure rather than bad luck.
 
+**Ctrl-C.** A Ctrl-C (SIGINT) arriving mid-run is not a verdict. The seal maps `KeyboardInterrupt` to exit `2` — this island's non-verdict code — never to `0` or `1`, so an interrupted run cannot read as a pass or a finding. Pack policy: [CONTEXT.md — Interrupts are not verdicts](../../CONTEXT.md). A signal the interpreter never sees (`SIGKILL`, `SIGTERM`) is reported by the shell as `137`/`143` and is outside this table too.
+
 ## Boundaries
 
 - Upstream, [`mutant-hunt`](../mutant-hunt/SKILL.md) owns the run itself (diff-scoping, covered-lines-only, the runtime budget) and the kill-task loop. This island consumes its *survivors* — the mutants left after kill-tasks are exhausted — and owns only the ruling on them.
